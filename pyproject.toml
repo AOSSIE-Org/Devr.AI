@@ -17,6 +17,10 @@ dependencies = [
 packages = [{ include = "devr" }]
 package-mode = false
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+flake8 = "^7.1.2"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
