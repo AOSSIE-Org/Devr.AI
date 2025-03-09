@@ -3,6 +3,7 @@
 ## Table of Contents
 - [Project Overview](#project-overview)
 - [System Architecture](#system-architecture)
+- [Setup Guide](#setup-guide)
 - [Core Features](#core-features)
 - [Technology Stack](#technology-stack)
 - [Integration Details](#integration-details)
@@ -28,83 +29,117 @@ The system leverages Large Language Models (LLMs), knowledge retrieval mechanism
 
 ```mermaid
 flowchart TB
+    %% External Platforms
     subgraph "External Platforms"
         GH["GitHub"]
         DS["Discord"]
         SL["Slack"]
-        
     end
 
+    %% React Frontend
+    subgraph "React Frontend"
+        FRONT["React + TS + TailwindCSS"]
+        DASH["Dashboard"]
+    end
+
+    %% FastAPI Backend
     subgraph "FastAPI backend"
-        API["API Gateway"]
-        
+        API["FastAPI Gateway"]
     end
 
+    %% Authentication
     subgraph "Authentication"
         GitAuth["GitHub Authentication"]
         SupaAuth["Supabase Authentication"]
     end
 
+    %% Core Processing Engine
     subgraph "Core Processing Engine"
         WF["Workflow Orchestrator"]
         Q["Task Queue"]
-        
     end
 
+    %% AI Service Layer (Groq APIs)
     subgraph "AI Service Layer (Groq APIs)"
         LLM["LLM Service"]
         KR["Knowledge Retrieval"]
         CODE["Code Understanding"]
     end
 
+    %% Integration Services
     subgraph "Integration Services"
         GHS["GitHub Service"]
         DSS["Discord Service"]
         SLS["Slack Service"]
-       
     end
 
+    %% Data Storage Layer
     subgraph "Data Storage Layer"
-        VDB["Vector DB and Relational DB (SupaBase)"]
-        
+        Supa["(Supabase)"]
+        VDB["Vector DB and Relational DB "]
     end
 
+    %% Analytics Engine
     subgraph "Analytics Engine"
         METRICS["Metrics Calculator"]
         REPORT["Report Generator"]
         TREND["Trend Analyzer"]
     end
 
+    %% Connections
+    FRONT --> DASH
+    DASH <--> API
+
     GH <--> GHS
     DS <--> DSS
     SL <--> SLS
-    
 
     GHS <--> API
     DSS <--> API
     SLS <--> API
-    
 
     API <--> GitAuth
     API <--> SupaAuth
-    
+
     API <--> WF
 
     WF <--> Q
-    
+
     WF <--> LLM
     WF <--> KR
     WF <--> CODE
 
-    LLM <--> VDB
-    KR <--> VDB
-   
+    LLM <--> Supa
+    KR <--> Supa
+    Supa --> VDB
 
     WF --> METRICS
     METRICS --> REPORT
     METRICS --> TREND
-    REPORT --> VDB
-    TREND --> VDB
+    REPORT --> Supa
+    TREND --> Supa
+    
+
+    %% Styling for Light Colors with Black Text
+    classDef external fill:#e0f7fa,stroke:#00796b,stroke-width:1px,color:#000;
+    classDef backend fill:#e8f5e9,stroke:#388e3c,stroke-width:1px,color:#000;
+    classDef auth fill:#f3e5f5,stroke:#8e24aa,stroke-width:1px,color:#000;
+    classDef core fill:#fff3e0,stroke:#f57c00,stroke-width:1px,color:#000;
+    classDef ai fill:#e1f5fe,stroke:#0288d1,stroke-width:1px,color:#000;
+    classDef integration fill:#fce4ec,stroke:#d81b60,stroke-width:1px,color:#000;
+    classDef storage fill:#ede7f6,stroke:#5e35b1,stroke-width:1px,color:#000;
+    classDef analytics fill:#e8eaf6,stroke:#3949ab,stroke-width:1px,color:#000;
+
+    %% Apply classes to nodes
+    class GH,DS,SL external;
+    class API backend;
+    class GitAuth,SupaAuth,FRONT auth;
+    class WF,Q core;
+    class LLM,KR,CODE,DASH ai;
+    class GHS,DSS,SLS integration;
+    class VDB storage;
+    class METRICS,REPORT,TREND analytics;
+
 ```
 
 ### High-Level Architecture Overview
@@ -210,6 +245,9 @@ Devr.AI follows a microservices architecture with the following key components:
   - Early warning system for declining project activity
   - Burnout risk detection for maintainers
   - Community sentiment analysis
+
+## Setup Guide
+For installing the project locally refer to the [Installation Guide](./docs/INSTALL_GUIDE.md)
 
 ## Technology Stack
 
