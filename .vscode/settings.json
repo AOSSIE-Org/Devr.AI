@@ -1,0 +1,25 @@
+{
+    // auto-formatter for python
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.autopep8",
+        "editor.formatOnSave": true,
+    },
+    // linting for python
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Path": "flake8",
+    // auto-formatter for javascript
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+    },
+    // auto-formatter for typescript
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+    },
+    // auto-formatter for json
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+    },
+}
