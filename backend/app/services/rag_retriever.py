@@ -14,7 +14,7 @@ load_dotenv()
 # Custom wrapper to make HuggingFaceEmbeddings compatible with SemanticChunker
 class CustomHuggingFaceEmbeddings(HuggingFaceEmbeddings):
     def embed(self, text: str):
-        """Wraps embed_query to match the expected method signature."""
+        """Wraps embed_query to match the expected method signature in Semantic Chunker."""
         return self.embed_query(text)
 
 class RAGRetriever:
@@ -28,9 +28,14 @@ class RAGRetriever:
             breakpoint_threshold_type='gradient'
         )
 
-    def process_github_file(self, owner: str, repo: str, path: str, output_dir: str):
-        file_path = self.github_downloader.download_file(owner, repo, path, output_dir)
-        return self.chunk_and_store(file_path)
+    def process_github_file(self, url: str):
+        file_path = self.github_downloader.download_file(url)
+        file_content = url + "\n" +self.get_file_content(file_path)
+        print(file_content)
+        # Remove the file after reading its content to avoid clutter
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return self.chunk_and_store(file_content)
 
     def get_file_content(self, file_path: str):
         with open(file_path, 'r') as file:
@@ -56,16 +61,15 @@ if __name__ == "__main__":
     openai_api_key = os.getenv('OPENAI_API_KEY')
     sample_file_path = '/media/mun/Shared/GSOC/Devr.AI/README.md'
 
-    owner = 'your-github-username'
-    repo = 'your-repo-name'
-    path = 'path/to/your/file'
-    output_dir = 'downloaded_files'
     question = 'Give detailed features of Devr.AI?'
+    question2 = 'what are the dependencies of Devr.AI?'
+    github_file_url= 'https://api.github.com/repos/muntaxir4/Devr.AI/contents/pyproject.toml?ref=main'
 
     rag_retriever = RAGRetriever(github_token, supabase_url, supabase_key)
     file_content = rag_retriever.get_file_content(sample_file_path)
     rag_retriever.chunk_and_store(file_content)
-    retrieved_documents = rag_retriever.retrieve_documents(question)
+    rag_retriever.process_github_file(github_file_url)
+    retrieved_documents = rag_retriever.retrieve_documents(question2)
     faq_assistant = FaqAssistant(base_url=openai_base_url, api_key=openai_api_key)
-    response = faq_assistant.generate_faq_response(question, retrieved_documents)
+    response = faq_assistant.generate_faq_response(question2, retrieved_documents)
     print(response)
