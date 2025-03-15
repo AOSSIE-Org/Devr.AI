@@ -1,17 +1,14 @@
-from langchain_openai import ChatOpenAI
 from typing import List, Dict, Any
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_groq import ChatGroq
 
 class FaqAssistant:
-    def __init__(self, base_url=None, api_key=None):
-        self.base_url = base_url
-        self.api_key = api_key
-        
+    def __init__(self, groq_api_key=None, groq_model=None):        
         # Initialize the LLM
-        self.llm = ChatOpenAI(
-            base_url=self.base_url,
-            api_key=self.api_key
+        self.llm = ChatGroq(
+            api_key=groq_api_key,
+            model=groq_model
         )
         
         # Set up the FAQ prompt template

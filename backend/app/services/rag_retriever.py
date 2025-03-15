@@ -57,8 +57,8 @@ if __name__ == "__main__":
     github_token = os.getenv('GITHUB_TOKEN')
     supabase_url = os.getenv('SUPABASE_URL')
     supabase_key = os.getenv('SUPABASE_KEY')
-    openai_base_url = os.getenv('OPENAI_BASE_URL')
-    openai_api_key = os.getenv('OPENAI_API_KEY')
+    groq_api_key = os.getenv('GROQ_API_KEY')
+    groq_model = os.getenv('GROQ_MODEL')
     sample_file_path = '/media/mun/Shared/GSOC/Devr.AI/README.md'
 
     question = 'Give detailed features of Devr.AI?'
@@ -66,10 +66,10 @@ if __name__ == "__main__":
     github_file_url= 'https://api.github.com/repos/muntaxir4/Devr.AI/contents/pyproject.toml?ref=main'
 
     rag_retriever = RAGRetriever(github_token, supabase_url, supabase_key)
-    file_content = rag_retriever.get_file_content(sample_file_path)
-    rag_retriever.chunk_and_store(file_content)
-    rag_retriever.process_github_file(github_file_url)
+    # file_content = rag_retriever.get_file_content(sample_file_path)
+    # rag_retriever.chunk_and_store(file_content)
+    # rag_retriever.process_github_file(github_file_url)
     retrieved_documents = rag_retriever.retrieve_documents(question2)
-    faq_assistant = FaqAssistant(base_url=openai_base_url, api_key=openai_api_key)
+    faq_assistant = FaqAssistant(api_key=groq_api_key, model=groq_model)
     response = faq_assistant.generate_faq_response(question2, retrieved_documents)
     print(response)
