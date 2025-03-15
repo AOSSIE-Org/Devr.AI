@@ -48,7 +48,6 @@ def fetch_github_contributors(repo_owner, repo_name):
         return response.json()
     else:
         print(f"⚠️ Failed to fetch contributors: {response.status_code} - {response.text}")
-        print(f"🔍 Check if the repo exists: {url}")
         return []
 
 
@@ -58,17 +57,35 @@ def store_contributor_data(contributors):
         print("No contributors found.")
         return
     for contributor in contributors:
-        data = {"username": contributor['login'], "contributions": contributor['contributions']}
+        data = {
+            "username": contributor['login'],
+            "contributions": contributor['contributions'],
+            "expertise_tags": extract_expertise_tags(contributor.get('bio', ""))
+        }
         supabase.table('contributors').insert(data).execute()
 
 
-# Prepare documents for vector store
+# Extract expertise tags from GitHub bio
+def extract_expertise_tags(bio):
+    if not bio:
+        return []
+    words = bio.lower().split()  
+    tags = [f"#{word}" for word in words if len(word) > 2]  
+    return tags
+
+
+# Prepare documents for vector store (including expertise tags)
 def prepare_documents(contributors):
     documents = []
     for contributor in contributors:
         name = contributor['login']
-        tags = [f"#{name}", "#contributor"]
-        documents.append(Document(page_content=" ".join(tags), metadata={"reviewer": name}))
+        expertise_tags = extract_expertise_tags(contributor.get('bio', ""))
+        tags = [f"#{name}", "#contributor"] + expertise_tags
+
+        documents.append(Document(
+            page_content=" ".join(tags),
+            metadata={"reviewer": name, "expertise": expertise_tags}
+        ))
     return documents
 
 
@@ -86,40 +103,51 @@ def store_pr_data(pr_title, pr_body, pr_link, reviewer):
     supabase.table('pull_requests').insert(data).execute()
 
 
-# Get PR insights using Groq LLM
+# Get PR insights using Groq LLM to extract expertise tags
 def get_pr_insights(pr_title, pr_body):
-    prompt = f"Analyze the following PR details and suggest keywords: Title: {pr_title}, Body: {pr_body}"
+    prompt = f"Extract expertise-related tags from this PR description: '{pr_title} {pr_body}'. Output format: #NLP, #backend, #database."
     try:
         response = openai.Completion.create(
             engine="gpt-4",
             prompt=prompt,
-            max_tokens=100
+            max_tokens=50
         )
-        return response.choices[0].text.strip()
+        return response.choices[0].text.strip().split(", ")
     except Exception as e:
         print(f"Error using Groq API: {e}")
-        return ""
+        return []
 
 
-# Assign PR to top reviewers using FAISS and Groq insights
+# Assign PR to top reviewers using FAISS and expertise tags
 def assign_reviewers(pr_title, pr_body, pr_link, vector_store):
     if not vector_store:
         print("⚠️ Error: Vector store is not initialized.")
         return
 
-    pr_content = pr_title + " " + pr_body
-    pr_embedding = embeddings.embed_query(pr_content)
-    groq_insights = get_pr_insights(pr_title, pr_body)
+    try:
+        pr_content = pr_title + " " + pr_body
+        pr_embedding = embeddings.embed_query(pr_content)
+        expertise_tags = get_pr_insights(pr_title, pr_body)  # Extract tags
 
-    results = vector_store.similarity_search_by_vector(pr_embedding, k=2)
+        results = vector_store.similarity_search_by_vector(pr_embedding, k=5)
 
-    print("🔹 Top 2 Reviewers based on FAISS and Groq:")
-    for result in results:
-        reviewer = result.metadata['reviewer']
-        print(f"✅ Assigned Reviewer: {reviewer} | Groq Insights: {groq_insights}")
-        store_pr_data(pr_title, pr_body, pr_link, reviewer)
-        notify_discord(reviewer, pr_link)
-        notify_github(pr_link, reviewer)
+        matching_reviewers = []
+        for result in results:
+            reviewer = result.metadata['reviewer']
+            expertise = result.metadata['expertise']
+            if any(tag in expertise for tag in expertise_tags):
+                matching_reviewers.append(reviewer)
+
+        assigned_reviewers = matching_reviewers[:2] if matching_reviewers else results[:2]
+
+        print("🔹 Top Reviewers based on FAISS & Expertise Tags:")
+        for reviewer in assigned_reviewers:
+            print(f"✅ Assigned Reviewer: {reviewer} | Expertise Tags: {expertise_tags}")
+            store_pr_data(pr_title, pr_body, pr_link, reviewer)
+            notify_discord(reviewer, pr_link)
+            notify_github(pr_link, reviewer)
+    except Exception as e:
+        print(f"⚠️ Error in assigning reviewers: {e}")
 
 
 # Notify Discord
@@ -144,8 +172,7 @@ def notify_github(pr_link, reviewer):
         print("🚨 GitHub Token is missing! Set it in .env file.")
         return
 
-    api_url = pr_link.replace("https://github.com/", "https://api.github.com/repos/").replace("/pull/",
-                                                                                              "/issues/") + "/comments"
+    api_url = pr_link.replace("https://github.com/", "https://api.github.com/repos/").replace("/pull/", "/issues/") + "/comments"
     payload = {"body": f"@{reviewer} has been assigned to review this PR."}
     headers = {'Authorization': f'token {github_token}', 'Accept': 'application/vnd.github.v3+json'}
 
