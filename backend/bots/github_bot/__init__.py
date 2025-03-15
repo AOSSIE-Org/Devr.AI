@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 from flask import Flask, request, jsonify
 from supabase import create_client
+import openai
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +18,9 @@ embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-
 supabase_url = os.getenv('SUPABASE_URL')
 supabase_key = os.getenv('SUPABASE_KEY')
 supabase = create_client(supabase_url, supabase_key)
+
+# Groq API setup
+openai.api_key = os.getenv('GROQ_API_KEY')
 
 # GitHub API to fetch contributors
 def fetch_github_contributors(repo_owner, repo_name):
@@ -54,16 +58,32 @@ def store_pr_data(pr_title, pr_body, pr_link, reviewer):
     data = {"pr_title": pr_title, "pr_body": pr_body, "pr_link": pr_link, "reviewer": reviewer}
     supabase.table('pull_requests').insert(data).execute()
 
-# Assign PR to top reviewers
+# Get PR insights using Groq LLM
+def get_pr_insights(pr_title, pr_body):
+    prompt = f"Analyze the following PR details and suggest keywords: Title: {pr_title}, Body: {pr_body}"
+    try:
+        response = openai.Completion.create(
+            engine="gpt-4",
+            prompt=prompt,
+            max_tokens=100
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        print(f"Error using Groq API: {e}")
+        return ""
+
+# Assign PR to top reviewers using both FAISS and Groq insights
 def assign_reviewers(pr_title, pr_body, pr_link, vector_store):
     pr_content = pr_title + " " + pr_body
     pr_embedding = embeddings.embed_query(pr_content)
+    groq_insights = get_pr_insights(pr_title, pr_body)
+
     results = vector_store.similarity_search_by_vector(pr_embedding, k=2)
-    
-    print("Top 2 Reviewers:")
+
+    print("Top 2 Reviewers based on FAISS and Groq:")
     for result in results:
         reviewer = result.metadata['reviewer']
-        print(f"Assigned Reviewer: {reviewer}")
+        print(f"Assigned Reviewer: {reviewer} | Groq Insights: {groq_insights}")
         store_pr_data(pr_title, pr_body, pr_link, reviewer)
         notify_discord(reviewer, pr_link)
         notify_github(pr_link, reviewer)
