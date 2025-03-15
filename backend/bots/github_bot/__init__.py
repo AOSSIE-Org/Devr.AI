@@ -21,9 +21,12 @@ except Exception as e:
 # Supabase setup
 supabase_url = os.getenv('SUPABASE_URL')
 supabase_key = os.getenv('SUPABASE_KEY')
-
-if not supabase_url or not supabase_key:
-    print("🚨 Supabase credentials are missing! Check your .env file.")
+supabase = create_client(supabase_url,supabase_key )
+try:
+    response = supabase.table("contributors").select("*").limit(1).execute()
+    print("✅ Supabase connection successful:", response)
+except Exception as e:
+    print("🚨 Supabase connection failed:", e)
     exit(1)
 
 supabase = create_client(supabase_url, supabase_key)
@@ -33,16 +36,20 @@ openai.api_key = os.getenv('GROQ_API_KEY')
 
 
 # GitHub API to fetch contributors
-def fetch_github_contributors(repo_owner, repo_name):
+def fetch_github_contributors():
     github_token = os.getenv('GITHUB_TOKEN')
-    if not github_token:
-        print("🚨 GITHUB_TOKEN is missing! Set it in .env file.")
+    repo_owner = os.getenv('GITHUB_REPO_OWNER')
+    repo_name = os.getenv('GITHUB_REPO_NAME')
+
+    if not github_token or not repo_owner or not repo_name:
+        print("🚨 Missing GitHub credentials! Check your .env file.")
         return []
 
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/contributors"
     headers = {'Authorization': f'token {github_token}', 'Accept': 'application/vnd.github.v3+json'}
 
     response = requests.get(url, headers=headers)
+
 
     if response.status_code == 200:
         return response.json()
@@ -53,24 +60,34 @@ def fetch_github_contributors(repo_owner, repo_name):
 
 # Store contributor data in Supabase
 def store_contributor_data(contributors):
-    if not contributors:
-        print("No contributors found.")
-        return
     for contributor in contributors:
-        data = {
-            "username": contributor['login'],
-            "contributions": contributor['contributions'],
-            "expertise_tags": extract_expertise_tags(contributor.get('bio', ""))
-        }
-        supabase.table('contributors').insert(data).execute()
+        print("🔍 Debugging Contributor Data:", contributor)  # Debugging
 
+        # Ensure 'username' key exists
+        contributor['username'] = contributor.get('login', None)  # Map 'login' to 'username'
+        if contributor['username'] is None:
+            print("🚨 Missing 'username' key! Skipping this entry.")
+            continue
+
+        username = contributor['username']
+
+        # Check if user already exists
+        existing_user = supabase.table('contributors').select('username').eq('username', username).execute()
+
+        if existing_user.data:
+            print(f"⚠️ User '{username}' already exists. Skipping insertion.")
+            continue
+
+        # Insert new user
+        response = supabase.table('contributors').insert(contributor).execute()
+        print(f"✅ User '{username}' added successfully. Response: {response.data}")
 
 # Extract expertise tags from GitHub bio
 def extract_expertise_tags(bio):
     if not bio:
         return []
-    words = bio.lower().split()  
-    tags = [f"#{word}" for word in words if len(word) > 2]  
+    words = bio.lower().split()
+    tags = [f"#{word}" for word in words if len(word) > 2]
     return tags
 
 
@@ -198,18 +215,28 @@ def webhook():
 
 
 # Main execution
-repo_owner = "example"
-repo_name = "repo"
-contributors = fetch_github_contributors(repo_owner, repo_name)
+# Main execution
+repo_owner = os.getenv('GITHUB_REPO_OWNER')
+repo_name = os.getenv('GITHUB_REPO_NAME')
+
+contributors = fetch_github_contributors()
 
 if contributors:
     store_contributor_data(contributors)
     documents = prepare_documents(contributors)
     vector_store = create_vector_store(documents)
     print("✅ Vector store successfully created.")
+    print(f"📢 GitHub API Response: {response.data}")
+    reviewer = "Rohit"  # Ensure reviewer is assigned
+    pr_link = "https://github.com/org/repo/pull/123"  # for Example 
+    print(f"📝 Assigning {reviewer} to PR: {pr_link}")
+    notify_discord(reviewer, pr_link)
+    print("✅ Discord notification sent.")
+
 else:
     print("⚠️ Skipping vector store creation due to missing contributors.")
     vector_store = None
+
 
 if __name__ == '__main__':
     app.run(port=5000)
