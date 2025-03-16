@@ -1,3 +1,5 @@
+-- RUN THIS IN SUPABASE SQL EDITOR
+
 --Function to execute arbitrary SQL
 CREATE OR REPLACE FUNCTION execute_sql(sql TEXT)
 RETURNS VOID AS $$
@@ -17,11 +19,11 @@ CREATE TABLE IF NOT EXISTS embeddings (
 
 
 -- Function to query a document in the embeddings table, this function will return the documents with the closest embedding to the query embedding
-CREATE OR REPLACE FUNCTION match_documents(query_embedding VECTOR(384), result_limit INT DEFAULT 5)
+CREATE OR REPLACE FUNCTION match_documents(query_embedding VECTOR(384), result_limit INT DEFAULT 3)
 RETURNS TABLE(id INT, content TEXT, distance FLOAT) AS $$
 BEGIN
     RETURN QUERY
-    SELECT e.id, e.content, l2_distance(e.embedding, query_embedding) AS distance
+    SELECT e.id, e.content, e.embedding <-> query_embedding AS distance
     FROM embeddings e
     ORDER BY distance
     LIMIT result_limit;
