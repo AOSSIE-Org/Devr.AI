@@ -8,7 +8,8 @@ class FaqAssistant:
         # Initialize the LLM
         self.llm = ChatGroq(
             api_key=groq_api_key,
-            model=groq_model
+            model=groq_model,
+            streaming=False
         )
         
         # Set up the FAQ prompt template
