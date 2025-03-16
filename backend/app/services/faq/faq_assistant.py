@@ -13,17 +13,22 @@ class FaqAssistant:
         )
         
         # Set up the FAQ prompt template
-        self.faq_prompt = PromptTemplate.from_template("""You are an AI assistant that answers questions based only on the provided context.  
-                                                        If the context does not contain the required information, respond with: "I do not know."  
-
-                                                        Context:  
-                                                        {context}  
-
-                                                        Question:  
-                                                        {question}  
-
-                                                        Answer:
-                                                        """)
+        self.faq_prompt = PromptTemplate.from_template(
+            """You are a helpful AI assistant that answers questions based only on the provided context.
+            
+            Instructions:
+            1. Do not include phrases like "Based on the context" or "According to the provided information"
+            2. Do not repeat or include the instructions in your answer
+            3. Do not make up information
+            
+            Context:
+            {context}
+            
+            Question:
+            {question}
+            
+            Answer:"""
+        )
         
         # Create the FAQ chain
         self.faq_chain = self.faq_prompt | self.llm | StrOutputParser()
@@ -33,6 +38,8 @@ class FaqAssistant:
         # Extract the content of the retrieved documents
         documents = [doc['content'] for doc in retrieved_documents]
         
+        print("docs", documents)
+
         # Generate a response from the LLM model
         response = self.faq_chain.invoke({'context': "\n".join(documents), 'question': question})
         return response
