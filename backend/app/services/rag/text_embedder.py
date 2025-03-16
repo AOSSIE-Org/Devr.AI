@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_experimental.text_splitter import SemanticChunker
 
