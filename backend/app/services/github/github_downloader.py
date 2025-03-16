@@ -14,7 +14,13 @@ class GitHubDownloader:
         self.github_token = github_token
         timestamp = str(int(os.path.getmtime(__file__)))
         random_suffix = os.urandom(4).hex()
-        self.output_dir = os.path.join("/tmp", f"github_downloads_{timestamp}_{random_suffix}")
+        # Use a platform-appropriate temporary directory location
+        if os.name == 'nt':  # Windows
+            temp_base = os.environ.get('TEMP', 'C:\\Temp')
+        else:  # Linux, macOS, etc.
+            temp_base = '/tmp'
+        
+        self.output_dir = os.path.join(temp_base, f"github_downloads_{timestamp}_{random_suffix}")
         # Ensure the directory exists
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -58,25 +64,6 @@ class GitHubDownloader:
             raise Exception(f"Network error while downloading {url}: {str(e)}")
         except Exception as e:
             raise Exception(f"Error downloading {url}: {str(e)}")
-
-    def _download_files(self, urls: List[str]) -> List[str]:
-        """
-        Download multiple files from GitHub repository.
-        
-        Args:
-            urls (List[str]): List of GitHub API URLs for files
-            
-        Returns:
-            List[str]: List of local paths where files were saved
-        """
-        downloaded_files = []
-        for url in urls:
-            try:
-                file_path = self._download_file(url)
-                downloaded_files.append(file_path)
-            except Exception as e:
-                print(f"Warning: Failed to download {url}: {str(e)}")
-        return downloaded_files
     
     def _download_directory(self, url: str) -> List[str]:
         """
