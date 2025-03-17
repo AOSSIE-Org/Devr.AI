@@ -1,0 +1,133 @@
+-- Ensure vector extension is enabled
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Ensure `authenticator` has proper schema permissions
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT USAGE, CREATE ON SCHEMA public TO authenticator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO authenticator;
+
+-- Drop existing functions
+DROP FUNCTION IF EXISTS get_embedding;
+DROP FUNCTION IF EXISTS delete_embedding;
+DROP FUNCTION IF EXISTS add_embedding;
+DROP FUNCTION IF EXISTS update_embedding;
+DROP FUNCTION IF EXISTS add_mutiple_embedding;
+DROP FUNCTION IF EXISTS search_embeddings;
+DROP FUNCTION IF EXISTS create_embeddings_table;
+
+-- Step 3: Ensure the vector extension exists before using it
+CREATE OR REPLACE FUNCTION create_embeddings_table() RETURNS VOID AS $$
+BEGIN
+    -- Create table only if it doesn't exist
+    DROP TABLE IF EXISTS embeddings CASCADE;
+
+    CREATE TABLE embeddings (
+        id TEXT,
+        collection TEXT NOT NULL,
+        content TEXT NOT NULL,
+        metadata JSONB,
+        embedding VECTOR(100),
+        CONSTRAINT embeddings_pkey PRIMARY KEY (collection, id)
+    );
+
+    -- Create vector index (ensure this is compatible with your vector extension)
+    CREATE INDEX IF NOT EXISTS embeddings_embedding_idx 
+    ON embeddings USING ivfflat (embedding vector_cosine_ops) 
+    WITH (lists = 100);
+
+    -- Index for efficient collection queries
+    CREATE INDEX IF NOT EXISTS embeddings_collection_idx 
+    ON embeddings (collection);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to add an embedding (handle potential constraint issues)
+-- Explicit vector(100) in all functions
+CREATE OR REPLACE FUNCTION add_embedding(
+    p_id TEXT, 
+    p_collection TEXT, 
+    p_content TEXT, 
+    p_metadata JSONB, 
+    p_embedding VECTOR(100) -- Fixed here
+) RETURNS VOID AS $$
+BEGIN
+    INSERT INTO embeddings (id, collection, content, metadata, embedding)
+    VALUES (p_id, p_collection, p_content, p_metadata, p_embedding)
+    ON CONFLICT (collection, id) DO UPDATE 
+    SET content = EXCLUDED.content, metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Function to bulk insert embeddings
+CREATE OR REPLACE FUNCTION add_multiple_embeddings(data JSONB) RETURNS VOID AS $$
+BEGIN
+    INSERT INTO embeddings (id, collection, content, metadata, embedding)
+    SELECT 
+        item->>'p_id', 
+        item->>'p_collection', 
+        item->>'p_content', 
+        item->'p_metadata', 
+        (item->>'p_embedding')::vector(100)  -- Correct casting to vector
+    FROM jsonb_array_elements(data)
+    ON CONFLICT (collection, id) DO UPDATE 
+    SET content = EXCLUDED.content, metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to search for embeddings
+CREATE OR REPLACE FUNCTION search_embeddings(
+    p_query_embedding VECTOR(100), 
+    p_collection TEXT, 
+    p_limit INT, 
+    p_threshold FLOAT
+) 
+RETURNS TABLE(id TEXT, collection TEXT, content TEXT, metadata JSONB, embedding VECTOR(100)) AS $$
+SELECT * FROM embeddings 
+WHERE collection = p_collection 
+ORDER BY embedding <-> p_query_embedding 
+LIMIT p_limit;
+$$ LANGUAGE sql;
+
+-- Function to retrieve an embedding by ID
+CREATE OR REPLACE FUNCTION get_embedding(p_id TEXT, p_collection TEXT)
+RETURNS TABLE(id TEXT, collection TEXT, content TEXT, metadata JSONB, embedding VECTOR(100)) AS $$
+SELECT * FROM embeddings WHERE id = p_id AND collection = p_collection;
+$$ LANGUAGE sql;
+
+-- Function to delete an embedding
+CREATE OR REPLACE FUNCTION delete_embedding(p_id TEXT, p_collection TEXT) 
+RETURNS VOID AS $$
+DELETE FROM embeddings WHERE id = p_id AND collection = p_collection;
+$$ LANGUAGE sql;
+
+-- Function to update an embedding
+CREATE OR REPLACE FUNCTION update_embedding(
+    p_id TEXT, p_collection TEXT, p_content TEXT, p_metadata JSONB, p_embedding VECTOR(100)
+) RETURNS VOID AS $$
+UPDATE embeddings 
+SET content = p_content, metadata = p_metadata, embedding = p_embedding
+WHERE id = p_id AND collection = p_collection;
+$$ LANGUAGE sql;
+
+-- Function to list all collections
+CREATE OR REPLACE FUNCTION list_collections() RETURNS TABLE(collection TEXT) AS $$
+SELECT DISTINCT collection FROM embeddings;
+$$ LANGUAGE sql;
+
+-- Function to check database connection
+CREATE OR REPLACE FUNCTION check_embeddings_connection() RETURNS BOOLEAN AS $$
+SELECT EXISTS(SELECT 1 FROM embeddings LIMIT 1);
+$$ LANGUAGE sql;
+
+-- Ensure `authenticator` can execute functions
+GRANT EXECUTE ON FUNCTION create_embeddings_table() TO authenticator;
+GRANT EXECUTE ON FUNCTION add_embedding(TEXT, TEXT, TEXT, JSONB, VECTOR(100)) TO authenticator;
+GRANT EXECUTE ON FUNCTION add_multiple_embeddings(JSONB) TO authenticator;
+GRANT EXECUTE ON FUNCTION search_embeddings(VECTOR(100), TEXT, INT, FLOAT)  TO authenticator;
+GRANT EXECUTE ON FUNCTION get_embedding(TEXT, TEXT) TO authenticator;
+GRANT EXECUTE ON FUNCTION delete_embedding(TEXT, TEXT) TO authenticator;
+GRANT EXECUTE ON FUNCTION update_embedding(TEXT, TEXT, TEXT, JSONB, VECTOR(100)) TO authenticator;
+GRANT EXECUTE ON FUNCTION list_collections() TO authenticator;
+GRANT EXECUTE ON FUNCTION check_embeddings_connection() TO authenticator;
