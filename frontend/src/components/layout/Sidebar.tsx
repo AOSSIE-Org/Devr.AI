@@ -9,7 +9,8 @@ import {
   GitPullRequest,
   MessageCircleQuestion,
   Menu,
-  Settings
+  Settings,
+  User
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,6 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
         { icon: <GitPullRequest size={20} />, label: 'Pull Requests', id: 'prs' },
         { icon: <MessageCircleQuestion size={20} />, label: 'Support', id: 'support' },
         { icon: <Settings size={20} />, label: 'Settings', id: 'settings' },
+        { icon: <User size={20} />, label: 'Profile', id: 'profile' },
       ].map((item) => (
         <button
           key={item.id}

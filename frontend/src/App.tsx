@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
 import BotIntegrationPage from './components/integration/BotIntegrationPage';
@@ -10,12 +10,32 @@ import SettingsPage from './components/pages/SettingsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import SupportPage from './components/pages/SupportPage';
 import LandingPage from './components/landing/LandingPage';
+import LoginPage from './components/pages/LoginPage';
+import ProfilePage from './components/pages/ProfilePage';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('landing'); // Default to landing page
   const [repoData, setRepoData] = useState<any>(null); // Store fetched repo stats
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  useEffect(() => {
+    const user = localStorage.getItem('isAuthenticated');
+    if (user === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    localStorage.setItem('isAuthenticated', 'true'); 
+  };
+
+  // Function to handle logout
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('isAuthenticated'); 
+  };
   const renderPage = () => {
     switch (activePage) {
       case 'landing':
@@ -34,30 +54,43 @@ function App() {
         return <SupportPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'profile':
+        return <ProfilePage />;
       default:
         return <Dashboard repoData={repoData} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      {activePage !== 'landing' && (
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          setIsOpen={setIsSidebarOpen}
-          activePage={activePage}
-          setActivePage={setActivePage}
-        />
-      )}
-      
-      <main className={`transition-all duration-300 ${isSidebarOpen && activePage !== 'landing' ? 'ml-64' : 'ml-20'}`}>
-        <div className="p-8">
-          <AnimatePresence mode="wait">
-            {renderPage()}
-          </AnimatePresence>
-        </div>
-      </main>
-    </div>
+    <Router>
+      <div className="min-h-screen bg-gray-950 text-white">
+        <Routes>
+          {/* If not logged in, redirect all routes to login */}
+          <Route
+            path="/login"
+            element={<LoginPage />}
+          />
+          <Route
+            path="/"
+            element={
+                <>
+                  <Sidebar
+                    isOpen={isSidebarOpen}
+                    setIsOpen={setIsSidebarOpen}
+                    activePage={activePage}
+                    setActivePage={setActivePage}
+                  />
+                  <main className={`transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
+                    <div className="p-8">
+                      <AnimatePresence mode="wait">{renderPage()}</AnimatePresence>
+                    </div>
+                  </main>
+                </>
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
