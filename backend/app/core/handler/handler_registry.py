@@ -1,5 +1,6 @@
 from typing import Dict, Type, List, Optional
-from ..events.base import EventType, PlatformType, BaseEvent
+from ..events.base import BaseEvent
+from ..events.enums import EventType, PlatformType
 from .base import BaseHandler
 
 class HandlerRegistry:

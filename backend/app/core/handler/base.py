@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Type, Optional
 import logging
-from ..events.base import BaseEvent, EventType, PlatformType
+from ..events.base import BaseEvent
+from ..events.enums import EventType, PlatformType
 
 logger = logging.getLogger(__name__)
 
