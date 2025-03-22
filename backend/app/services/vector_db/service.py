@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import List, Dict, Any, Optional
 from uuid import UUID
@@ -10,6 +9,9 @@ load_dotenv()
 
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -195,3 +197,4 @@ class VectorDBService:
         except Exception as e:
             logger.error(f"Connection check failed: {str(e)}")
             return False
+    
