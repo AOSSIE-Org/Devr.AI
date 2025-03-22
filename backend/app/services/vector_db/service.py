@@ -10,13 +10,12 @@ load_dotenv()
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 class EmbeddingItem(BaseModel):
     id: str
+
     collection: str
     content: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -197,4 +196,17 @@ class VectorDBService:
         except Exception as e:
             logger.error(f"Connection check failed: {str(e)}")
             return False
+
+    content: str
+    metadata: Dict[str, Any]
+    embedding: Optional[List[float]] = None
+
+
+class EmbeddingService:
+    """Service for generating embeddings for text"""
+
+
+class VectorDBService:
+    """Service for interacting with Supabase Vector DB"""
     
+
