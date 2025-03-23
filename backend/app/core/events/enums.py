@@ -6,6 +6,7 @@ class PlatformType(str, Enum):
     SLACK = "slack"
     DISCOURSE = "discourse"
     SYSTEM = "system"
+    FAQ = "faq"
 
 class EventType(str, Enum):
     ISSUE_CREATED = "issue.created"
@@ -25,4 +26,5 @@ class EventType(str, Enum):
     ONBOARDING_COMPLETED = "onboarding.completed"
     FAQ_REQUESTED = "faq.requested"
     KNOWLEDGE_UPDATED = "knowledge.updated"
+    GITHUB_KNOWLEDGE_UPDATED = "github.knowledge.updated"
     ANALYTICS_COLLECTED = "analytics.collected"

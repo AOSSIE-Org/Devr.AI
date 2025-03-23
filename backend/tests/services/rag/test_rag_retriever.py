@@ -4,7 +4,7 @@ import os
 import tempfile
 import shutil
 
-from app.services.rag.rag_retriever import RAGRetriever
+from .app.services.rag.rag_retriever import RAGRetriever
 
 class TestRAGRetriever(unittest.TestCase):
     def setUp(self):

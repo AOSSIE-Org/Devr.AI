@@ -1,91 +1,45 @@
-from fastapi import APIRouter, Depends, HTTPException
-import os
-
-from app.services.rag.rag_retriever import RAGRetriever
-from app.services.faq.faq_assistant import FaqAssistant
+from fastapi import APIRouter, HTTPException
+from uuid import uuid4
 
 #Load the request and response models
-from app.models.faq import ContentRequest, GithubFileRequest, FaqRequest, FaqResponse
+from ...schemas.faq import ContentRequest, GithubFileRequest, FaqRequest, FaqResponse
+
+from backend.event_bus_init import event_bus
+from ...core.events.faq_event import AnswerEvent, GithubKnowledgeUpdateEvent, KnowledgeUpdateEvent
 
 
 # Initialize the router
 router = APIRouter(prefix="/faq", tags=["FAQ"])
 
-def get_rag_retriever():
-    # This function will be modified in the future to retrieve the required keys from database for the organization
-    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-    rag_retriever = RAGRetriever(GITHUB_TOKEN, SUPABASE_URL, SUPABASE_KEY)
-    return rag_retriever
-
-def get_faq_assistant():
-    # This function will be modified in the future to retrieve the required keys from database for the organization
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-    GROQ_MODEL = os.getenv("GROQ_MODEL")
-    faq_assistant = FaqAssistant(groq_api_key=GROQ_API_KEY, groq_model=GROQ_MODEL)
-    return faq_assistant
-
-
 @router.post("/content", status_code=201)
 async def store_content(
-    request: ContentRequest,
-    retriever: RAGRetriever = Depends(get_rag_retriever)
+    request: ContentRequest
 ):
     """Store content in the vector database"""
-    try:
-        retriever.chunk_and_store(request.content)
-        return {"status": "success", "message": "Content stored successfully"}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    finally:
-        retriever.cleanup()
+    knowledge_update_event = KnowledgeUpdateEvent(id=str(uuid4()),actor_id="faq-test",content=request.content)
+    result =( await event_bus.dispatch(knowledge_update_event))[0]
+    if not result.get("success")==True:
+        raise HTTPException(status_code=500, detail="Error storing content")
+    return {"status": "success", "message": "Content stored successfully"}
 
 @router.post("/github", status_code=201)
 async def store_github_content(
-    request: GithubFileRequest,
-    retriever: RAGRetriever = Depends(get_rag_retriever)
+    request: GithubFileRequest
 ):
     """Download GitHub files/directories and store in the vector database"""
-    try:
-        total_files = 0
-        for url in request.urls:
-            processed_files = retriever.process_github_content([url])
-            total_files += len(processed_files)
-        
-        return {
-            "status": "success", 
-            "message": f"Successfully processed {total_files} files from {len(request.urls)} GitHub URLs"
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    finally:
-        retriever.cleanup()
+    github_knowledge_update_event = GithubKnowledgeUpdateEvent(id=str(uuid4()),actor_id="faq-test",urls=request.urls)
+    result = (await event_bus.dispatch(github_knowledge_update_event))[0]
+    if not result.get("success")==True:
+        raise HTTPException(status_code=500, detail="Error storing GitHub content")
+    return {"status": "success", "message": "GitHub content stored successfully"}
 
 @router.post("/ask", response_model=FaqResponse)
 async def generate_faq_response(
-    request: FaqRequest,
-    retriever: RAGRetriever = Depends(get_rag_retriever),
-    assistant: FaqAssistant = Depends(get_faq_assistant)
+    request: FaqRequest
 ):
     """Generate an answer to a question using RAG"""
-    try:
-        # Retrieve relevant documents
-        relevant_docs = retriever.retrieve_documents(request.question)
-        
-        if not relevant_docs:
-            return FaqResponse(answer="I couldn't find any relevant information to answer your question.")
-        
-        # Generate response using LLM
-        response = assistant.generate_faq_response(request.question, relevant_docs)
-        return FaqResponse(answer=response)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    finally:
-        retriever.cleanup()
+    faq_request_event = AnswerEvent(id=str(uuid4()),actor_id="faq-test",question=request.question)
+    result = (await event_bus.dispatch(faq_request_event))[0]
+    if not result.get("success")==True:
+        raise HTTPException(status_code=500, detail="Error generating FAQ response")
+    return FaqResponse(answer=result.get("answer"))

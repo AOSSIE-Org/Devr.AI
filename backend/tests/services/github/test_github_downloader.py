@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 import requests
 
 # Import the module to test
-from app.services.github.github_downloader import GitHubDownloader
+from .app.services.github.github_downloader import GitHubDownloader
 
 class TestGitHubDownloader(unittest.TestCase):
     def setUp(self):

@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 # Import the module to test
-from app.services.faq.faq_assistant import FaqAssistant
+from .app.services.faq.faq_assistant import FaqAssistant
 
 # Load environment variables for API keys if running actual API calls
 load_dotenv()

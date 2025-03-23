@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from app.services.rag.text_embedder import TextEmbedder
+from .app.services.rag.text_embedder import TextEmbedder
 
 class TestTextEmbedder(unittest.TestCase):
     def setUp(self):

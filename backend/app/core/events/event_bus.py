@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Any
 from .base import BaseEvent
 from .enums import EventType, PlatformType
 from ..handler.handler_registry import HandlerRegistry
@@ -38,19 +38,22 @@ class EventBus:
         logger.info(f"Global handler {handler_func._name_} registered")
         pass
 
-    async def dispatch(self, event: BaseEvent):
-        """Dispatch an event to all registered handlers"""
+    async def dispatch(self, event: BaseEvent) -> List[Dict[str, Any]]:
+        """Dispatch an event to all registered handlers and return their results"""
         logger.info(f"Dispatching event {event.id} of type {event.event_type}")
 
+        # Collect results from handlers
+        results = []
+
         # Call global handlers first
-        for handler in self.global_handlers:
-            asyncio.create_task(handler(event))
+        global_tasks = [handler(event) for handler in self.global_handlers]
+        results.extend(await asyncio.gather(*global_tasks, return_exceptions=True))
 
         # Call event-specific handlers
         if event.event_type in self.handlers:
-            for handler in self.handlers[event.event_type]:
-                asyncio.create_task(handler(event))
-
+            event_tasks = [handler(event) for handler in self.handlers[event.event_type]]
+            results.extend(await asyncio.gather(*event_tasks, return_exceptions=True))
         else:
             logger.info(f"No handlers registered for event type {event.event_type}")
-            pass
+
+        return results

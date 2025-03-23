@@ -2,10 +2,9 @@ import os
 from dotenv import load_dotenv
 from typing import List
 
-from app.services.rag.text_embedder import TextEmbedder
-from app.services.rag.vector_db import VectorDBClient
-from app.services.github.github_downloader import GitHubDownloader
-from app.services.faq.faq_assistant import FaqAssistant
+from .text_embedder import TextEmbedder
+from .vector_db import VectorDBClient
+from ..github.github_downloader import GitHubDownloader
 
 load_dotenv()
 

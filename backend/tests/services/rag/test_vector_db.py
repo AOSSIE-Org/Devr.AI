@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import json
 
-from app.services.rag.vector_db import VectorDBClient
+from .app.services.rag.vector_db import VectorDBClient
 
 class TestVectorDBClient(unittest.TestCase):
     def setUp(self):
