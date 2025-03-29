@@ -46,19 +46,35 @@ poetry install --with dev
 
 This should install all the necessary dependencies for the project.
 
-4.  To activate the virtual environment created by poetry, run the following commands:
+4. To activate the virtual environment created by poetry, run the following commands:
 
-    -   On Linux / Mac / WSL
+    - On Linux / Mac / WSL
 
     ```sh
     eval $(poetry env activate)
     ```
 
-    -   On Windows (powershell)
+    - On Windows (powershell)
 
     ```powershell
     Invoke-Expression (poetry env activate)
     ```
 
-    > [!NOTE]
-    > For further information about poetry and managing environments refer to the [poetry docs](https://python-poetry.org/docs/managing-environments/).
+    - Verify the installation with the command: (should say v2.0.0 or above)
+
+    ```sh
+    poetry --version
+    ```
+
+    > **Note:** If the `poetry` command is not recognized, ensure that the poetry executable is added to your system's PATH environment variable.
+
+To run this project:
+
+```sh
+cd frontend
+npm install
+npm start
+```
+
+> [!NOTE]
+> For further information about poetry and managing environments refer to the [poetry docs](https://python-poetry.org/docs/managing-environments/).
