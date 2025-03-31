@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
@@ -9,9 +10,6 @@ load_dotenv()
 
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

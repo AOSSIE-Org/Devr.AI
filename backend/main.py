@@ -1,12 +1,42 @@
 import asyncio
 import uuid
 import logging
-from .app.core.events.event_bus import EventBus
-from .app.core.events.enums import EventType, PlatformType
-from .app.core.events.base import BaseEvent
-from .app.core.handler.handler_registry import HandlerRegistry
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
-logging.basicConfig(level=logging.INFO)
+# Configure absolute imports
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.app.core.events.event_bus import EventBus
+from backend.app.core.events.enums import EventType, PlatformType
+from backend.app.core.events.base import BaseEvent
+from backend.app.core.handler.handler_registry import HandlerRegistry
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
+
+# Create FastAPI app
+app = FastAPI(title="Devr.AI API")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # React app's address
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize Handler Registry and Event Bus
 handler_registry = HandlerRegistry()
@@ -32,26 +62,25 @@ def create_test_event(event_type: EventType, platform: PlatformType, raw_data: d
         raw_data=raw_data
     )
 
-# Test Event Dispatching
-async def test_event_dispatch(event_type: EventType, platform: PlatformType, raw_data: dict):
-    event = create_test_event(event_type, platform, raw_data)
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Devr.AI API"}
+
+@app.get("/test")
+async def test_endpoint():
+    # Create and dispatch a test event
+    event = create_test_event(
+        EventType.ISSUE_CREATED, 
+        PlatformType.GITHUB, 
+        {"title": "Test Event", "description": "This is a test"}
+    )
     await event_bus.dispatch(event)
-
-# Main function to run all tests
-async def main():
-    logging.info("Starting EventBus Tests...")
-    register_event_handlers()
-
-    test_cases = [
-        (EventType.ISSUE_CREATED, PlatformType.GITHUB, {"title": "Bug Report", "description": "Issue in production"}),
-        (EventType.PR_COMMENTED, PlatformType.GITHUB, {"pr_id": 5678, "merged_by": "dev_user"}),
-        (EventType.ONBOARDING_COMPLETED, PlatformType.DISCORD, {"channel": "general", "content": "Hello everyone!"})
-    ]
-
-    for event_type, platform, data in test_cases:
-        await test_event_dispatch(event_type, platform, data)
-
-    logging.info("All EventBus Tests Completed.")
+    return {"message": "Test event dispatched", "event_id": event.id}
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Register event handlers
+    register_event_handlers()
+    
+    # Start the FastAPI server
+    logger.info("Starting Devr.AI backend server")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
