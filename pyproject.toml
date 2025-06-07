@@ -21,6 +21,7 @@ dependencies = [
     "tavily-python (>=0.7.3,<0.8.0)",
     "langchain[google-genai] (>=0.3.25,<0.4.0)",
     "pydantic-settings (>=2.9.1,<3.0.0)",
+    "langsmith (>=0.3.45,<0.4.0)",
 ]
 
 [tool.poetry]
