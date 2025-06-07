@@ -4,9 +4,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseSettings):
-    # API Keys
+    # Gemini LLM API Key
     gemini_api_key: str = ""
+
+    # Tavily API Key
     tavily_api_key: str = ""
+
+    # Platforms
     github_token: str = ""
     discord_bot_token: str = ""
 
@@ -14,6 +18,12 @@ class Settings(BaseSettings):
     # Database
     # Supabase
     # Weaviate
+
+    # LangSmith Tracing
+    langsmith_tracing: bool = False
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_api_key: str = ""
+    langsmith_project: str = "DevR_AI"
 
     # Agent Configuration
     devrel_agent_model: str = "gemini-2.0-flash"
@@ -24,6 +34,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"  # to prevent errors from extra env variables
 
 
 settings = Settings()
