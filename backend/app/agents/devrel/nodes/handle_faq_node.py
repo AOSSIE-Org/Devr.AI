@@ -1,8 +1,10 @@
 import logging
 from app.agents.shared.state import AgentState
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
+@traceable(name="handle_faq_node", run_type="tool")
 async def handle_faq_node(state: AgentState, faq_tool) -> AgentState:
     """Handle FAQ requests"""
     logger.info(f"Handling FAQ for session {state.session_id}")

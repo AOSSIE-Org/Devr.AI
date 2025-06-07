@@ -6,6 +6,7 @@ from enum import Enum
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from app.core.config import settings
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class ClassificationRouter:
             ("human", "Message: {message}\nContext: {context}")
         ])
 
+    @traceable(name="user_intent_classification", run_type="llm")
     async def classify_message(self, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Classify a message and determine if DevRel intervention is needed"""
         try:
@@ -98,6 +100,7 @@ class ClassificationRouter:
             logger.error(f"Classification error: {str(e)}")
             return self._fallback_classification(message)
 
+    @traceable(name="quick_pattern_match", run_type="tool")
     def _quick_classify(self, message: str) -> Optional[Dict[str, Any]]:
         """Quick pattern-based classification for obvious cases"""
         message_lower = message.lower()

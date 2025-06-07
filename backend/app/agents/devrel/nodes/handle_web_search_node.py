@@ -2,9 +2,10 @@ import logging
 from app.agents.shared.state import AgentState
 from langchain_core.messages import HumanMessage
 from ..prompts.search_prompt import EXTRACT_SEARCH_QUERY_PROMPT
-
+from langsmith import traceable
 logger = logging.getLogger(__name__)
 
+@traceable(name="extract_search_query", run_type="tool")
 async def _extract_search_query(message: str, llm) -> str:
     """Extract a concise search query from the user's message."""
     logger.info(f"Extracting search query from: {message[:100]}")
@@ -18,6 +19,7 @@ async def _extract_search_query(message: str, llm) -> str:
     logger.info(f"Extracted search query: {search_query}")
     return search_query
 
+@traceable(name="handle_web_search_node", run_type="tool")
 async def handle_web_search_node(state: AgentState, search_tool, llm) -> AgentState:
     """Handle web search requests"""
     logger.info(f"Handling web search for session {state.session_id}")

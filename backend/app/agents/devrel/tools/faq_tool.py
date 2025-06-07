@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class FAQTool:
             "what is langgraph": "LangGraph is a framework for building stateful, multi-actor applications with large language models. We use it to create intelligent agent workflows for our DevRel automation."
         }
 
+    @traceable(name="faq_tool_get_response", run_type="tool")
     async def get_response(self, question: str) -> Optional[str]:
         """Get FAQ response for a question"""
         question_lower = question.lower().strip()
@@ -34,9 +36,10 @@ class FAQTool:
 
         return None
 
+    @traceable(name="faq_similarity_check", run_type="tool")
     def _is_similar_question(self, question: str, faq_key: str) -> bool:
         """Check if question is similar to FAQ key"""
-        # Simple keyword matching - in production, use better similarity
+        # Simple keyword matching - in production, use better similarity or probably cosine similarity
         question_words = set(question.split())
         faq_words = set(faq_key.split())
 

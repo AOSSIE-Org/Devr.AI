@@ -3,9 +3,11 @@ from typing import Dict, Any
 from app.agents.shared.state import AgentState
 from langchain_core.messages import HumanMessage
 from ..prompts.base_prompt import GENERAL_LLM_RESPONSE_PROMPT
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
+@traceable(name="create_search_response", run_type="tool")
 async def _create_search_response(task_result: Dict[str, Any]) -> str:
     """Create a response string from search results."""
     query = task_result.get("query")
@@ -24,6 +26,7 @@ async def _create_search_response(task_result: Dict[str, Any]) -> str:
     response_parts.append("You can ask me to search again with a different query if these aren't helpful.")
     return "\n".join(response_parts)
 
+@traceable(name="create_llm_response", run_type="tool")
 async def _create_llm_response(state: AgentState, task_result: Dict[str, Any], llm) -> str:
     """Generate a response using the LLM based on the current state and task result."""
     logger.info(f"Creating LLM response for session {state.session_id}")
@@ -57,6 +60,7 @@ async def _create_llm_response(state: AgentState, task_result: Dict[str, Any], l
     response = await llm.ainvoke([HumanMessage(content=prompt)])
     return response.content.strip()
 
+@traceable(name="generate_response_node", run_type="tool")
 async def generate_response_node(state: AgentState, llm) -> AgentState:
     """Generate final response to user"""
     logger.info(f"Generating response for session {state.session_id}")

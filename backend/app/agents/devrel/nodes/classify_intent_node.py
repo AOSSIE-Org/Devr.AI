@@ -2,9 +2,10 @@ import logging
 from app.agents.shared.state import AgentState
 from app.agents.shared.classification_router import ClassificationRouter
 from langchain_google_genai import ChatGoogleGenerativeAI
-
+from langsmith import traceable
 logger = logging.getLogger(__name__)
 
+@traceable(name="classify_intent_node", run_type="tool")
 async def classify_intent_node(state: AgentState, llm: ChatGoogleGenerativeAI) -> AgentState:
     """Classify the user's intent and needs"""
     logger.info(f"Classifying intent for session {state.session_id}")

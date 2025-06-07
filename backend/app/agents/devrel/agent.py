@@ -15,6 +15,7 @@ from .nodes.handle_web_search_node import handle_web_search_node
 from .nodes.handle_technical_support_node import handle_technical_support_node
 from .nodes.handle_onboarding_node import handle_onboarding_node
 from .nodes.generate_response_node import generate_response_node
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,11 @@ class DevRelAgent(BaseAgent):
         workflow.set_entry_point("classify_intent")
 
         self.graph = workflow.compile()
+
+    @traceable(name="devrel_agent_execution", run_type="chain")
+    async def run(self, initial_state: AgentState) -> AgentState:
+        """Execute the agent workflow"""
+        return await super().run(initial_state)
 
     def _route_to_handler(self, state: AgentState) -> str:
         """Route to the appropriate handler based on intent"""
