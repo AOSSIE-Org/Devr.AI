@@ -3,6 +3,7 @@ import logging
 from typing import List, Dict, Any
 from tavily import TavilyClient
 from app.core.config import settings
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ class TavilySearchTool:
     def __init__(self):
         self.client = TavilyClient(api_key=settings.tavily_api_key) if settings.tavily_api_key else None
 
+    @traceable(name="tavily_search_tool", run_type="tool")
     async def search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
         """Perform web search using Tavily"""
         try:

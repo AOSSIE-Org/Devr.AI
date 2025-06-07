@@ -6,6 +6,7 @@ from app.agents.devrel.agent import DevRelAgent
 # from app.agents.github.agent import GitHubAgent
 from app.agents.shared.state import AgentState
 from app.core.orchestration.queue_manager import AsyncQueueManager
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class AgentCoordinator:
         # TODO: Register GitHub agent handler after implementation
         # self.queue_manager.register_handler("github_request", self._handle_github_request)
 
+    @traceable(name="devrel_request_coordination", run_type="chain")
     async def _handle_devrel_request(self, message_data: Dict[str, Any]):
         """Handle DevRel agent requests"""
         try:
