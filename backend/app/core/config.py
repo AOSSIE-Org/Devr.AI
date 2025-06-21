@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     agent_timeout: int = 30
     max_retries: int = 3
 
+    # Backend URL
+    backend_url: str = ""
+
     @field_validator("supabase_url", "supabase_key", mode="before")
     @classmethod
     def _not_empty(cls, v, field):

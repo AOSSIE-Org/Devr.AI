@@ -1,1057 +1,127 @@
--- Table: users
--- Stores user profile and authentication information, including social platform identities and activity metadata.
-CREATE TABLE users (
-    id UUID PRIMARY KEY NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    discord_id TEXT UNIQUE,
-    discord_username TEXT,
-
-    github_id TEXT UNIQUE,
-    github_username TEXT,
-
-    slack_id TEXT UNIQUE,
-    slack_username TEXT,
-
-    display_name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    avatar_url TEXT,
-    bio TEXT,
-    location TEXT,
-
-    is_verified BOOLEAN NOT NULL DEFAULT false,
-    verification_token TEXT,
-    verified_at TIMESTAMPTZ,
-
-    skills JSONB,                -- Array or object of user skills
-    github_stats JSONB,          -- GitHub statistics (e.g., contributions)
-
-    last_active_discord TIMESTAMPTZ,
-    last_active_github TIMESTAMPTZ,
-    last_active_slack TIMESTAMPTZ,
-
-    total_interactions_count INTEGER NOT NULL DEFAULT 0,
-    preferred_languages TEXT[],  -- List of programming languages
-
-    weaviate_user_id TEXT UNIQUE -- External vector DB reference
-);
-
--- Table: repositories
--- Stores metadata for code repositories, including indexing and statistics.
-CREATE TABLE repositories (
-    id UUID PRIMARY KEY NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    github_id BIGINT UNIQUE,         -- Unique GitHub repository identifier
-    full_name TEXT NOT NULL,         -- Format: owner/repo
-    name TEXT NOT NULL,              -- Repository name
-    owner TEXT NOT NULL,             -- Repository owner
-    description TEXT,
-
-    stars_count INTEGER NOT NULL DEFAULT 0,
-    forks_count INTEGER NOT NULL DEFAULT 0,
-    open_issues_count INTEGER NOT NULL DEFAULT 0,
-
-    language TEXT,                   -- Primary language
-    topics TEXT[],                   -- List of repository topics
-
-    is_indexed BOOLEAN NOT NULL DEFAULT false,
-    indexed_at TIMESTAMPTZ,          -- When repository was indexed
-
-    indexing_status TEXT,            -- Status: pending, processing, completed, failed
-    total_chunks_count INTEGER NOT NULL DEFAULT 0,
-
-    last_commit_hash TEXT,           -- Last commit hash
-    indexing_progress JSONB,         -- Progress details
-
-    weaviate_repo_id TEXT UNIQUE     -- External vector DB reference
-);
-
--- Table: code_chunks
--- Stores segmented code blocks from repositories for analysis and retrieval.
-CREATE TABLE code_chunks (
-    id UUID PRIMARY KEY NOT NULL,
-    repository_id UUID NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    file_path TEXT NOT NULL,         -- Full path to the file
-    file_name TEXT NOT NULL,         -- File name
-    file_extension TEXT,             -- File extension (e.g., .py, .js)
-
-    chunk_index INTEGER NOT NULL,    -- Order of chunk in file
-    content TEXT,                    -- Code content
-
-    chunk_type TEXT,                 -- Type: function, class, module, comment, import
-    language TEXT,                   -- Programming language
-
-    lines_start INTEGER,             -- Start line number
-    lines_end INTEGER,               -- End line number
-
-    code_metadata JSONB,             -- Additional analysis data
-
-    weaviate_chunk_id TEXT UNIQUE    -- External vector DB reference
-);
-
--- Table: interactions
--- Stores user interactions across platforms, including messages, issues, and comments.
-CREATE TABLE interactions (
-    id UUID PRIMARY KEY NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    repository_id UUID REFERENCES repositories(id) ON DELETE SET NULL,
-
-    platform TEXT NOT NULL,                  -- Platform: discord, github, slack
-    platform_specific_id TEXT NOT NULL,      -- Platform-specific identifier
-    channel_id TEXT,                         -- Channel or repository reference
-    thread_id TEXT,                          -- Thread or conversation reference
-
-    content TEXT,                            -- Content of the interaction
-    interaction_type TEXT,                   -- Type: message, issue, pr, comment, reaction
-
-    sentiment_score FLOAT,                   -- Sentiment score (-1 to 1)
-    intent_classification TEXT,              -- Classified intent (e.g., help_request)
-
-    topics_discussed TEXT[],                 -- Topics extracted from content
-    metadata JSONB,                          -- Additional platform-specific data
-
-    weaviate_interaction_id TEXT UNIQUE      -- External vector DB reference
-);
-
+-- Users
 insert into
   users (
-    id,
-    created_at,
-    updated_at,
-    discord_id,
-    discord_username,
-    github_id,
-    github_username,
-    slack_id,
-    slack_username,
-    display_name,
-    email,
-    avatar_url,
-    bio,
-    location,
-    is_verified,
-    verification_token,
-    verified_at,
-    skills,
-    github_stats,
-    last_active_discord,
-    last_active_github,
-    last_active_slack,
-    total_interactions_count,
-    preferred_languages,
-    weaviate_user_id
+    id, created_at, updated_at, email, discord_id, discord_username,
+    github_id, github_username, slack_id, slack_username, display_name,
+    avatar_url, bio, location, is_verified, verification_token,
+    verification_token_expires_at, verified_at, skills, github_stats,
+    last_active_discord, last_active_github, last_active_slack,
+    total_interactions_count, preferred_languages
   )
 values
   (
-    '6afc59e3-18b7-4182-b42c-8210d1152b07',
-    '2025-05-05 03:56:41',
-    '2025-01-22 14:50:25',
-    '3eb13b90-4668-4257-bdd6-40fb06671ad1',
-    'donaldgarcia',
-    '16419f82-8b9d-4434-a465-e150bd9c66b3',
-    'fjohnson',
-    '9a1de644-815e-46d1-bb8f-aa1837f8a88b',
-    'hoffmanjennifer',
-    'Jennifer Cole',
-    'blakeerik@yahoo.com',
-    'https://dummyimage.com/696x569',
-    'Bill here grow gas enough analysis. Movie win her need stop peace technology.',
-    'East Steven',
-    true,
-    'a3d70628-ece6-4fa2-bd51-66e6451b4cf3',
-    '2025-05-14 15:04:01',
-    '{"skills": ["Python", "C++", "Java"]}'::jsonb,
-    '{"commits": 300}'::jsonb,
-    '2025-04-19 03:34:26',
-    '2025-02-12 15:28:51',
-    '2025-05-13 22:32:01',
-    28,
-    array['JavaScript', 'C++'],
-    'c6a7ee39-c4b0-42cc-97c5-24a55304317f'
+    '6afc59e3-18b7-4182-b42c-8210d1152b07', '2025-05-05 03:56:41', '2025-01-22 14:50:25',
+    'blakeerik@yahoo.com', '3eb13b9046684257', 'donaldgarcia', '16419f828b9d4434', 'fjohnson',
+    '9a1de644815e46d1', 'hoffmanjennifer', 'Jennifer Cole', 'https://dummyimage.com/696x569',
+    'Bill here grow gas enough analysis. Movie win her need stop peace technology.', 'East Steven',
+    true, null, null, '2025-05-14 15:04:01',
+    '{"skills": ["Python", "C++", "Java"]}'::jsonb, '{"commits": 300}'::jsonb,
+    '2025-04-19 03:34:26', '2025-02-12 15:28:51', '2025-05-13 22:32:01', 28,
+    array['JavaScript', 'C++']
   ),
   (
-    '6f990423-0d57-4c64-b191-17e53f39c799',
-    '2025-01-11 20:41:23',
-    '2025-02-14 11:26:28',
-    '50c187fc-ce17-4b4e-8837-b8a3d261a7ab',
-    'nadams',
-    'e059a0ee-9132-463e-b162-87e4e9c349e0',
-    'jason76',
-    '757750a9-a491-40b2-aa1f-ca65e27a984d',
-    'josephwright',
-    'Deborah Richards',
-    'jeffrey28@yahoo.com',
-    'https://www.lorempixel.com/186/96',
-    'Civil quite others his other life edge network. Quite boy those.',
-    'Kathrynside',
-    true,
-    '87c5421e-ec24-43c5-8754-108ff4188f3f',
-    '2025-01-01 02:39:54',
-    '{"skills": ["C++", "TypeScript", "Rust"]}'::jsonb,
-    '{"commits": 139}'::jsonb,
-    '2025-04-27 07:17:02',
-    '2025-03-04 22:40:36',
-    '2025-04-05 21:04:03',
-    75,
-    array['Go', 'Python'],
-    '5cec4eb5-edd9-4831-9ca3-5cfb04fc6d82'
+    '6f990423-0d57-4c64-b191-17e53f39c799', '2025-01-11 20:41:23', '2025-02-14 11:26:28',
+    'jeffrey28@yahoo.com', '50c187fcce174b4e', 'nadams', 'e059a0ee9132463e', 'jason76',
+    '757750a9a49140b2', 'josephwright', 'Deborah Richards', 'https://www.lorempixel.com/186/96',
+    'Civil quite others his other life edge network. Quite boy those.', 'Kathrynside',
+    true, null, null, '2025-01-01 02:39:54',
+    '{"skills": ["C++", "TypeScript", "Rust"]}'::jsonb, '{"commits": 139}'::jsonb,
+    '2025-04-27 07:17:02', '2025-03-04 22:40:36', '2025-04-05 21:04:03', 75,
+    array['Go', 'Python']
   ),
   (
-    '2aefee92-c7da-4d6e-90c1-d6c3bb82c0e1',
-    '2025-03-01 17:07:10',
-    '2025-02-16 11:55:43',
-    '913e4de2-e0c5-4cb8-bda9-c2a90ed42f1a',
-    'millertodd',
-    '885f6e66-c2b6-42c5-ba5d-310011b7e948',
-    'davidalvarez',
-    '8715a103-43da-4043-aa45-c2ab8cbfedb0',
-    'ibrandt',
-    'Melissa Marquez',
-    'samuel87@gmail.com',
-    'https://www.lorempixel.com/507/460',
-    'Open discover detail. Remain arrive attack all. Audience draw protect Democrat car very.',
-    'Stevenland',
-    true,
-    'db20a56e-dc81-4fe7-8eda-8bbb71710434',
-    '2025-04-17 20:42:06',
-    '{"skills": ["Python", "JavaScript", "C++"]}'::jsonb,
-    '{"commits": 567}'::jsonb,
-    '2025-01-20 00:17:15',
-    '2025-01-10 19:45:31',
-    '2025-05-07 15:12:55',
-    77,
-    array['Python', 'Rust'],
-    '03c72ba8-d605-4770-8a63-f881ffd0f9d5'
-  ),
-  (
-    '9b56cac8-504a-4dd8-b7ba-0a5bfce7abf7',
-    '2025-01-19 02:38:09',
-    '2025-05-27 07:52:11',
-    '680ac07a-2a93-4d62-bc83-5dc0d9441fa5',
-    'zolson',
-    '610461e3-2a25-4888-8f02-bad0e7067ef4',
-    'gallowayjoseph',
-    '490617f2-747b-4dba-88fe-3ccdc8b8d9c6',
-    'uhorton',
-    'Kristi Higgins MD',
-    'tanyariley@hotmail.com',
-    'https://www.lorempixel.com/124/642',
-    'Live try most arm meet surface attention attack.',
-    'Stewartland',
-    true,
-    'ff9ab5c2-9f04-4aed-b552-332702627f73',
-    '2025-04-20 07:44:25',
-    '{"skills": ["C++", "TypeScript", "Rust"]}'::jsonb,
-    '{"commits": 479}'::jsonb,
-    '2025-01-20 09:56:47',
-    '2025-01-15 05:25:10',
-    '2025-04-15 09:33:28',
-    28,
-    array['Go', 'Rust'],
-    '21e8ac68-43e4-4caf-8181-a8cc369147eb'
-  ),
-  (
-    '5a64824b-afcd-4586-9a25-16af29e673a3',
-    '2025-03-09 18:29:56',
-    '2025-01-14 08:35:26',
-    '48f4ef12-5e99-43d2-be89-6c64e117dac3',
-    'samueldaniels',
-    'fcbb4e59-fbdd-4f7c-9c96-e9ec4d71c366',
-    'contrerasangela',
-    'f05db76e-1a84-451a-a9d3-d7c7ee87905e',
-    'josephpreston',
-    'Brittney Campbell',
-    'james48@king-odonnell.com',
-    'https://placekitten.com/189/867',
-    'Four capital woman.
-Necessary into act away third tough. Along hard need involve among half value.',
-    'East Michelle',
-    false,
-    '2d534dd0-cf8e-4c5a-8cc5-6569f9e8a369',
-    '2025-03-22 01:25:52',
-    '{"skills": ["TypeScript", "Python", "JavaScript"]}'::jsonb,
-    '{"commits": 764}'::jsonb,
-    '2025-01-05 19:30:46',
-    '2025-02-04 19:52:52',
-    '2025-05-24 00:38:21',
-    54,
-    array['Java', 'TypeScript'],
-    'ee49f329-c84a-4b28-950a-1b46ecab3301'
-  ),
-  (
-    '26283e71-c735-4a11-9831-afd279af4a4f',
-    '2025-03-21 22:43:20',
-    '2025-05-11 01:59:36',
-    '3f87e362-cf8d-446a-bc2c-bb0ddd334cc7',
-    'erik16',
-    '787f2425-dbcc-4477-89e9-db0adf465290',
-    'jamessellers',
-    'cb9bc326-d20e-4c17-8e20-fd1a598336e3',
-    'jeffreykeller',
-    'Donald Jones',
-    'darlene68@yahoo.com',
-    'https://placekitten.com/56/236',
-    'While enter board its rock finish paper memory. Tonight couple and job mind southern.',
-    'South Elizabeth',
-    true,
-    'e71e43a6-bf85-4f0e-ad64-b56c610faa3f',
-    '2025-02-03 19:01:34',
-    '{"skills": ["JavaScript", "Java", "Python"]}'::jsonb,
-    '{"commits": 144}'::jsonb,
-    '2025-04-30 12:30:26',
-    '2025-04-21 12:13:21',
-    '2025-02-28 10:31:41',
-    48,
-    array['Python', 'Java'],
-    '001a9a8b-d56f-4350-8c45-9ce267f48ad5'
-  ),
-  (
-    '010d518f-362b-435b-a4de-148914bcbdb9',
-    '2025-03-01 00:09:35',
-    '2025-02-25 17:06:53',
-    '9479e1e6-c927-4d9b-ae0d-264835ce8841',
-    'steven73',
-    'e6b3c944-cb32-4e35-b922-bac282dc4c8e',
-    'donnacampbell',
-    '55cee5db-9e87-404c-a208-6977a9f25336',
-    'cardenaskaren',
-    'Courtney Gonzalez',
-    'sanchezthomas@gibson.org',
-    'https://placeimg.com/398/786/any',
-    'Imagine my indeed deal information toward. Watch affect thing offer local wall fear hope.',
-    'West Nicholasborough',
-    false,
-    'c2dff335-5666-4f9f-93ac-2ab974672cd9',
-    '2025-03-15 14:51:22',
-    '{"skills": ["Rust", "Java", "Python"]}'::jsonb,
-    '{"commits": 797}'::jsonb,
-    '2025-02-24 00:46:11',
-    '2025-05-27 00:37:11',
-    '2025-03-23 20:38:04',
-    58,
-    array['Rust', 'Python'],
-    '78660765-14f7-4e8d-95bc-b8d04094dded'
-  ),
-  (
-    'c28e727c-f6f1-4fb1-98c4-d7230cd1c855',
-    '2025-01-04 18:19:57',
-    '2025-05-26 10:42:21',
-    'f3b1025b-fff9-4585-8d55-7b618a175dfe',
-    'jeffrey10',
-    '3f4df561-f319-4125-87f1-94f9c1156d6d',
-    'maryhowell',
-    'ab61a7b1-793b-4c32-a050-04943d114802',
-    'elliottjeffery',
-    'Pamela Jackson',
-    'tamirodriguez@hickman.biz',
-    'https://www.lorempixel.com/812/406',
-    'Right with modern executive beyond. Fast guess few remain call. Window network recently.',
-    'Christopherbury',
-    false,
-    '6a8a616f-c3b2-40d0-8edd-dfcd1e52d770',
-    '2025-04-28 17:38:42',
-    '{"skills": ["Python", "Rust", "Java"]}'::jsonb,
-    '{"commits": 899}'::jsonb,
-    '2025-04-26 18:09:08',
-    '2025-05-01 02:02:18',
-    '2025-02-13 19:46:41',
-    80,
-    array['Rust', 'Java'],
-    '7354ea6f-6160-4459-85c7-504bc693da11'
-  ),
-  (
-    '7771182e-ed52-4f4e-a376-0750b9854324',
-    '2025-03-27 23:13:45',
-    '2025-02-27 17:45:57',
-    '6dc7cac7-fd72-4050-96a9-954fdc33e1f9',
-    'ashley09',
-    'f295456e-1967-4f06-bd76-7e35f5c9b047',
-    'colleenbaker',
-    '2c7f0b79-3d67-4de9-a834-e4c014c8b3b4',
-    'moorericky',
-    'Julie Johnson',
-    'jacqueline71@hotmail.com',
-    'https://dummyimage.com/478x541',
-    'Name positive training step. Arrive society organization station. Keep light fight I evening.',
-    'Rickymouth',
-    true,
-    '292bd156-db94-4570-9ac7-0ec0ab8ddeb4',
-    '2025-03-06 00:59:47',
-    '{"skills": ["C++", "Python", "TypeScript"]}'::jsonb,
-    '{"commits": 727}'::jsonb,
-    '2025-03-21 22:24:18',
-    '2025-05-15 16:45:13',
-    '2025-04-07 05:03:10',
-    29,
-    array['TypeScript', 'Java'],
-    '668409e3-f1f8-443e-a99f-131849c8a43f'
-  ),
-  (
-    'e4ca4ab9-de13-42ea-a394-db08a247abb7',
-    '2025-04-17 19:38:09',
-    '2025-01-08 03:01:15',
-    '409d3602-5084-4242-968b-1625746f7891',
-    'darrell68',
-    'a85c6e4a-004b-4fab-bcf5-6188d32e6dcd',
-    'mgutierrez',
-    'c1a6423b-9f64-4eed-9c9d-927d84b871bb',
-    'wgarrett',
-    'Derek Anderson',
-    'fgilmore@gmail.com',
-    'https://dummyimage.com/59x490',
-    'Add impact different success box water positive. Marriage respond meeting event.',
-    'Grimesmouth',
-    true,
-    '551ac8ea-585a-4afa-bbfd-cc1289e06ab3',
-    '2025-04-18 04:07:17',
-    '{"skills": ["TypeScript", "JavaScript", "Python"]}'::jsonb,
-    '{"commits": 439}'::jsonb,
-    '2025-04-16 12:34:03',
-    '2025-03-15 05:55:34',
-    '2025-03-30 10:03:34',
-    35,
-    array['Go', 'C++'],
-    '304b8590-de9e-4757-9260-001eeecf67d2'
+    '2aefee92-c7da-4d6e-90c1-d6c3bb82c0e1', '2025-03-01 17:07:10', '2025-02-16 11:55:43',
+    'samuel87@gmail.com', '913e4de2e0c54cb8', 'millertodd', '885f6e66c2b642c5', 'davidalvarez',
+    '8715a10343da4043', 'ibrandt', 'Melissa Marquez', 'https://www.lorempixel.com/507/460',
+    'Open discover detail. Remain arrive attack all. Audience draw protect Democrat car very.', 'Stevenland',
+    false, 'db20a56e-dc81-4fe7-8eda-8bbb71710434', '2025-06-21 12:00:00', null,
+    '{"skills": ["Python", "JavaScript", "C++"]}'::jsonb, '{"commits": 567}'::jsonb,
+    '2025-01-20 00:17:15', '2025-01-10 19:45:31', '2025-05-07 15:12:55', 77,
+    array['Python', 'Rust']
   );
 
+-- Repositories
 insert into
   repositories (
-    id,
-    created_at,
-    updated_at,
-    github_id,
-    full_name,
-    name,
-    owner,
-    description,
-    stars_count,
-    forks_count,
-    open_issues_count,
-    language,
-    topics,
-    is_indexed,
-    indexed_at,
-    indexing_status,
-    total_chunks_count,
-    last_commit_hash,
-    indexing_progress,
-    weaviate_repo_id
+    id, created_at, updated_at, github_id, full_name, name, owner, description,
+    stars_count, forks_count, open_issues_count, languages_used, topics, is_indexed,
+    indexed_at, indexing_status, last_commit_hash
   )
 values
   (
-    'f6b0bff9-074d-4062-86f5-0a853e521334',
-    '2025-05-16 10:34:41',
-    '2025-02-16 08:54:52',
-    3728882,
-    'jamessellers/repo_0',
-    'repo_0',
-    'jamessellers',
-    'Him task improve fish list tree high.',
-    3032,
-    363,
-    26,
-    'C++',
-    array['Java', 'C++'],
-    true,
-    '2025-05-09 21:00:50',
-    'processing',
-    18,
-    'e270dbf424cff6864cc592f6611d8df90c895ec5',
-    '{"progress": 93}'::jsonb,
-    '7ecddbaf-26f0-4fcf-bb16-e5dba6eab79e'
+    'f6b0bff9-074d-4062-86f5-0a853e521334', '2025-05-16 10:34:41', '2025-02-16 08:54:52', 3728882,
+    'jamessellers/repo_0', 'repo_0', 'jamessellers', 'Him task improve fish list tree high.',
+    3032, 363, 26, array['C++', 'Python'], array['Java', 'C++'], true, '2025-05-09 21:00:50',
+    'completed', 'e270dbf424cff6864cc592f6611d8df90c895ec5'
   ),
   (
-    '0f08ecdb-53dd-4352-bb50-b1cfbf09da8b',
-    '2025-01-08 04:31:26',
-    '2025-01-25 12:21:00',
-    3741438,
-    'gallowayjoseph/repo_1',
-    'repo_1',
-    'gallowayjoseph',
-    'Whole forward beyond suddenly between treat address.',
-    3786,
-    388,
-    34,
-    'C++',
-    array['C++', 'Rust'],
-    true,
-    '2025-01-28 23:48:46',
-    'completed',
-    2,
-    'c9f97db5d2fc4b809df59bc23dd7345dbe6d14d5',
-    '{"progress": 29}'::jsonb,
-    '1327f1bc-2784-478f-b84f-16b3a79fbfaf'
+    '0f08ecdb-53dd-4352-bb50-b1cfbf09da8b', '2025-01-08 04:31:26', '2025-01-25 12:21:00', 3741438,
+    'gallowayjoseph/repo_1', 'repo_1', 'gallowayjoseph', 'Whole forward beyond suddenly between treat address.',
+    3786, 388, 34, array['C++', 'Go'], array['C++', 'Rust'], true, '2025-01-28 23:48:46',
+    'completed', 'c9f97db5d2fc4b809df59bc23dd7345dbe6d14d5'
   ),
   (
-    '08946f22-0d74-4499-b40d-0f60218d5152',
-    '2025-04-02 03:59:05',
-    '2025-02-21 11:05:44',
-    6292423,
-    'fjohnson/repo_2',
-    'repo_2',
-    'fjohnson',
-    'Perhaps however bag forget purpose move.',
-    3286,
-    274,
-    8,
-    'JavaScript',
-    array['Rust', 'C++'],
-    false,
-    '2025-03-03 11:44:52',
-    'processing',
-    16,
-    '5e3af4aafc18e025cea707fa7707a1d945e0ffef',
-    '{"progress": 50}'::jsonb,
-    'df547e50-7cea-4045-8268-283ee32f2e63'
-  ),
-  (
-    'dda18eb8-8354-4897-8c7f-2c66afbc73e6',
-    '2025-04-16 01:19:02',
-    '2025-01-07 23:18:06',
-    3396987,
-    'maryhowell/repo_3',
-    'repo_3',
-    'maryhowell',
-    'Attention piece TV young section its better plant.',
-    2169,
-    142,
-    31,
-    'C++',
-    array['Rust', 'TypeScript'],
-    false,
-    '2025-01-20 12:23:51',
-    'failed',
-    19,
-    '22a9658e1dcda6fa5df48102f5882b204e39bc17',
-    '{"progress": 51}'::jsonb,
-    '0769165f-e746-4cb9-8ca9-cf07b1aa0f6a'
-  ),
-  (
-    '7a9eab06-0656-43dd-8b8d-b17b9e5f396c',
-    '2025-01-09 22:20:00',
-    '2025-03-04 23:41:43',
-    4679591,
-    'jamessellers/repo_4',
-    'repo_4',
-    'jamessellers',
-    'Fall hear certainly most.',
-    1133,
-    521,
-    63,
-    'Python',
-    array['TypeScript', 'Python'],
-    true,
-    '2025-04-20 21:24:57',
-    'processing',
-    6,
-    'effd50723baca7c5da884a171f8b5bbed8320a23',
-    '{"progress": 87}'::jsonb,
-    '14374509-2cd1-486a-ab84-0c672e183554'
-  ),
-  (
-    'ea879f36-d060-4f65-bf5d-9138a542f74a',
-    '2025-04-29 08:26:15',
-    '2025-03-16 06:47:08',
-    2065818,
-    'donnacampbell/repo_5',
-    'repo_5',
-    'donnacampbell',
-    'Raise marriage on discussion point least project together.',
-    3152,
-    390,
-    76,
-    'Go',
-    array['Rust', 'Java'],
-    true,
-    '2025-04-01 08:14:14',
-    'pending',
-    18,
-    'a76a3a0bef5688fbee63da697c29fa6d719b37d9',
-    '{"progress": 96}'::jsonb,
-    '12e89d10-2871-4733-8bed-db12ad77e82f'
-  ),
-  (
-    '07921dba-1ae8-422b-9f29-9c908080aa1b',
-    '2025-03-27 18:36:35',
-    '2025-03-09 02:27:09',
-    6707197,
-    'contrerasangela/repo_6',
-    'repo_6',
-    'contrerasangela',
-    'Federal while real lead few yourself table blood.',
-    913,
-    300,
-    55,
-    'JavaScript',
-    array['Go', 'Python'],
-    false,
-    '2025-03-16 01:17:11',
-    'processing',
-    17,
-    '3a65c2c24c52e4b1907c677fc07132e89ec719bc',
-    '{"progress": 13}'::jsonb,
-    'b303f438-fe21-40d0-8bbe-4aff9326dffd'
-  ),
-  (
-    'd96ff094-7f9c-42d8-bb60-f83f19b07f77',
-    '2025-02-27 07:52:30',
-    '2025-01-05 06:14:45',
-    9517169,
-    'contrerasangela/repo_7',
-    'repo_7',
-    'contrerasangela',
-    'Ever not rate seat any paper.',
-    4988,
-    203,
-    19,
-    'Java',
-    array['TypeScript', 'JavaScript'],
-    true,
-    '2025-04-07 10:55:00',
-    'completed',
-    16,
-    '4b0c490400e9caf8027725c024538d6df508bd11',
-    '{"progress": 2}'::jsonb,
-    'cc8218da-c696-45e6-8944-051be726be23'
-  ),
-  (
-    '4882ce56-489d-4abc-bc29-bf3ad5c48930',
-    '2025-02-14 16:25:45',
-    '2025-04-28 21:07:40',
-    7089806,
-    'jason76/repo_8',
-    'repo_8',
-    'jason76',
-    'Despite couple economy sense should race.',
-    2519,
-    245,
-    7,
-    'JavaScript',
-    array['Rust', 'Python'],
-    true,
-    '2025-01-27 13:26:14',
-    'failed',
-    3,
-    '6ab21b990f1416846b362fdb26b90d80cbf249a9',
-    '{"progress": 97}'::jsonb,
-    '0a17991e-a576-4411-a0a1-1839e7457704'
-  ),
-  (
-    '46d4cf41-4cd4-4043-a835-625a0bf349f2',
-    '2025-03-01 23:43:53',
-    '2025-03-27 14:23:05',
-    3109911,
-    'colleenbaker/repo_9',
-    'repo_9',
-    'colleenbaker',
-    'Often run bed.',
-    1051,
-    675,
-    60,
-    'Rust',
-    array['JavaScript', 'Java'],
-    false,
-    '2025-02-27 07:18:51',
-    'processing',
-    18,
-    '1f93145c08645e58c60f86341a4f5e572e111863',
-    '{"progress": 96}'::jsonb,
-    '21d53971-3367-49b5-acf6-bf756a5e6920'
+    '08946f22-0d74-4499-b40d-0f60218d5152', '2025-04-02 03:59:05', '2025-02-21 11:05:44', 6292423,
+    'fjohnson/repo_2', 'repo_2', 'fjohnson', 'Perhaps however bag forget purpose move.',
+    3286, 274, 8, array['JavaScript', 'HTML'], array['Rust', 'C++'], false, '2025-03-03 11:44:52',
+    'pending', '5e3af4aafc18e025cea707fa7707a1d945e0ffef'
   );
 
-insert into
-  code_chunks (
-    id,
-    repository_id,
-    created_at,
-    file_path,
-    file_name,
-    file_extension,
-    chunk_index,
-    content,
-    chunk_type,
-    language,
-    lines_start,
-    lines_end,
-    code_metadata,
-    weaviate_chunk_id
-  )
-values
-  (
-    '095a5ff0-545a-48ff-83ad-2ea3566f5674',
-    'dda18eb8-8354-4897-8c7f-2c66afbc73e6',
-    '2025-04-15 17:49:20',
-    '/src/file_0.py',
-    'file_0.py',
-    '.py',
-    0,
-    'Maybe evening clearly trial want whose far. Sound life away senior difficult put. Whose source hand so add Mr.',
-    'comment',
-    'C++',
-    92,
-    106,
-    '{"length": 14}'::jsonb,
-    'f23e323d-0b9b-4934-a3c8-6d301dde7969'
-  ),
-  (
-    'b6bbdb5a-deb1-43c7-bf99-b9f88e4af1ed',
-    'ea879f36-d060-4f65-bf5d-9138a542f74a',
-    '2025-01-08 05:25:15',
-    '/src/file_1.py',
-    'file_1.py',
-    '.py',
-    1,
-    'Break doctor Mr home he we recent. Industry score choice increase between majority impact.
-Real describe know. Talk between rate name within.',
-    'function',
-    'Go',
-    57,
-    76,
-    '{"length": 19}'::jsonb,
-    '00b9d4a3-9892-40ac-a689-33a9c9e48e8c'
-  ),
-  (
-    '1f787967-316c-4232-b251-64bcf8e3251b',
-    'dda18eb8-8354-4897-8c7f-2c66afbc73e6',
-    '2025-02-23 20:11:39',
-    '/src/file_2.py',
-    'file_2.py',
-    '.py',
-    2,
-    'Music sometimes body term. Address so draw food.
-Appear score moment second live. Message board mean war analysis situation.',
-    'module',
-    'C++',
-    29,
-    36,
-    '{"length": 7}'::jsonb,
-    '1963c26d-6e21-4b09-9afd-4015816bcb9f'
-  ),
-  (
-    '233530b2-d89f-416d-a73c-40b4ebb33c50',
-    'f6b0bff9-074d-4062-86f5-0a853e521334',
-    '2025-05-17 06:31:44',
-    '/src/file_3.py',
-    'file_3.py',
-    '.py',
-    3,
-    'Result Democrat later direction fund law indeed. Fine fine effort well.
-Before be it season. Speech news only no form business. Them wait institution trouble anything explain.',
-    'import',
-    'C++',
-    76,
-    88,
-    '{"length": 12}'::jsonb,
-    '8e867f3c-a487-4eab-accb-461a9d132363'
-  ),
-  (
-    'b3103899-d683-422a-9072-2ad26050d8f5',
-    'dda18eb8-8354-4897-8c7f-2c66afbc73e6',
-    '2025-01-06 02:21:06',
-    '/src/file_4.py',
-    'file_4.py',
-    '.py',
-    4,
-    'Ahead event several TV go. Thank not husband center. Begin most heavy. Game have return since nothing be apply.',
-    'function',
-    'C++',
-    1,
-    8,
-    '{"length": 7}'::jsonb,
-    '0e0630cd-996d-4c50-bc04-a168652ffb49'
-  ),
-  (
-    '28ea68b7-1f26-472c-b568-319e1d41732b',
-    'dda18eb8-8354-4897-8c7f-2c66afbc73e6',
-    '2025-01-02 11:49:27',
-    '/src/file_5.py',
-    'file_5.py',
-    '.py',
-    5,
-    'War should share face build. Section compare herself region matter street south.
-Technology amount affect TV television office. Identify policy face if whom commercial way.',
-    'module',
-    'C++',
-    9,
-    15,
-    '{"length": 6}'::jsonb,
-    '2c6a6e9a-3280-47a1-8187-222b257d5e52'
-  ),
-  (
-    '1cb8ccc0-db27-49c5-8dff-8d535d5a37d3',
-    '0f08ecdb-53dd-4352-bb50-b1cfbf09da8b',
-    '2025-04-27 23:22:57',
-    '/src/file_6.py',
-    'file_6.py',
-    '.py',
-    6,
-    'Concern significant management senior. Large under north play person ten physical character.
-Kind field ever argue medical financial later. Hard expert popular within.',
-    'module',
-    'C++',
-    66,
-    78,
-    '{"length": 12}'::jsonb,
-    'fb7d9f1c-57eb-49b1-965e-59dde62d2d06'
-  ),
-  (
-    '9edaae8a-3d6c-47c1-8777-ff0b0002b85a',
-    'd96ff094-7f9c-42d8-bb60-f83f19b07f77',
-    '2025-05-19 16:57:06',
-    '/src/file_7.py',
-    'file_7.py',
-    '.py',
-    7,
-    'Position always remain yard model particular hair. Hold simple quickly appear piece.',
-    'import',
-    'Java',
-    28,
-    37,
-    '{"length": 9}'::jsonb,
-    '86c1b6cb-e996-40f7-af77-520eff4625af'
-  ),
-  (
-    'd1927881-d0e7-4df3-a97a-18521db08ff4',
-    '46d4cf41-4cd4-4043-a835-625a0bf349f2',
-    '2025-01-19 03:31:20',
-    '/src/file_8.py',
-    'file_8.py',
-    '.py',
-    8,
-    'Gun guy Congress degree way main difficult. Choice fast small medical. Strong this also from short capital heavy.
-Story side speak close. Analysis hair rest wide particular sell.',
-    'comment',
-    'Rust',
-    61,
-    73,
-    '{"length": 12}'::jsonb,
-    'ef2ddcc4-8df6-41da-9f07-c1a5dfc620ce'
-  ),
-  (
-    'fdda052a-ca4f-40b5-ae99-a711e2161d85',
-    '07921dba-1ae8-422b-9f29-9c908080aa1b',
-    '2025-01-20 22:06:10',
-    '/src/file_9.py',
-    'file_9.py',
-    '.py',
-    9,
-    'Expect several evening town. Store begin treat stage. Us increase how hear history bank.
-Five between research. Social case expert stop receive catch.',
-    'function',
-    'JavaScript',
-    25,
-    33,
-    '{"length": 8}'::jsonb,
-    '9d642932-0066-453d-ade2-99a14a90cd0c'
-  );
-
+-- Interactions
 insert into
   interactions (
-    id,
-    created_at,
-    updated_at,
-    user_id,
-    repository_id,
-    platform,
-    platform_specific_id,
-    channel_id,
-    thread_id,
-    content,
-    interaction_type,
-    sentiment_score,
-    intent_classification,
-    topics_discussed,
-    metadata,
-    weaviate_interaction_id
+    id, created_at, user_id, repository_id, platform, platform_specific_id, channel_id,
+    thread_id, content, interaction_type, sentiment_score, intent_classification,
+    topics_discussed, metadata
   )
 values
   (
-    '7c59fe66-53b6-44b5-8ae1-ddc29b071097',
-    '2025-03-10 12:14:30',
-    '2025-02-16 17:06:38',
-    '010d518f-362b-435b-a4de-148914bcbdb9',
-    'ea879f36-d060-4f65-bf5d-9138a542f74a',
-    'github',
-    'aa143cd8-2ff3-4de4-aaa4-2c9f92170475',
-    'f982f4e0-8603-456a-95ea-cbcfab1021ce',
-    '86abd4e7-f412-4360-9153-6e995c508720',
+    '7c59fe66-53b6-44b5-8ae1-ddc29b071097', '2025-03-10 12:14:30', '6afc59e3-18b7-4182-b42c-8210d1152b07',
+    'f6b0bff9-074d-4062-86f5-0a853e521334', 'github', 'aa143cd82ff34de4',
+    'f982f4e08603456a', '86abd4e7f4124360',
     'Skill medical after them analysis hit health. Ground attack drop. Billion old series card good full poor store.',
-    'comment',
-    -0.07,
-    'help_request',
-    array['C++', 'TypeScript'],
-    '{"info": "capital"}'::jsonb,
-    'e3b56360-6fdc-4bad-9e36-8127cca1b45c'
+    'comment', -0.07, 'help_request', array['C++', 'TypeScript'], '{"info": "capital"}'::jsonb
   ),
   (
-    'f0c80815-fde1-4644-94ca-cd8915f11e46',
-    '2025-03-19 16:14:11',
-    '2025-05-25 08:03:53',
-    '6f990423-0d57-4c64-b191-17e53f39c799',
-    'f6b0bff9-074d-4062-86f5-0a853e521334',
-    'github',
-    '62fb26d7-f4db-4a07-a506-f6707092947d',
-    '7f072cb9-2fd3-40c0-b945-f2fd56cb1ab0',
-    'ec9f9c54-5e0a-42ab-bf5d-b163b12b6680',
+    'f0c80815-fde1-4644-94ca-cd8915f11e46', '2025-03-19 16:14:11', '6f990423-0d57-4c64-b191-17e53f39c799',
+    '0f08ecdb-53dd-4352-bb50-b1cfbf09da8b', 'github', '62fb26d7f4db4a07',
+    '7f072cb92fd340c0', 'ec9f9c545e0a42ab',
     'Song risk bad own state. Family bill foreign fast knowledge response coach. Goal amount thank good your ever.',
-    'pr',
-    0.6,
-    'help_request',
-    array['JavaScript', 'TypeScript'],
-    '{"info": "already"}'::jsonb,
-    'c74cc890-3c6a-4174-9136-34a520509c62'
+    'pr', 0.6, 'help_request', array['JavaScript', 'TypeScript'], '{"info": "already"}'::jsonb
   ),
   (
-    'ef139daa-fa4c-445a-8bf7-fdd725bdb82c',
-    '2025-05-06 06:40:36',
-    '2025-03-13 03:12:51',
-    '9b56cac8-504a-4dd8-b7ba-0a5bfce7abf7',
-    '4882ce56-489d-4abc-bc29-bf3ad5c48930',
-    'github',
-    '9136f1f8-f310-46dc-a202-bee65cb5e69c',
-    'add702c9-2747-493c-9ae7-7eab084a6780',
-    '5f3c44dc-5ef7-47b8-b2e6-195f732e2016',
+    'ef139daa-fa4c-445a-8bf7-fdd725bdb82c', '2025-05-06 06:40:36', '2aefee92-c7da-4d6e-90c1-d6c3bb82c0e1',
+    '08946f22-0d74-4499-b40d-0f60218d5152', 'slack', '9136f1f8f31046dc',
+    'add702c92747493c', '5f3c44dc5ef747b8',
     'Off morning huge power. Whether ago control military trial. Energy employee land you.',
-    'issue',
-    -0.16,
-    'feature_request',
-    array['Go', 'JavaScript'],
-    '{"info": "security"}'::jsonb,
-    '2c913a7c-a340-4f08-b341-91b8ed6522b4'
+    'message', -0.16, 'feature_request', array['Go', 'JavaScript'], '{"info": "security"}'::jsonb
+  );
+
+-- Conversation Context
+insert into
+  conversation_context (
+    id, user_id, platform, memory_thread_id, conversation_summary, key_topics,
+    total_interactions, session_start_time, session_end_time, created_at
+  )
+values
+  (
+    'c1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6', '6afc59e3-18b7-4182-b42c-8210d1152b07',
+    'discord', '112233445566778899',
+    'The user asked about getting started with the API and had questions about authentication. They were provided with a link to the documentation.',
+    array['onboarding', 'api_keys', 'authentication'], 8, '2025-06-20 10:00:00',
+    '2025-06-20 10:25:00', '2025-06-20 10:25:00'
   ),
   (
-    'd5c02f3d-6d9a-49b9-8d71-33ba08c610a2',
-    '2025-03-12 04:40:32',
-    '2025-04-09 18:58:25',
-    '6f990423-0d57-4c64-b191-17e53f39c799',
-    'd96ff094-7f9c-42d8-bb60-f83f19b07f77',
-    'slack',
-    '3373730e-fc31-4597-9f11-9c0f3967e60a',
-    'ca55e38b-3c9a-4e10-a38d-6f44cac4d0eb',
-    '8dd4595b-5c63-46f3-86ba-8cd37e7838c9',
-    'Level work candidate this assume huge. Moment shoulder statement available win politics last. General there sister policy consider whom item.',
-    'message',
-    -0.9,
-    'help_request',
-    array['Python', 'JavaScript'],
-    '{"info": "prove"}'::jsonb,
-    '200b2903-4642-4c45-8d03-f17af4d375c1'
+    'd2c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7', '6f990423-0d57-4c64-b191-17e53f39c799',
+    'slack', '998877665544332211',
+    'User reported a potential bug related to the repository indexing service. They provided logs and a repository URL. The issue was acknowledged and a ticket was created.',
+    array['bug_report', 'indexing', 'repositories'], 12, '2025-06-21 09:00:00',
+    '2025-06-21 09:45:00', '2025-06-21 09:45:00'
   ),
   (
-    '5696eff8-bba4-41a4-953f-f70eece14b2d',
-    '2025-05-02 08:48:55',
-    '2025-02-28 19:15:53',
-    '2aefee92-c7da-4d6e-90c1-d6c3bb82c0e1',
-    '07921dba-1ae8-422b-9f29-9c908080aa1b',
-    'github',
-    '80a8a23d-17ea-4c83-8892-042f9d4b2bf9',
-    'f10d27c8-9780-4215-ab2b-b8e9a417c093',
-    'a8a2b7ad-2bd3-4dcd-a779-468594a53fde',
-    'Wish candidate have no five letter. Last cell anything war ten. Eat tend civil force officer fine.',
-    'comment',
-    -0.57,
-    'general_discussion',
-    array['Python', 'JavaScript'],
-    '{"info": "ready"}'::jsonb,
-    '896490ab-4926-4e5f-b878-6140ac2a4f71'
-  ),
-  (
-    '2ea1d897-a515-40cd-a92a-01eada9542d8',
-    '2025-01-02 14:06:34',
-    '2025-01-21 20:58:21',
-    '010d518f-362b-435b-a4de-148914bcbdb9',
-    'f6b0bff9-074d-4062-86f5-0a853e521334',
-    'github',
-    '43b47ee5-e1e8-4e7e-a249-8f666e51484d',
-    '673ba8bd-c38c-4dec-9da3-9a73ba3df7ff',
-    '0d18ab95-668c-4477-8b95-017c5dae1201',
-    'Foreign party class wrong. Order medical meeting majority none. Staff happy purpose woman on someone rise.',
-    'pr',
-    0.85,
-    'general_discussion',
-    array['Java', 'Go'],
-    '{"info": "market"}'::jsonb,
-    'ba370623-bc5f-44dd-992f-3c1edf70fb2a'
-  ),
-  (
-    'dc1ad7fb-edca-4c34-b07d-7b51f7a92974',
-    '2025-01-13 02:15:06',
-    '2025-05-18 01:09:03',
-    '7771182e-ed52-4f4e-a376-0750b9854324',
-    'd96ff094-7f9c-42d8-bb60-f83f19b07f77',
-    'discord',
-    '8f964685-3514-4890-84c8-6c4623595fa4',
-    '7a768555-a987-4218-bf84-faef5336723b',
-    'f4e95734-5052-4700-a077-96a38685abaa',
-    'Treatment garden great sign return poor really. Machine whatever everything fear walk word side relate.',
-    'issue',
-    -0.41,
-    'help_request',
-    array['Rust', 'C++'],
-    '{"info": "defense"}'::jsonb,
-    'eedaa802-4568-4426-89e0-3e22d3f4a49b'
-  ),
-  (
-    '30634a69-7c7b-4f11-8ec5-b83299015938',
-    '2025-04-20 03:11:37',
-    '2025-05-16 04:23:36',
-    '7771182e-ed52-4f4e-a376-0750b9854324',
-    'f6b0bff9-074d-4062-86f5-0a853e521334',
-    'slack',
-    '9d9d028e-1bf6-45f6-a324-52114588fc1b',
-    '3e11bafe-3d41-46fe-963a-8617bdab07e7',
-    '87f255d6-e7ba-46ac-ab7a-3d1c0cfef683',
-    'Appear including response beyond side. Who within citizen.',
-    'pr',
-    -0.89,
-    'general_discussion',
-    array['Rust', 'TypeScript'],
-    '{"info": "cultural"}'::jsonb,
-    'df4e713e-f64e-4dfc-bfbe-ac7aefc59738'
-  ),
-  (
-    '87916dfb-a7ce-4315-80f3-a72be814f08c',
-    '2025-02-26 05:00:49',
-    '2025-01-08 06:36:18',
-    '2aefee92-c7da-4d6e-90c1-d6c3bb82c0e1',
-    'f6b0bff9-074d-4062-86f5-0a853e521334',
-    'slack',
-    '9a4ffc0c-9165-42ed-8c63-6e95025f5543',
-    '55c551fc-fba5-4cc8-adaf-37661b780ede',
-    'a42d0cd7-fd35-4f6a-b450-388748d90846',
-    'According himself land environment form. Reveal activity president realize artist brother fill if. Type thousand show real police wait happen.',
-    'message',
-    0.7,
-    'help_request',
-    array['Rust', 'Python'],
-    '{"info": "store"}'::jsonb,
-    '87365a84-725e-434d-8687-9aa914f573d0'
-  ),
-  (
-    'c29c38dc-10be-4da2-81b7-6f82b746a359',
-    '2025-05-17 15:47:16',
-    '2025-03-12 06:02:22',
-    '9b56cac8-504a-4dd8-b7ba-0a5bfce7abf7',
-    '07921dba-1ae8-422b-9f29-9c908080aa1b',
-    'discord',
-    '1cb9b73a-906d-4c8c-aad0-8c8913fe8a29',
-    'e723ada3-8c32-4db2-942a-895e0fcf601f',
-    '89628f6e-929c-43b3-b3c0-8bf18167999f',
-    'Foreign minute break day. Major together knowledge argue car indeed nor next.
-How staff second. Authority interest red must art thus worry line.',
-    'reaction',
-    -0.51,
-    'help_request',
-    array['Rust', 'Python'],
-    '{"info": "cell"}'::jsonb,
-    '1e5ebe54-5907-4299-9c3b-bdd8a74e02a9'
+    'e3d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8', '2aefee92-c7da-4d6e-90c1-d6c3bb82c0e1',
+    'discord', '123451234512345123',
+    'A general discussion about the future of Rust and its use in web development. The user shared an article and asked for opinions.',
+    array['Rust', 'web_development', 'discussion'], 5, '2025-06-19 14:30:00',
+    '2025-06-19 15:00:00', '2025-06-19 15:00:00'
   );

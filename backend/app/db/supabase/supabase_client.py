@@ -1,11 +1,13 @@
 from app.core.config import settings
-from supabase import create_client
+from supabase._async.client import AsyncClient
 
-SUPABASE_URL = settings.supabase_url
-SUPABASE_KEY = settings.supabase_key
+supabase_client: AsyncClient = AsyncClient(
+    settings.supabase_url,
+    settings.supabase_key
+)
 
-supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-def get_supabase_client():
+def get_supabase_client() -> AsyncClient:
+    """
+    Returns a shared asynchronous Supabase client instance.
+    """
     return supabase_client

@@ -15,6 +15,7 @@ class DiscordBot(commands.Bot):
         intents.message_content = True
         intents.guilds = True
         intents.members = True
+        intents.dm_messages = True
 
         super().__init__(
             command_prefix="!",
