@@ -5,9 +5,9 @@ from datetime import datetime
 from app.agents.devrel.agent import DevRelAgent
 # TODO: Implement GitHub agent
 # from app.agents.github.agent import GitHubAgent
-from app.agents.shared.state import AgentState
+from app.agents.state import AgentState
 from app.core.orchestration.queue_manager import AsyncQueueManager
-from app.agents.devrel.nodes.summarization_node import store_summary_to_database
+from app.agents.devrel.nodes.summarization import store_summary_to_database
 from langsmith import traceable
 
 logger = logging.getLogger(__name__)

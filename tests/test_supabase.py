@@ -1,6 +1,6 @@
-from ..backend.app.model.supabase.models import User, Interaction, CodeChunk, Repository
+from ..backend.app.models.database.supabase import User, Interaction, CodeChunk, Repository
 from uuid import uuid4
-from ..backend.app.db.supabase.supabase_client import get_supabase_client
+from ..backend.app.database.supabase.client import get_supabase_client
 from datetime import datetime  # Your User model import
 
 client = get_supabase_client()

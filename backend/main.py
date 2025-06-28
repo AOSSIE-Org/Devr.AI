@@ -6,13 +6,13 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, Response
 
-from app.api.v1.auth import router as auth_router
+from app.api.router import api_router
 from app.core.config import settings
 from app.core.orchestration.agent_coordinator import AgentCoordinator
 from app.core.orchestration.queue_manager import AsyncQueueManager
-from app.db.weaviate.weaviate_client import get_weaviate_client
-from bots.discord.discord_bot import DiscordBot
-from bots.discord.discord_cogs import DevRelCommands
+from app.database.weaviate.client import get_weaviate_client
+from integrations.discord.bot import DiscordBot
+from integrations.discord.cogs import DevRelCommands
 
 logging.basicConfig(
     level=logging.INFO,
@@ -103,28 +103,8 @@ async def favicon():
     """Return empty favicon to prevent 404 logs"""
     return Response(status_code=204)
 
-@api.get("/health")
-async def health_check():
-    """Health check endpoint to verify services are running"""
-    try:
-        async with get_weaviate_client() as client:
-            weaviate_ready = await client.is_ready()
 
-        return {
-            "status": "healthy",
-            "services": {
-                "weaviate": "ready" if weaviate_ready else "not_ready",
-                "discord_bot": "running" if app_instance.discord_bot and not app_instance.discord_bot.is_closed() else "stopped"
-            }
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
-
-api.include_router(auth_router, prefix="/v1/auth", tags=["Authentication"])
+api.include_router(api_router)
 
 
 if __name__ == "__main__":

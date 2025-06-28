@@ -13,6 +13,7 @@ router = APIRouter()
 class RepoRequest(BaseModel):
     repo_url: str
 
+
 logging.basicConfig(level=logging.INFO)
 handler_registry = HandlerRegistry()
 event_bus = EventBus(handler_registry)
@@ -71,7 +72,7 @@ async def github_webhook(request: Request):
                 event_type = EventType.PR_MERGED
             else:
                 logging.info("Pull request closed without merge; no event dispatched.")
-    
+
     # Handle pull request comment events
     elif event_header in ["pull_request_review_comment", "pull_request_comment"]:
         action = payload.get("action")
