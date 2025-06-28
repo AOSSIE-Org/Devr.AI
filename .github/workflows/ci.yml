@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        cd backend
+        pip install -r requirements.txt
+
+    - name: Smoke test - Verify module imports
+      run: |
+        export PYTHONPATH=backend
+        python - <<'PY'
+        # Test imports for relocated modules
+        try:
+            from app.agents.state import AgentState
+            print("AgentState import successful")
+        except ImportError as e:
+            print(f"AgentState import failed: {e}")
+            exit(1)
+        
+        try:
+            from app.agents.devrel.nodes.summarization import store_summary_to_database
+            print("store_summary_to_database import successful")
+        except ImportError as e:
+            print(f"store_summary_to_database import failed: {e}")
+            exit(1)
+        
+        print("🎉 All smoke test imports successful!")
+        PY
+
+    - name: Run tests
+      run: |
+        export PYTHONPATH=backend
+        cd backend
+        # Add actual test commands here when tests are available
+        # python -m pytest tests/ -v
+        echo "Test placeholder - add actual test commands when available"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install linting dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort
+
+    - name: Run linting checks
+      run: |
+        cd backend
+        # Check code formatting
+        black --check --diff .
+        # Check import sorting
+        isort --check-only --diff .
+        # Run flake8 linting
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics 

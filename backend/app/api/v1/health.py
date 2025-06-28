@@ -1,13 +1,18 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.database.weaviate.client import get_weaviate_client
+from app.core.dependencies import get_app_instance
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from main import DevRAIApplication
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.get("/health")
-async def health_check():
+async def health_check(app_instance: "DevRAIApplication" = Depends(get_app_instance)):
     """
     General health check endpoint to verify services are running.
 
@@ -17,8 +22,6 @@ async def health_check():
     try:
         async with get_weaviate_client() as client:
             weaviate_ready = await client.is_ready()
-
-        from main import app_instance
 
         return {
             "status": "healthy",
@@ -35,7 +38,7 @@ async def health_check():
                 "status": "unhealthy",
                 "error": str(e)
             }
-        )
+        ) from e
 
 
 @router.get("/health/weaviate")
@@ -58,15 +61,13 @@ async def weaviate_health():
                 "status": "unhealthy",
                 "error": str(e)
             }
-        )
+        ) from e
 
 
 @router.get("/health/discord")
-async def discord_health():
+async def discord_health(app_instance: "DevRAIApplication" = Depends(get_app_instance)):
     """Check specifically Discord bot health."""
     try:
-        from main import app_instance
-
         bot_status = "running" if app_instance.discord_bot and not app_instance.discord_bot.is_closed() else "stopped"
 
         return {
@@ -82,4 +83,4 @@ async def discord_health():
                 "status": "unhealthy",
                 "error": str(e)
             }
-        )
+        ) from e

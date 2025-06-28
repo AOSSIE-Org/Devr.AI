@@ -2,7 +2,8 @@ import logging
 from typing import Dict, Any
 from app.agents.state import AgentState
 from langchain_core.messages import HumanMessage
-from ...prompts.search_prompt import EXTRACT_SEARCH_QUERY_PROMPT
+from app.agents.devrel.prompts.search_prompt import EXTRACT_SEARCH_QUERY_PROMPT
+
 
 logger = logging.getLogger(__name__)
 

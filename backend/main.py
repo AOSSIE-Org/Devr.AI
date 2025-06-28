@@ -91,6 +91,7 @@ async def lifespan(app: FastAPI):
     """
     Lifespan manager for the FastAPI application. Handles startup and shutdown events.
     """
+    app.state.app_instance = app_instance
     await app_instance.start_background_tasks()
     yield
     await app_instance.stop_background_tasks()
