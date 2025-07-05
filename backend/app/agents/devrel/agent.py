@@ -5,17 +5,15 @@ from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import InMemorySaver
 from ..base_agent import BaseAgent, AgentState
-from ..classification_router import MessageCategory
 from .tools.search_tool import TavilySearchTool
 from .tools.faq_tool import FAQTool
+from .github.github_toolkit import GitHubToolkit
 from app.core.config import settings
 from .nodes.gather_context import gather_context_node
-from .nodes.handlers.faq import handle_faq_node
-from .nodes.handlers.web_search import handle_web_search_node
-from .nodes.handlers.technical_support import handle_technical_support_node
-from .nodes.handlers.onboarding import handle_onboarding_node
-from .generate_response_node import generate_response_node
 from .nodes.summarization import check_summarization_needed, summarize_conversation_node, store_summary_to_database
+from .nodes.react_supervisor import react_supervisor_node, supervisor_decision_router
+from .tool_wrappers import web_search_tool_node, faq_handler_tool_node, onboarding_tool_node, github_toolkit_tool_node
+from .nodes.generate_response import generate_response_node
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +29,7 @@ class DevRelAgent(BaseAgent):
         )
         self.search_tool = TavilySearchTool()
         self.faq_tool = FAQTool()
+        self.github_toolkit = GitHubToolkit()
         self.checkpointer = InMemorySaver()
         super().__init__("DevRelAgent", self.config)
 
@@ -38,41 +37,47 @@ class DevRelAgent(BaseAgent):
         """Build the DevRel agent workflow graph"""
         workflow = StateGraph(AgentState)
 
-        # Add nodes
+        # Phase 1: Gather Context
         workflow.add_node("gather_context", gather_context_node)
-        workflow.add_node("handle_faq", partial(handle_faq_node, faq_tool=self.faq_tool))
-        workflow.add_node("handle_web_search", partial(
-            handle_web_search_node, search_tool=self.search_tool, llm=self.llm))
-        workflow.add_node("handle_technical_support", handle_technical_support_node)
-        workflow.add_node("handle_onboarding", handle_onboarding_node)
+
+        # Phase 2: ReAct Supervisor - Decide what to do next
+        workflow.add_node("react_supervisor", partial(react_supervisor_node, llm=self.llm))
+        workflow.add_node("web_search_tool", partial(web_search_tool_node, search_tool=self.search_tool, llm=self.llm))
+        workflow.add_node("faq_handler_tool", partial(faq_handler_tool_node, faq_tool=self.faq_tool))
+        workflow.add_node("onboarding_tool", onboarding_tool_node)
+        workflow.add_node("github_toolkit_tool", partial(github_toolkit_tool_node, github_toolkit=self.github_toolkit))
+
+        # Phase 3: Generate Response
         workflow.add_node("generate_response", partial(generate_response_node, llm=self.llm))
+
+        # Phase 4: Summarization
         workflow.add_node("check_summarization", check_summarization_needed)
         workflow.add_node("summarize_conversation", partial(summarize_conversation_node, llm=self.llm))
 
-        # Add edges
+        # Entry point
+        workflow.set_entry_point("gather_context")
+        workflow.add_edge("gather_context", "react_supervisor")
+
+        # ReAct supervisor routing
         workflow.add_conditional_edges(
-            "gather_context",
-            self._route_to_handler,
+            "react_supervisor",
+            supervisor_decision_router,
             {
-                MessageCategory.FAQ: "handle_faq",
-                MessageCategory.WEB_SEARCH: "handle_web_search",
-                MessageCategory.ONBOARDING: "handle_onboarding",
-                MessageCategory.TECHNICAL_SUPPORT: "handle_technical_support",
-                MessageCategory.COMMUNITY_ENGAGEMENT: "handle_technical_support",
-                MessageCategory.DOCUMENTATION: "handle_technical_support",
-                MessageCategory.BUG_REPORT: "handle_technical_support",
-                MessageCategory.FEATURE_REQUEST: "handle_technical_support",
-                MessageCategory.NOT_DEVREL: "handle_technical_support"
+                "web_search": "web_search_tool",
+                "faq_handler": "faq_handler_tool",
+                "onboarding": "onboarding_tool",
+                "github_toolkit": "github_toolkit_tool",
+                "complete": "generate_response"
             }
         )
 
-        # All handlers lead to response generation
-        for node in ["handle_faq", "handle_web_search", "handle_technical_support", "handle_onboarding"]:
-            workflow.add_edge(node, "generate_response")
+        # All tools return to supervisor
+        for tool in ["web_search_tool", "faq_handler_tool", "onboarding_tool", "github_toolkit_tool"]:
+            workflow.add_edge(tool, "react_supervisor")
 
         workflow.add_edge("generate_response", "check_summarization")
 
-        # Conditional edge for summarization
+        # Summarization routing
         workflow.add_conditional_edges(
             "check_summarization",
             self._should_summarize,
@@ -82,41 +87,10 @@ class DevRelAgent(BaseAgent):
             }
         )
 
-        # End after summarization
         workflow.add_edge("summarize_conversation", END)
 
-        # Set entry point
-        workflow.set_entry_point("gather_context")
-
-        # Compile with InMemorySaver checkpointer
+        # Compile with checkpointer
         self.graph = workflow.compile(checkpointer=self.checkpointer)
-
-    def _route_to_handler(self, state: AgentState) -> str:
-        """Route to the appropriate handler based on intent"""
-        classification = state.context.get("classification", {})
-        intent = classification.get("category")
-
-        if isinstance(intent, str):
-            try:
-                intent = MessageCategory(intent.lower())
-            except ValueError:
-                logger.warning(f"Unknown intent string '{intent}', defaulting to TECHNICAL_SUPPORT")
-                intent = MessageCategory.TECHNICAL_SUPPORT
-
-        logger.info(f"Routing based on intent: {intent} for session {state.session_id}")
-
-        # Mapping from MessageCategory enum to string keys used in add_conditional_edges
-        if intent in [MessageCategory.FAQ, MessageCategory.WEB_SEARCH,
-                      MessageCategory.ONBOARDING, MessageCategory.TECHNICAL_SUPPORT,
-                      MessageCategory.COMMUNITY_ENGAGEMENT, MessageCategory.DOCUMENTATION,
-                      MessageCategory.BUG_REPORT, MessageCategory.FEATURE_REQUEST,
-                      MessageCategory.NOT_DEVREL]:
-            logger.info(f"Routing to handler for: {intent}")
-            return intent
-
-        # Later to be changed to handle anomalies
-        logger.info(f"Unknown intent '{intent}', routing to technical support")
-        return MessageCategory.TECHNICAL_SUPPORT
 
     def _should_summarize(self, state: AgentState) -> str:
         """Determine if conversation should be summarized"""

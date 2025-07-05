@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pydantic import field_validator
+from typing import Optional
 
 load_dotenv()
 
@@ -26,14 +27,14 @@ class Settings(BaseSettings):
     langsmith_project: str = "DevR_AI"
 
     # Agent Configuration
-    devrel_agent_model: str = "gemini-2.0-flash"
-    github_agent_model: str = "gemini-2.0-flash"
-    classification_agent_model: str = "gemini-1.5-flash"
+    devrel_agent_model: str = "gemini-2.5-flash"
+    github_agent_model: str = "gemini-2.5-flash"
+    classification_agent_model: str = "gemini-2.0-flash"
     agent_timeout: int = 30
     max_retries: int = 3
-    
+
     # RabbitMQ configuration
-    rabbitmq_url: str = ""
+    rabbitmq_url: Optional[str] = None
 
     # Backend URL
     backend_url: str = ""

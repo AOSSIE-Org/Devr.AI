@@ -3,7 +3,7 @@ from discord.ext import commands
 import logging
 from typing import Dict, Any, Optional
 from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
-from app.agents.classification_router import ClassificationRouter
+from app.classification.classification_router import ClassificationRouter
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,7 @@ class DiscordBot(commands.Bot):
             return
 
         try:
-            # Classify message locally first
-            classification = await self.classifier.classify_message(
+            triage_result = await self.classifier.should_process_message(
                 message.content,
                 {
                     "channel_id": str(message.channel.id),
@@ -61,16 +60,15 @@ class DiscordBot(commands.Bot):
                 }
             )
 
-            logger.info(f"Message classified as: {classification}")
+            logger.info(f"Message triage result: {triage_result}")
 
-            # Only process if DevRel intervention is needed
-            if classification.get("needs_devrel", False):
-                await self._handle_devrel_message(message, classification)
+            if triage_result.get("needs_devrel", False):
+                await self._handle_devrel_message(message, triage_result)
 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}")
 
-    async def _handle_devrel_message(self, message, classification: Dict[str, Any]):
+    async def _handle_devrel_message(self, message, triage_result: Dict[str, Any]):
         """Handle messages that need DevRel intervention"""
         try:
             user_id = str(message.author.id)
@@ -87,7 +85,7 @@ class DiscordBot(commands.Bot):
                 "thread_id": thread_id,
                 "memory_thread_id": user_id,
                 "content": message.content,
-                "classification": classification,
+                "triage": triage_result,
                 "platform": "discord",
                 "timestamp": message.created_at.isoformat(),
                 "author": {
@@ -96,13 +94,13 @@ class DiscordBot(commands.Bot):
                 }
             }
 
-            # Determine priority based on classification
+            # Determine priority based on triage
             priority_map = {
                 "high": QueuePriority.HIGH,
                 "medium": QueuePriority.MEDIUM,
                 "low": QueuePriority.LOW
             }
-            priority = priority_map.get(classification.get("priority"), QueuePriority.MEDIUM)
+            priority = priority_map.get(triage_result.get("priority"), QueuePriority.MEDIUM)
 
             # Enqueue for agent processing
             await self.queue_manager.enqueue(agent_message, priority)

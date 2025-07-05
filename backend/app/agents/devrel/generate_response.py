@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from app.agents.state import AgentState
 from langchain_core.messages import HumanMessage
-from .prompts.base_prompt import GENERAL_LLM_RESPONSE_PROMPT
+from .prompts.response_prompt import RESPONSE_PROMPT
 from .nodes.handlers.web_search import create_search_response
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ async def _create_llm_response(state: AgentState, task_result: Dict[str, Any], l
     current_context_str = "\n".join(context_parts)
 
     try:
-        prompt = GENERAL_LLM_RESPONSE_PROMPT.format(
+        prompt = RESPONSE_PROMPT.format(
             conversation_summary=conversation_summary,
             latest_message=latest_message,
             conversation_history=conversation_history_str,

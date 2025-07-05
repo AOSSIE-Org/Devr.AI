@@ -8,7 +8,7 @@ from app.agents.devrel.prompts.summarization_prompt import CONVERSATION_SUMMARY_
 logger = logging.getLogger(__name__)
 
 # Configuration constants
-SUMMARIZATION_THRESHOLD = 5
+SUMMARIZATION_THRESHOLD = 15
 THREAD_TIMEOUT_HOURS = 1
 
 async def check_summarization_needed(state: AgentState) -> Dict[str, Any]:

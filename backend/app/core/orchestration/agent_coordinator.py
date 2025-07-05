@@ -1,10 +1,7 @@
 import logging
 import uuid
 from typing import Dict, Any
-from datetime import datetime
 from app.agents.devrel.agent import DevRelAgent
-# TODO: Implement GitHub agent
-# from app.agents.github.agent import GitHubAgent
 from app.agents.state import AgentState
 from app.core.orchestration.queue_manager import AsyncQueueManager
 from app.agents.devrel.nodes.summarization import store_summary_to_database
@@ -18,18 +15,14 @@ class AgentCoordinator:
     def __init__(self, queue_manager: AsyncQueueManager):
         self.queue_manager = queue_manager
         self.devrel_agent = DevRelAgent()
-        # self.github_agent = GitHubAgent()
         self.active_sessions: Dict[str, AgentState] = {}
 
-        # Register handlers
         self._register_handlers()
 
     def _register_handlers(self):
         """Register message handlers"""
         self.queue_manager.register_handler("devrel_request", self._handle_devrel_request)
         self.queue_manager.register_handler("clear_thread_memory", self._handle_clear_memory_request)
-        # TODO: Register GitHub agent handler after implementation
-        # self.queue_manager.register_handler("github_request", self._handle_github_request)
 
     @traceable(name="devrel_request_coordination", run_type="chain")
     async def _handle_devrel_request(self, message_data: Dict[str, Any]):
@@ -129,6 +122,3 @@ class AgentCoordinator:
     async def _send_error_response(self, original_message: Dict[str, Any], error_message: str):
         """Send error response to platform"""
         await self._send_response_to_platform(original_message, error_message)
-
-    # TODO: Implement GitHub agent
-    # async def _handle_github_request(self, message_data: Dict[str, Any]):

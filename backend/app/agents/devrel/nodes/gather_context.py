@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
+from typing import Dict, Any
 from app.agents.state import AgentState
 
 logger = logging.getLogger(__name__)
 
-async def gather_context_node(state: AgentState) -> AgentState:
+async def gather_context_node(state: AgentState) -> Dict[str, Any]:
     """Gather additional context for the user and their request"""
     logger.info(f"Gathering context for session {state.session_id}")
 
@@ -31,5 +32,6 @@ async def gather_context_node(state: AgentState) -> AgentState:
     return {
         "messages": [new_message],
         "context": updated_context,
-        "current_task": "context_gathered"
+        "current_task": "context_gathered",
+        "last_interaction_time": datetime.now()
     }
