@@ -40,3 +40,23 @@ body {
 .radial-gradient-bg {
   background: radial-gradient(circle at center, rgba(34, 197, 94, 0.15), transparent 50%);
 }
+
+/* Webkit Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000; /* Optional: light background */
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #167a16, #171787); /* Green to blue */
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #167a16, #171787);
+}
