@@ -13,23 +13,23 @@ TOOL RESULTS FROM PREVIOUS ACTIONS:
 {tool_results}
 
 AVAILABLE ACTIONS:
-1. web_search - Search the web for external information
-2. faq_handler - Answer common questions from knowledge base  
-3. onboarding - Welcome new users and guide exploration
-4. github_toolkit - Handle GitHub operations (issues, PRs, repos, docs)
-5. complete - Task is finished, format final response
+1. web_search - Search for current/external information not in knowledge base
+2. faq_handler - Answer common DevRel/project questions from knowledge base  
+3. onboarding - Welcome first-time users and guide project exploration
+4. github_toolkit - Handle GitHub operations (issues, PRs, repos, documentation)
+5. complete - Task is finished, format and deliver final response
 
-THINK: Analyze the user's request and current context. What needs to be done?
+THINK: Analyze the user's request and current context. What specific need must be addressed?
 
-Then choose ONE action:
-- If you need external information or recent updates → web_search
-- If this is a common question with a known answer → faq_handler  
-- If this is a new user needing guidance → onboarding
-- If this involves GitHub repositories, issues, PRs, or code → github_toolkit
-- If you have enough information to fully answer → complete
+ACTION SELECTION CRITERIA:
+- web_search: Need current information, news, or external resources not in our knowledge base
+- faq_handler: Question matches common DevRel topics (setup, contribution, community guidelines)
+- onboarding: User is new/first-time, needs project introduction or getting started help
+- github_toolkit: GitHub-specific operations (repo queries, issue management, PR help, docs)
+- complete: Have sufficient information to provide a comprehensive answer
 
 Respond in this exact format:
-THINK: [Your reasoning about what the user needs]
+THINK: [Your specific reasoning about what the user needs and why]
 ACT: [Choose one: web_search, faq_handler, onboarding, github_toolkit, complete]
-REASON: [Why you chose this action]
+REASON: [Specific justification for this action choice]
 """
