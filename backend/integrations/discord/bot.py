@@ -51,14 +51,28 @@ class DiscordBot(commands.Bot):
             return
 
         try:
-            triage_result = await self.classifier.should_process_message(
-                message.content,
-                {
-                    "channel_id": str(message.channel.id),
-                    "user_id": str(message.author.id),
-                    "guild_id": str(message.guild.id) if message.guild else None
+            # Check for explicit bot mentions first (Discord's built-in mention detection)
+            bot_mentioned = self.user in message.mentions
+
+            # If bot is explicitly mentioned, always process the message
+            if bot_mentioned:
+                logger.info(f"Bot explicitly mentioned by {message.author.name}")
+                triage_result = {
+                    "needs_devrel": True,
+                    "priority": "high",
+                    "reasoning": "Explicit bot mention via Discord @mention"
                 }
-            )
+            else:
+                # Only use LLM classification for non-mentioned messages
+                triage_result = await self.classifier.should_process_message(
+                    message.content,
+                    {
+                        "channel_id": str(message.channel.id),
+                        "user_id": str(message.author.id),
+                        "guild_id": str(message.guild.id) if message.guild else None,
+                        "bot_mentioned": False
+                    }
+                )
 
             logger.info(f"Message triage result: {triage_result}")
 
