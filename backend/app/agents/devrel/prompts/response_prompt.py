@@ -13,7 +13,7 @@ FORMATTING FOR DISCORD:
 - Simple numbered lists (1. 2. 3.) - no markdown bullets
 - Plain text with clear line breaks - avoid **bold** or *italic*
 - Plain URLs: https://example.com
-- Simple emojis for visual appeal: 🔗 📚 ⚡ 
+- Simple emojis for visual appeal (use sparingly and appropriately)
 - Short, scannable paragraphs
 - Use "→" instead of markdown arrows
 
