@@ -28,7 +28,7 @@ class DevRelAgent(BaseAgent):
             google_api_key=settings.gemini_api_key
         )
         self.search_tool = TavilySearchTool()
-        self.faq_tool = FAQTool()
+        self.faq_tool = FAQTool(search_tool=self.search_tool)
         self.github_toolkit = GitHubToolkit()
         self.checkpointer = InMemorySaver()
         super().__init__("DevRelAgent", self.config)
