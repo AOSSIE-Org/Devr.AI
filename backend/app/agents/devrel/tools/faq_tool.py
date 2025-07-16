@@ -40,18 +40,18 @@ class FAQTool:
                 return enhanced_response.get("response")
 
             # Fallback to legacy responses for backward compatibility
-        question_lower = question.lower().strip()
+            question_lower = question.lower().strip()
 
-        # Direct match
-           if question_lower in self.legacy_faq_responses:
+            # Direct match
+            if question_lower in self.legacy_faq_responses:
                 return self.legacy_faq_responses[question_lower]
 
-        # Fuzzy matching
+            # Fuzzy matching
             for faq_key, response in self.legacy_faq_responses.items():
-            if self._is_similar_question(question_lower, faq_key):
-                return response
+                if self._is_similar_question(question_lower, faq_key):
+                    return response
 
-        return None
+            return None
 
         except Exception as e:
             logger.error(f"Error in FAQ tool: {str(e)}")
