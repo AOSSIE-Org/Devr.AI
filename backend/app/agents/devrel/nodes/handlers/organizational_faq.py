@@ -2,30 +2,15 @@ import logging
 from typing import Dict, Any, List
 from app.agents.state import AgentState
 from langchain_core.messages import HumanMessage
+from app.agents.devrel.prompts.organizational_faq_prompt import ORGANIZATIONAL_SYNTHESIS_PROMPT
 
 logger = logging.getLogger(__name__)
 
-# Prompt for synthesizing organizational responses
-ORGANIZATIONAL_SYNTHESIS_PROMPT = """You are a helpful AI assistant representing Devr.AI. \
-Based on the search results below, provide a comprehensive and accurate answer to the \
-user's question about our organization.
-
-User Question: "{question}"
-
-Search Results:
-{search_results}
-
-Instructions:
-1. Synthesize the information from the search results into a coherent, informative response
-2. Focus on providing accurate information about Devr.AI
-3. Be concise but comprehensive
-4. If the search results don't contain enough information, acknowledge this and provide what you can
-5. Maintain a professional and friendly tone
-6. Do not make up information not present in the search results
-
-Response:"""
-
-async def handle_organizational_faq_node(state: AgentState, enhanced_faq_tool, llm) -> Dict[str, Any]:
+async def handle_organizational_faq_node(
+    state: AgentState,
+    enhanced_faq_tool: Any,
+    llm: Any
+) -> Dict[str, Any]:
     """Handle organizational FAQ requests with web search and LLM synthesis"""
     logger.info(f"Handling organizational FAQ for session {state.session_id}")
 
@@ -64,9 +49,12 @@ async def handle_organizational_faq_node(state: AgentState, enhanced_faq_tool, l
                     f"Enhanced organizational response with LLM synthesis "
                     f"for session {state.session_id}"
                 )
-            except Exception as e:
+            except (ValueError, AttributeError, TypeError) as e:
                 logger.error(f"Error in LLM synthesis: {str(e)}")
                 # Keep the original response if LLM synthesis fails
+                faq_response["synthesis_method"] = "basic"
+            except Exception as e:
+                logger.error(f"Unexpected error in LLM synthesis: {str(e)}")
                 faq_response["synthesis_method"] = "basic"
 
     return {
