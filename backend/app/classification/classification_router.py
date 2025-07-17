@@ -37,8 +37,8 @@ class ClassificationRouter:
                 result = json.loads(json_str)
 
                 return {
-                    "needs_devrel": result.get("needs_devrel", True),
-                    "priority": result.get("priority", "medium"),
+                    "needs_devrel": result.get("needs_devrel", False),
+                    "priority": result.get("priority", "low"),
                     "reasoning": result.get("reasoning", "LLM classification"),
                     "original_message": message
                 }
@@ -50,10 +50,10 @@ class ClassificationRouter:
             return self._fallback_triage(message)
 
     def _fallback_triage(self, message: str) -> Dict[str, Any]:
-        """Fallback: assume it needs DevRel help"""
+        """Fallback: be conservative and assume it doesn't need DevRel help"""
         return {
-            "needs_devrel": True,
-            "priority": "medium",
-            "reasoning": "Fallback - assuming DevRel assistance needed",
+            "needs_devrel": False,
+            "priority": "low",
+            "reasoning": "Fallback - conservative approach, no DevRel assistance needed",
             "original_message": message
         }
