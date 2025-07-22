@@ -3,6 +3,7 @@ from .operations import (
     search_similar_contributors,
     search_contributors_by_keywords,
     get_contributor_profile,
+    search_contributors,
     WeaviateUserOperations
 )
 
@@ -13,6 +14,7 @@ __all__ = [
     "search_similar_contributors",
     "search_contributors_by_keywords",
     "get_contributor_profile",
+    "search_contributors",
     "WeaviateUserOperations",
     "get_weaviate_client"
 ]

@@ -213,7 +213,66 @@ class WeaviateUserOperations:
             logger.error(f"Unexpected error in keyword search: {str(e)}")
             return []
 
-    # TODO: Add hybrid search for contributors. Default in built hybrid search doesn't support custom vectors.
+    async def hybrid_search_contributors(
+        self,
+        query_embedding: List[float],
+        keywords: List[str],
+        limit: int = 10,
+        vector_weight: float = 0.7,
+        bm25_weight: float = 0.3
+    ) -> List[Dict[str, Any]]:
+        """
+        Hybrid search combining vector similarity and BM25 keyword search.
+        """
+        try:
+            vector_results = await self.search_similar_contributors(
+                query_embedding, limit
+            ) if query_embedding else []
+
+            bm25_results = await self.search_contributors_by_keywords(
+                keywords, limit
+            ) if keywords else []
+
+            combined = {}
+
+            for result in vector_results:
+                user_id = result["user_id"]
+                combined[user_id] = result.copy()
+                combined[user_id]["vector_score"] = result.get("similarity_score", 0.0)
+                combined[user_id]["bm25_score"] = 0.0
+                combined[user_id]["search_method"] = "vector"
+
+            max_bm25_score = max([r.get("search_score", 0) for r in bm25_results]) if bm25_results else 1.0
+
+            for result in bm25_results:
+                user_id = result["user_id"]
+                normalized_bm25 = result.get("search_score", 0) / max_bm25_score if max_bm25_score > 0 else 0.0
+                if user_id in combined:
+                    combined[user_id]["bm25_score"] = normalized_bm25
+                    combined[user_id]["search_method"] = "hybrid"
+                else:
+                    combined[user_id] = result.copy()
+                    combined[user_id]["vector_score"] = 0.0
+                    combined[user_id]["bm25_score"] = normalized_bm25
+                    combined[user_id]["search_method"] = "bm25"
+
+            for result in combined.values():
+                result["hybrid_score"] = (
+                    vector_weight * result["vector_score"] + bm25_weight * result["bm25_score"]
+                )
+
+            final_results = sorted(
+                combined.values(),
+                key=lambda x: x["hybrid_score"],
+                reverse=True
+            )[:limit]
+
+            logger.info(f"Hybrid search returned {len(final_results)} results")
+            return final_results
+
+        except Exception as e:
+            logger.error(f"Error in hybrid search: {str(e)}")
+            return []
 
     async def get_contributor_profile(self, github_username: str) -> Optional[WeaviateUserProfile]:
         """Get a specific contributor's profile by GitHub username."""
@@ -303,3 +362,18 @@ async def get_contributor_profile(github_username: str) -> Optional[WeaviateUser
     """Convenience function to get a contributor's profile by GitHub username."""
     operations = WeaviateUserOperations()
     return await operations.get_contributor_profile(github_username)
+
+async def search_contributors(
+    query_embedding: List[float],
+    keywords: List[str],
+    limit: int = 10,
+    vector_weight: float = 0.7,
+    bm25_weight: float = 0.3
+) -> List[Dict[str, Any]]:
+    """
+    Convenience function to perform hybrid search combining vector similarity and BM25 keyword search.
+    """
+    operations = WeaviateUserOperations()
+    return await operations.hybrid_search_contributors(
+        query_embedding, keywords, limit, vector_weight, bm25_weight
+    )
