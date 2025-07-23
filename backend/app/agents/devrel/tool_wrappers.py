@@ -55,3 +55,37 @@ async def github_toolkit_tool_node(state: AgentState, github_toolkit) -> Dict[st
         }
 
     return add_tool_result(state, "github_toolkit", tool_result)
+
+
+async def thinking_node_tool_node(state: AgentState, llm) -> Dict[str, Any]:
+    """Rephrase user query into a clean and clear question"""
+    logger.info(f"Executing Thinking Node for session {state.session_id}")
+
+    latest_message = ""
+    if state.messages:
+        latest_message = state.messages[-1].get("content", "")
+    elif state.context.get("original_message"):
+        latest_message = state.context["original_message"]
+
+    # Prompt to rephrase
+    prompt = (
+        "Rephrase this user query into a clear and formal question "
+        "suitable for an FAQ or web search:\n\n"
+        f"'{latest_message}'"
+    )
+
+    from langchain_core.messages import HumanMessage
+    try:
+        llm_response = await llm.ainvoke([HumanMessage(content=prompt)])
+        clean_question = llm_response.content.strip()
+    except Exception as e:
+        logger.error(f"Thinking node LLM error: {e}")
+        clean_question = latest_message  # fallback
+
+    # Store in state context
+    state.context["rephrased_query"] = clean_question
+
+    return add_tool_result(state, "thinking_node", {
+        "type": "thinking_node",
+        "rephrased_query": clean_question
+    })
