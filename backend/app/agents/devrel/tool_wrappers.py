@@ -5,6 +5,7 @@ from .nodes.react_supervisor import add_tool_result
 from .nodes.handlers.faq import handle_faq_node
 from .nodes.handlers.web_search import handle_web_search_node
 from .nodes.handlers.onboarding import handle_onboarding_node
+from langchain_core.messages import HumanMessage
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,6 @@ async def thinking_node_tool_node(state: AgentState, llm) -> Dict[str, Any]:
         f"'{latest_message}'"
     )
 
-    from langchain_core.messages import HumanMessage
     try:
         llm_response = await llm.ainvoke([HumanMessage(content=prompt)])
         clean_question = llm_response.content.strip()
