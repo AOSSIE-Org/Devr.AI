@@ -44,6 +44,8 @@ class DiscordBot(commands.Bot):
         if message.author == self.user:
             return
 
+        await message.channel.send("✅ I received your message!")
+
         # if message is a command (starts with !)
         ctx = await self.get_context(message)
         if ctx.command is not None:
