@@ -25,26 +25,21 @@ class DiscordBot(commands.Bot):
 
         self.queue_manager = queue_manager
         self.classifier = ClassificationRouter()
-        self.active_threads: Dict[str, str] = {}  # user_id -> thread_id mapping
+        self.active_threads: Dict[str, str] = {}
 
-        # Register queue handlers
         self._register_queue_handlers()
 
     def _register_queue_handlers(self):
-        """Register handlers for queue messages"""
         self.queue_manager.register_handler("discord_response", self._handle_agent_response)
 
     async def on_ready(self):
-        """Bot ready event"""
         logger.info(f'Enhanced Discord bot logged in as {self.user}')
         print(f'Bot is ready! Logged in as {self.user}')
 
     async def on_message(self, message):
-        """Enhanced message handling with classification"""
         if message.author == self.user:
             return
 
-        # if message is a command (starts with !)
         ctx = await self.get_context(message)
         if ctx.command is not None:
             await self.invoke(ctx)
@@ -69,14 +64,10 @@ class DiscordBot(commands.Bot):
             logger.error(f"Error processing message: {str(e)}")
 
     async def _handle_devrel_message(self, message, triage_result: Dict[str, Any]):
-        """Handle messages that need DevRel intervention"""
         try:
             user_id = str(message.author.id)
-
-            # Get or create thread for this user
             thread_id = await self._get_or_create_thread(message, user_id)
 
-            # Prepare message for agent processing
             agent_message = {
                 "type": "devrel_request",
                 "id": f"discord_{message.id}",
@@ -94,7 +85,6 @@ class DiscordBot(commands.Bot):
                 }
             }
 
-            # Determine priority based on triage
             priority_map = {
                 "high": QueuePriority.HIGH,
                 "medium": QueuePriority.MEDIUM,
@@ -102,46 +92,39 @@ class DiscordBot(commands.Bot):
             }
             priority = priority_map.get(triage_result.get("priority"), QueuePriority.MEDIUM)
 
-            # Enqueue for agent processing
             await self.queue_manager.enqueue(agent_message, priority)
 
-            # Send acknowledgment in thread
+            # ✅ Improved single acknowledgment in thread only
             if thread_id:
                 thread = self.get_channel(int(thread_id))
                 if thread:
-                    await thread.send("I'm processing your request, please hold on...")
+                    await thread.send("✅ I received your message and I’m processing it now...")
 
         except Exception as e:
             logger.error(f"Error handling DevRel message: {str(e)}")
 
     async def _get_or_create_thread(self, message, user_id: str) -> Optional[str]:
-        """Get existing thread or create new one for user"""
         try:
-            # Check if user already has an active thread
             if user_id in self.active_threads:
                 thread_id = self.active_threads[user_id]
                 thread = self.get_channel(int(thread_id))
 
-                # Verify thread still exists and is active
                 if thread and not thread.archived:
                     return thread_id
                 else:
                     del self.active_threads[user_id]
                     logger.info(f"Cleaned up archived thread for user {user_id}")
 
-            # Create new thread
             thread_name = f"DevRel Chat - {message.author.display_name}"
 
             if isinstance(message.channel, discord.TextChannel):
                 thread = await message.create_thread(
                     name=thread_name,
-                    auto_archive_duration=60  # 1 hour
+                    auto_archive_duration=60
                 )
 
-                # Store thread mapping
                 self.active_threads[user_id] = str(thread.id)
 
-                # Send welcome message
                 await thread.send(
                     f"Hello {message.author.mention}! 👋\n"
                     f"I'm your DevRel assistant. I can help you with:\n"
@@ -157,10 +140,9 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             logger.error(f"Failed to create thread: {str(e)}")
 
-        return str(message.channel.id)  # Fallback to original channel
+        return str(message.channel.id)
 
     async def _handle_agent_response(self, response_data: Dict[str, Any]):
-        """Handle response from DevRel agent"""
         try:
             thread_id = response_data.get("thread_id")
             response_text = response_data.get("response", "")
@@ -171,7 +153,6 @@ class DiscordBot(commands.Bot):
 
             thread = self.get_channel(int(thread_id))
             if thread:
-                # Split long responses into multiple messages
                 if len(response_text) > 2000:
                     chunks = [response_text[i:i+2000] for i in range(0, len(response_text), 2000)]
                     for chunk in chunks:
