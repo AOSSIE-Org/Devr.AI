@@ -15,6 +15,8 @@ from .nodes.summarization import check_summarization_needed, summarize_conversat
 from .nodes.react_supervisor import react_supervisor_node, supervisor_decision_router
 from .tool_wrappers import web_search_tool_node, onboarding_tool_node, github_toolkit_tool_node, thinking_node_tool_node
 from .nodes.generate_response import generate_response_node
+from .tool_wrappers import thinking_node_tool_node
+
 
 # ✅ Import new FAQ handler
 from app.agents.devrel.nodes.handlers.faq import handle_faq_node_with_llm
@@ -41,6 +43,7 @@ class DevRelAgent(BaseAgent):
         workflow = StateGraph(AgentState)
 
         # Phase 1: Gather Context
+
         workflow.add_node("gather_context", gather_context_node)
         workflow.add_node("thinking_node", partial(thinking_node_tool_node, llm=self.llm))
         workflow.add_edge("gather_context", "thinking_node")

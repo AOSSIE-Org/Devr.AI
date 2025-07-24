@@ -75,6 +75,10 @@ async def thinking_node_tool_node(state: AgentState, llm) -> Dict[str, Any]:
         f"'{latest_message}'"
     )
 
+<<<<<<< HEAD
+=======
+    from langchain_core.messages import HumanMessage
+>>>>>>> 661e709 (Added Discord bot integration for message triage and DevRel support; updated frontend dependencies)
     try:
         llm_response = await llm.ainvoke([HumanMessage(content=prompt)])
         clean_question = llm_response.content.strip()

@@ -48,6 +48,12 @@ feat/thinking-node
         if message.author == self.user:
             return
 
+<<<<<<< HEAD
+=======
+        await message.channel.send("✅ I received your message!")
+
+        # if message is a command (starts with !)
+>>>>>>> 661e709 (Added Discord bot integration for message triage and DevRel support; updated frontend dependencies)
         ctx = await self.get_context(message)
         if ctx.command is not None:
             await self.invoke(ctx)
