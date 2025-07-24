@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from app.agents.state import AgentState
 from .nodes.react_supervisor import add_tool_result
-from .nodes.handlers.faq import handle_faq_node
+from app.agents.devrel.nodes.handlers.faq import handle_faq_node_with_llm
 from .nodes.handlers.web_search import handle_web_search_node
 from .nodes.handlers.onboarding import handle_onboarding_node
 from langchain_core.messages import HumanMessage
@@ -21,7 +21,7 @@ async def faq_handler_tool_node(state: AgentState, faq_tool) -> Dict[str, Any]:
     """Execute FAQ handler tool and add result to ReAct context"""
     logger.info(f"Executing FAQ handler tool for session {state.session_id}")
 
-    handler_result = await handle_faq_node(state, faq_tool)
+    handler_result = await handle_faq_node_with_llm(state, faq_tool)
     tool_result = handler_result.get("task_result", {})
     return add_tool_result(state, "faq_handler", tool_result)
 

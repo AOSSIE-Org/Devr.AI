@@ -15,7 +15,17 @@ class DevRelCommands(commands.Cog):
     def __init__(self, bot: DiscordBot, queue_manager: AsyncQueueManager):
         self.bot = bot
         self.queue = queue_manager
-        self.cleanup_expired_tokens.start()
+        self.cleanup_expired_tokens = self.cleanup_expired_tokens_task()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if not self.cleanup_expired_tokens.is_running():
+            self.cleanup_expired_tokens.start()
+
+    @tasks.loop(minutes=10)
+    async def cleanup_expired_tokens_task(self):
+        # Your logic here
+        pass
 
     def cog_unload(self):
         """Clean up when cog is unloaded"""

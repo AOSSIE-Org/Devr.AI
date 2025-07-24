@@ -10,7 +10,7 @@ async def handle_web_search(query: str) -> Dict[str, Any]:
 
     try:
         search_tool = DuckDuckGoSearchTool()
-        search_results = await search_tool.search(query, max_results=5)
+        search_results = await search_tool._arun(query)
 
         if not search_results:
             return {

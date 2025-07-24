@@ -4,20 +4,22 @@ from functools import partial
 from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import InMemorySaver
+
 from ..base_agent import BaseAgent, AgentState
 from .tools.search_tool.ddg import DuckDuckGoSearchTool
-from .tools.faq_tool import FAQTool
 from .github.github_toolkit import GitHubToolkit
 from app.core.config import settings
+
 from .nodes.gather_context import gather_context_node
 from .nodes.summarization import check_summarization_needed, summarize_conversation_node, store_summary_to_database
 from .nodes.react_supervisor import react_supervisor_node, supervisor_decision_router
-from .tool_wrappers import web_search_tool_node, faq_handler_tool_node, onboarding_tool_node, github_toolkit_tool_node
+from .tool_wrappers import web_search_tool_node, onboarding_tool_node, github_toolkit_tool_node, thinking_node_tool_node
 from .nodes.generate_response import generate_response_node
-from .tool_wrappers import thinking_node_tool_node
 
-
+# ✅ Import new FAQ handler
+from app.agents.devrel.nodes.handlers.faq import handle_faq_node_with_llm
 logger = logging.getLogger(__name__)
+
 
 class DevRelAgent(BaseAgent):
     """DevRel LangGraph Agent for community support and engagement"""
@@ -30,7 +32,6 @@ class DevRelAgent(BaseAgent):
             google_api_key=settings.gemini_api_key
         )
         self.search_tool = DuckDuckGoSearchTool()
-        self.faq_tool = FAQTool()
         self.github_toolkit = GitHubToolkit()
         self.checkpointer = InMemorySaver()
         super().__init__("DevRelAgent", self.config)
@@ -40,7 +41,6 @@ class DevRelAgent(BaseAgent):
         workflow = StateGraph(AgentState)
 
         # Phase 1: Gather Context
-
         workflow.add_node("gather_context", gather_context_node)
         workflow.add_node("thinking_node", partial(thinking_node_tool_node, llm=self.llm))
         workflow.add_edge("gather_context", "thinking_node")
@@ -49,7 +49,7 @@ class DevRelAgent(BaseAgent):
         # Phase 2: ReAct Supervisor - Decide what to do next
         workflow.add_node("react_supervisor", partial(react_supervisor_node, llm=self.llm))
         workflow.add_node("web_search_tool", partial(web_search_tool_node, search_tool=self.search_tool, llm=self.llm))
-        workflow.add_node("faq_handler_tool", partial(faq_handler_tool_node, faq_tool=self.faq_tool))
+        workflow.add_node("faq_handler_tool", partial(handle_faq_node_with_llm, llm=self.llm))  # ✅ Updated usage
         workflow.add_node("onboarding_tool", onboarding_tool_node)
         workflow.add_node("github_toolkit_tool", partial(github_toolkit_tool_node, github_toolkit=self.github_toolkit))
 
@@ -62,7 +62,6 @@ class DevRelAgent(BaseAgent):
 
         # Entry point
         workflow.set_entry_point("gather_context")
-        workflow.add_edge("gather_context", "react_supervisor")
 
         # ReAct supervisor routing
         workflow.add_conditional_edges(

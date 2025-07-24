@@ -94,12 +94,6 @@ class DiscordBot(commands.Bot):
 
             await self.queue_manager.enqueue(agent_message, priority)
 
-            # ✅ Improved single acknowledgment in thread only
-            if thread_id:
-                thread = self.get_channel(int(thread_id))
-                if thread:
-                    await thread.send("✅ I received your message and I’m processing it now...")
-
         except Exception as e:
             logger.error(f"Error handling DevRel message: {str(e)}")
 
