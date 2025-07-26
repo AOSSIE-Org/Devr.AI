@@ -36,7 +36,7 @@ class GitHubIssueProcessor:
             issue_url = f"{profiler.base_url}/repos/{self.owner}/{self.repo}/issues/{self.issue_number}"
             comments_url = f"{issue_url}/comments"
 
-            issue_data = await profiler._make_request(issue_url)
+            issue_data = await profiler.request(issue_url)
             if not issue_data:
                 raise ValueError("Failed to fetch issue data.")
 
@@ -45,7 +45,7 @@ class GitHubIssueProcessor:
                 f"Body: {issue_data['body']}",
             ]
 
-            comments_data = await profiler._make_request(comments_url)
+            comments_data = await profiler.request(comments_url)
             if comments_data:
                 comment_texts = [
                     f"Comment by {c['user']['login']}: {c['body']}"
