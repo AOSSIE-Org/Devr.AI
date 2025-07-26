@@ -27,7 +27,7 @@ class GitHubIssueProcessor:
         )
         self.embedding_service = EmbeddingService()
 
-    async def _fetch_issue_content(self) -> str:
+    async def fetch_issue_content(self) -> str:
         """
         Fetches and consolidates all text content from a GitHub issue.
         """
@@ -69,7 +69,7 @@ class GitHubIssueProcessor:
         Returns a vector embedding representing the issue.
         """
         try:
-            content = await self._fetch_issue_content()
+            content = await self.fetch_issue_content()
             if not content:
                 raise ValueError("Failed to fetch issue content.")
 
