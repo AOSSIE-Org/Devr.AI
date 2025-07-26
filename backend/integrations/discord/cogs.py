@@ -16,7 +16,7 @@ class DevRelCommands(commands.Cog):
     def __init__(self, bot: DiscordBot, queue_manager: AsyncQueueManager):
         self.bot = bot
         self.queue = queue_manager
-        self.cleanup_expired_tokens = self.cleanup_expired_tokens  # reference the loop task (not calling it!)
+        self.cleanup_expired_tokens.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
