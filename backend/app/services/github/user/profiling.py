@@ -74,6 +74,10 @@ class GitHubUserProfiler:
             logger.error(f"Error making request to {url}: {str(e)}")
             return None
 
+    async def request(self, url: str, params: Dict | None = None) -> Optional[Dict]:
+        """Public, stable wrapper around the internal HTTP helper."""
+        return await self._make_request(url, params)
+
     async def get_user_data(self, github_username: str) -> Optional[Dict]:
         """Fetch user data"""
         url = f"{self.base_url}/users/{github_username}"

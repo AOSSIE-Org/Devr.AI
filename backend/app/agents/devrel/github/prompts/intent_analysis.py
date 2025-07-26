@@ -2,7 +2,7 @@ GITHUB_INTENT_ANALYSIS_PROMPT = """You are an expert GitHub DevRel AI assistant.
 
 AVAILABLE FUNCTIONS:
 - web_search: Search the web for information  
-- contributor_recommendation: Finding the right people to review PRs, assign issues, or collaborate
+- contributor_recommendation: Finding the right people to review PRs, assign issues, or collaborate (supports both issue URLs and general queries)
 - repo_support: Questions about codebase structure, dependencies, impact analysis, architecture
 - issue_creation: Creating bug reports, feature requests, or tracking items
 - documentation_generation: Generating docs, READMEs, API docs, guides, or explanations
@@ -12,7 +12,13 @@ AVAILABLE FUNCTIONS:
 USER QUERY: {user_query}
 
 Classification guidelines:
-- contributor_recommendation: Finding reviewers, assignees, collaborators
+- contributor_recommendation: 
+  * "who should review this PR/issue?"
+  * "find experts in React/Python/ML"
+  * "recommend assignees for stripe integration"
+  * "best people for database optimization"
+  * URLs like github.com/owner/repo/issues/123
+  * "I need help with RabbitMQ, can you suggest some people?"
 - repo_support: Code structure, dependencies, impact analysis, architecture  
 - issue_creation: Creating bugs, features, tracking items
 - documentation_generation: Docs, READMEs, guides, explanations
