@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 import logging
 from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
@@ -15,11 +16,15 @@ class DevRelCommands(commands.Cog):
     def __init__(self, bot: DiscordBot, queue_manager: AsyncQueueManager):
         self.bot = bot
         self.queue = queue_manager
+ feat/thinking-node
         self.cleanup_expired_tokens = self.cleanup_expired_tokens_task()
+
+ main
 
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.cleanup_expired_tokens.is_running():
+feat/thinking-node
             self.cleanup_expired_tokens.start()
 
     @tasks.loop(minutes=10)
@@ -27,15 +32,20 @@ class DevRelCommands(commands.Cog):
         # Your logic here
         pass
 
+            print("--> Starting the token cleanup task...")
+            self.cleanup_expired_tokens.start() 
+          main
+
     def cog_unload(self):
-        """Clean up when cog is unloaded"""
         self.cleanup_expired_tokens.cancel()
 
     @tasks.loop(minutes=5)
     async def cleanup_expired_tokens(self):
         """Periodic cleanup of expired verification tokens"""
         try:
+            print("--> Running token cleanup task...")
             await cleanup_expired_tokens()
+            print("--> Token cleanup task finished.")
         except Exception as e:
             logger.error(f"Error during token cleanup: {e}")
 
@@ -44,10 +54,9 @@ class DevRelCommands(commands.Cog):
         """Wait until the bot is ready before starting cleanup"""
         await self.bot.wait_until_ready()
 
-    @commands.command(name="reset")
-    async def reset_thread(self, ctx: commands.Context):
-        """Reset your DevRel thread and memory."""
-        user_id = str(ctx.author.id)
+    @app_commands.command(name="reset", description="Reset your DevRel thread and memory.")
+    async def reset_thread(self, interaction: discord.Interaction):
+        user_id = str(interaction.user.id)
         cleanup = {
             "type": "clear_thread_memory",
             "memory_thread_id": user_id,
@@ -56,11 +65,10 @@ class DevRelCommands(commands.Cog):
         }
         await self.queue.enqueue(cleanup, QueuePriority.HIGH)
         self.bot.active_threads.pop(user_id, None)
-        await ctx.send("Your DevRel thread & memory have been reset! Send another message to start fresh.")
+        await interaction.response.send_message("Your DevRel thread & memory have been reset!", ephemeral=True)
 
-    @commands.command(name="help_devrel")
-    async def help_devrel(self, ctx: commands.Context):
-        """Show DevRel assistant help."""
+    @app_commands.command(name="help", description="Show DevRel assistant help.")
+    async def help_devrel(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="DevRel Assistant Help",
             description="I can help you with Devr.AI related questions!",
@@ -69,101 +77,62 @@ class DevRelCommands(commands.Cog):
         embed.add_field(
             name="Commands",
             value=(
-                "• `!reset` – Reset your DevRel thread and memory\n"
-                "• `!help_devrel` – Show this help message\n"
-                "• `!verify_github` – Link your GitHub account\n"
-                "• `!verification_status` – Check your verification status\n"
+                "• `/reset` - Reset your DevRel thread and memory\n"
+                "• `/help` - Show this help message\n"
+                "• `/verify_github` - Link your GitHub account\n"
+                "• `/verification_status` - Check your verification status\n"
             ),
             inline=False
         )
-        embed.add_field(
-            name="Features",
-            value=(
-                "• Technical support and troubleshooting\n"
-                "• Onboarding assistance\n"
-                "• Web search capabilities\n"
-                "• Community FAQ answers\n"
-            ),
-            inline=False
-        )
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
-    @commands.command(name="verification_status")
-    async def verification_status(self, ctx: commands.Context):
-        """Check your GitHub verification status."""
+    @app_commands.command(name="verification_status",
+                          description="Check your GitHub verification status.")
+    async def verification_status(self, interaction: discord.Interaction):
         try:
             user_profile = await get_or_create_user_by_discord(
-                discord_id=str(ctx.author.id),
-                display_name=ctx.author.display_name,
-                discord_username=ctx.author.name,
-                avatar_url=str(ctx.author.avatar.url) if ctx.author.avatar else None,
+                discord_id=str(interaction.user.id),
+                display_name=interaction.user.display_name,
+                discord_username=interaction.user.name,
+                avatar_url=str(interaction.user.avatar.url) if interaction.user.avatar else None,
             )
-
             if user_profile.is_verified and user_profile.github_id:
-                embed = discord.Embed(
-                    title="✅ Verification Status",
-                    color=discord.Color.green()
-                )
-                embed.add_field(
-                    name="GitHub Account",
-                    value=f"`{user_profile.github_username}`",
-                    inline=True
-                )
-                embed.add_field(
-                    name="Verified At",
-                    value=f"<t:{int(user_profile.verified_at.timestamp())}:R>" if user_profile.verified_at else "Unknown",
-                    inline=True
-                )
-                embed.add_field(
-                    name="Status",
-                    value="✅ Verified",
-                    inline=True
-                )
+                embed = discord.Embed(title="✅ Verification Status",
+                                      color=discord.Color.green())
+                embed.add_field(name="GitHub Account", value=f"`{user_profile.github_username}`", inline=True)
+                embed.add_field(name="Status", value="✅ Verified", inline=True)
             else:
-                embed = discord.Embed(
-                    title="❌ Verification Status",
-                    description="Your GitHub account is not linked.",
-                    color=discord.Color.red()
-                )
-                embed.add_field(
-                    name="Next Steps",
-                    value="Use `!verify_github` to link your GitHub account.",
-                    inline=False
-                )
-
-            await ctx.reply(embed=embed)
-
+                embed = discord.Embed(title="❌ Verification Status",
+                                      description="Your GitHub account is not linked.",
+                                      color=discord.Color.red())
+                embed.add_field(name="Next Steps",
+                                value="Use `/verify_github` to link your GitHub account.",
+                                inline=False)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
-            logger.error(f"Error checking verification status for user {ctx.author.id}: {e}")
-            await ctx.reply("❌ Error checking verification status. Please try again.")
+            logger.error(f"Error checking verification status: {e}")
+            await interaction.response.send_message("❌ Error checking verification status.", ephemeral=True)
 
-    @commands.command(name="verify_github")
-    async def verify_github(self, ctx: commands.Context):
-        """Initiates the GitHub account linking and verification process."""
+    @app_commands.command(name="verify_github", description="Link your GitHub account.")
+    async def verify_github(self, interaction: discord.Interaction):
         try:
-            logger.info(f"User {ctx.author.name}({ctx.author.id}) has requested for GitHub verification")
-
+            await interaction.response.defer(ephemeral=True)
+            
             user_profile = await get_or_create_user_by_discord(
-                discord_id=str(ctx.author.id),
-                display_name=ctx.author.display_name,
-                discord_username=ctx.author.name,
-                avatar_url=str(ctx.author.avatar.url) if ctx.author.avatar else None,
+                discord_id=str(interaction.user.id),
+                display_name=interaction.user.display_name,
+                discord_username=interaction.user.name,
+                avatar_url=str(interaction.user.avatar.url) if interaction.user.avatar else None,
             )
-
             if user_profile.is_verified and user_profile.github_id:
                 embed = discord.Embed(
                     title="✅ Already Verified",
                     description=f"Your GitHub account `{user_profile.github_username}` is already linked!",
                     color=discord.Color.green()
                 )
-                embed.add_field(
-                    name="Verified At",
-                    value=f"<t:{int(user_profile.verified_at.timestamp())}:R>" if user_profile.verified_at else "Unknown",
-                    inline=True
-                )
-                await ctx.reply(embed=embed)
+                await interaction.followup.send(embed=embed, ephemeral=True)
                 return
-
+                
             if user_profile.verification_token:
                 embed = discord.Embed(
                     title="⏳ Verification Pending",
@@ -175,28 +144,18 @@ class DevRelCommands(commands.Cog):
                     value="Please complete the existing verification or wait for it to expire (5 minutes).",
                     inline=False
                 )
-                await ctx.reply(embed=embed)
+                await interaction.followup.send(embed=embed, ephemeral=True)
                 return
 
-            session_id = await create_verification_session(str(ctx.author.id))
+            session_id = await create_verification_session(str(interaction.user.id))
             if not session_id:
                 raise Exception("Failed to create verification session.")
 
-            logger.info(f"Created verification session for user {ctx.author.id}: {session_id[:8]}...")
-
-            if not settings.backend_url:
-                raise Exception("Backend URL not configured. Please set BACKEND_URL environment variable.")
-
             callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
-            logger.info(f"Using callback URL: {callback_url}")
-
             auth_url_data = await login_with_github(redirect_to=callback_url)
             auth_url = auth_url_data.get("url")
-
             if not auth_url:
                 raise Exception("Failed to generate OAuth URL.")
-
-            logger.info(f"Generated OAuth URL for user {ctx.author.id}")
 
             embed = discord.Embed(
                 title="🔗 Link Your GitHub Account",
@@ -222,54 +181,16 @@ class DevRelCommands(commands.Cog):
             )
 
             view = OAuthView(auth_url, "GitHub")
-
-            try:
-                await ctx.author.send(embed=embed, view=view)
-
-                confirmation_embed = discord.Embed(
-                    title="📨 Check Your DMs",
-                    description="I've sent you a private message with the GitHub verification link.",
-                    color=discord.Color.green()
-                )
-                confirmation_embed.add_field(
-                    name="⏰ Time Limit",
-                    value="Please complete the verification within 5 minutes.",
-                    inline=False
-                )
-                await ctx.reply(embed=confirmation_embed)
-
-            except discord.Forbidden:
-                embed.add_field(
-                    name="🔒 Privacy Notice",
-                    value="**Please enable DMs for a more secure experience.**",
-                    inline=False
-                )
-                await ctx.reply(embed=embed, view=view)
-
-        except discord.Forbidden:
-            error_embed = discord.Embed(
-                title="❌ DM Error",
-                description=(
-                    "I couldn't send you a DM. Please:\n"
-                    "1. Enable DMs from server members in your privacy settings\n"
-                    "2. Try the command again"
-                ),
-                color=discord.Color.red()
-            )
-            await ctx.reply(embed=error_embed)
-
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
         except Exception as e:
-            logger.error(f"Error in !verify_github for user {ctx.author.id}: {e}", exc_info=True)
-
+            logger.error(f"Error in /verify_github: {e}")
             error_embed = discord.Embed(
                 title="❌ Verification Error",
-                description="An error occurred during verification setup. Please try again or contact support.",
+                description="An error occurred. Please contact an administrator.",
                 color=discord.Color.red()
             )
-            if "Backend URL not configured" in str(e):
-                error_embed.add_field(
-                    name="Configuration Issue",
-                    value="The bot is not properly configured. Please contact an administrator.",
-                    inline=False
-                )
-            await ctx.reply(embed=error_embed)
+            await interaction.followup.send(embed=error_embed, ephemeral=True)
+
+async def setup(bot: commands.Bot):
+    """This function is called by the bot to load the cog."""
+    await bot.add_cog(DevRelCommands(bot, bot.queue_manager))

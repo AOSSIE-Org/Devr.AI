@@ -6,7 +6,7 @@ from app.core.config import settings
 from .prompts.intent_analysis import GITHUB_INTENT_ANALYSIS_PROMPT
 from .tools.search import handle_web_search
 # TODO: Implement all tools
-# from .tools.contributor_recommendation import handle_contributor_recommendation
+from .tools.contributor_recommendation import handle_contributor_recommendation
 # from .tools.repository_query import handle_repo_query
 # from .tools.issue_creation import handle_issue_creation
 # from .tools.documentation_generation import handle_documentation_generation
@@ -102,8 +102,7 @@ class GitHubToolkit:
             logger.info(f"Executing {classification} for query")
 
             if classification == "contributor_recommendation":
-                result = "Not implemented"
-                # result = await handle_contributor_recommendation(query)
+                result = await handle_contributor_recommendation(query)
             elif classification == "repo_support":
                 result = "Not implemented"
                 # result = await handle_repo_query(query)
