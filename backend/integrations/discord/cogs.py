@@ -16,28 +16,17 @@ class DevRelCommands(commands.Cog):
     def __init__(self, bot: DiscordBot, queue_manager: AsyncQueueManager):
         self.bot = bot
         self.queue = queue_manager
- feat/thinking-node
-        self.cleanup_expired_tokens = self.cleanup_expired_tokens_task()
-
- main
+        self.cleanup_expired_tokens = self.cleanup_expired_tokens  # reference the loop task (not calling it!)
 
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.cleanup_expired_tokens.is_running():
-feat/thinking-node
+            print("--> Starting the token cleanup task...")
             self.cleanup_expired_tokens.start()
 
-    @tasks.loop(minutes=10)
-    async def cleanup_expired_tokens_task(self):
-        # Your logic here
-        pass
-
-            print("--> Starting the token cleanup task...")
-            self.cleanup_expired_tokens.start() 
-          main
-
     def cog_unload(self):
-        self.cleanup_expired_tokens.cancel()
+        if self.cleanup_expired_tokens.is_running():
+            self.cleanup_expired_tokens.cancel()
 
     @tasks.loop(minutes=5)
     async def cleanup_expired_tokens(self):
@@ -117,7 +106,7 @@ feat/thinking-node
     async def verify_github(self, interaction: discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
-            
+
             user_profile = await get_or_create_user_by_discord(
                 discord_id=str(interaction.user.id),
                 display_name=interaction.user.display_name,
@@ -132,7 +121,7 @@ feat/thinking-node
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
                 return
-                
+
             if user_profile.verification_token:
                 embed = discord.Embed(
                     title="⏳ Verification Pending",
