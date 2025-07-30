@@ -29,30 +29,6 @@ dependencies = [
     "ddgs (>=9.0.2,<10.0.0)"
 ]
 
- feat/thinking-node
-    "discord-py (>=2.5.2,<3.0.0)",
-    "duckduckgo-search (>=8.1.1,<9.0.0)",
-
-    "ddgs (>=9.0.2,<10.0.0)",
-    "discord-py (>=2.5.2,<3.0.0)",
- main
-
-
-
-    "discord-py (>=2.5.2,<3.0.0)",
-    "duckduckgo-search (>=8.1.1,<9.0.0)",
-
-    "ddgs (>=9.0.2,<10.0.0)",
-    "discord-py (>=2.5.2,<3.0.0)",
-
-
-    "discord-py (>=2.5.2,<3.0.0)",
-    "duckduckgo-search (>=8.1.1,<9.0.0)",
-    "ddgs (>=9.0.2,<10.0.0)"
->>>>>>> 7ae6189 (Fixed Bugs)
->>>>>>> 6eb4a0d (Fixed Bugs)
-]
-
 [tool.poetry]
 packages = [{ include = "devr" }]
 package-mode = false

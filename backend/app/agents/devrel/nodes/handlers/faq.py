@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from app.agents.state import AgentState
-from app.agents.devrel.tools.search_tool.ddg import DuckDuckGoSearchTool
+from app.agents.devrel.tools.search_tool.duckduckgo_tool import DuckDuckGoSearchTool
 from langchain_core.messages import HumanMessage
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -61,7 +61,7 @@ async def handle_faq_node_with_llm(state: AgentState, llm: BaseChatModel) -> dic
 
     for query in queries:
         try:
-            result = await search_tool.ainvoke(query)
+            result = await search_tool.search(query)
             results.append(f"Query: {query}\n{result}")
         except Exception as e:
             logger.warning(

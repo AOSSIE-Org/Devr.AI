@@ -15,7 +15,6 @@ from .nodes.summarization import check_summarization_needed, summarize_conversat
 from .nodes.react_supervisor import react_supervisor_node, supervisor_decision_router
 from .tool_wrappers import web_search_tool_node, onboarding_tool_node, github_toolkit_tool_node, thinking_node_tool_node
 from .nodes.generate_response import generate_response_node
-from .tool_wrappers import thinking_node_tool_node
 
 
 # ✅ Import new FAQ handler
