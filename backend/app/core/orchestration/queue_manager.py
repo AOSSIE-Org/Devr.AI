@@ -29,8 +29,6 @@ class AsyncQueueManager:
         self.connection: Optional[aio_pika.RobustConnection] = None
         self.channel: Optional[aio_pika.abc.AbstractChannel] = None
 
-
-
     async def connect(self):
         try:
             rabbitmq_url = getattr(settings, 'rabbitmq_url', 'amqp://guest:guest@localhost/')

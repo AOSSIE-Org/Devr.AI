@@ -1,5 +1,6 @@
 import logging
 from typing import List
+
 from app.agents.state import AgentState
 from app.agents.devrel.tools.search_tool.ddg import DuckDuckGoSearchTool
 from langchain_core.messages import HumanMessage
@@ -12,8 +13,9 @@ async def _generate_queries_with_llm(llm: BaseChatModel, question: str) -> List[
     """Use LLM to generate 2–3 refined search queries for a FAQ question."""
     try:
         prompt = (
-            "You are an AI assistant. Given the following user question, generate 2–3 specific search queries "
-            "that can help answer it accurately from the web. Only return the queries, one per line, no bullet points.\n\n"
+            "You are an AI assistant. Given the following user question, "
+            "generate 2–3 specific search queries that can help answer it accurately from the web. "
+            "Only return the queries, one per line, no bullet points.\n\n"
             f"User question: {question}"
         )
 
@@ -22,7 +24,9 @@ async def _generate_queries_with_llm(llm: BaseChatModel, question: str) -> List[
         queries = [q.strip() for q in raw_queries if q.strip()]
         return queries or [question]
     except Exception as e:
-        logger.warning(f"[FAQ Handler] Query generation failed, using fallback. Error: {e}")
+        logger.warning(
+            f"[FAQ Handler] Query generation failed, using fallback. Error: {e}"
+        )
         return [question]
 
 
@@ -60,10 +64,14 @@ async def handle_faq_node_with_llm(state: AgentState, llm: BaseChatModel) -> dic
             result = await search_tool.ainvoke(query)
             results.append(f"Query: {query}\n{result}")
         except Exception as e:
-            logger.warning(f"[FAQ Handler] Search failed for query: {query} — {e}")
+            logger.warning(
+                f"[FAQ Handler] Search failed for query: {query} — {e}"
+            )
 
     # Combine and return results
-    combined_result = "\n\n".join(results) if results else "Sorry, no results found from the web."
+    combined_result = (
+        "\n\n".join(results) if results else "Sorry, no results found from the web."
+    )
 
     return {
         "task_result": {

@@ -34,7 +34,9 @@ async def handle_web_search_node(state: AgentState, search_tool, llm) -> dict:
         latest_message = state.context["original_message"]
 
     search_query = await _extract_search_query(latest_message, llm)
-    search_results = await search_tool.search(search_query)
+
+    # Fix: Use arun() instead of search()
+    search_results = await search_tool.arun(search_query)
 
     return {
         "task_result": {
@@ -51,7 +53,7 @@ def create_search_response(task_result: Dict[str, Any]) -> str:
     """
     Create a user-friendly response string from search results.
     """
-        
+
     query = task_result.get("query")
     results = task_result.get("results", [])
 
@@ -61,7 +63,7 @@ def create_search_response(task_result: Dict[str, Any]) -> str:
     response_parts = [f"Here's what I found for '{query}':"]
     for i, result in enumerate(results[:5]):
         title = result.get('title', 'N/A')
-        snippet = result.get('content', 'N/A') 
+        snippet = result.get('content', 'N/A')
         url = result.get('url', '#')
         response_parts.append(f"{i+1}. {title}: {snippet}")
         response_parts.append(f"   (Source: {url})")

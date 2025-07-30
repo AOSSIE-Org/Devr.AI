@@ -24,7 +24,11 @@ dependencies = [
     "python-dotenv (>=1.1.1,<2.0.0)",
     "aio-pika (>=9.5.5,<10.0.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
-<<<<<<< HEAD
+    "discord-py (>=2.5.2,<3.0.0)",
+    "duckduckgo-search (>=8.1.1,<9.0.0)",
+    "ddgs (>=9.0.2,<10.0.0)"
+]
+
  feat/thinking-node
     "discord-py (>=2.5.2,<3.0.0)",
     "duckduckgo-search (>=8.1.1,<9.0.0)",
@@ -32,15 +36,21 @@ dependencies = [
     "ddgs (>=9.0.2,<10.0.0)",
     "discord-py (>=2.5.2,<3.0.0)",
  main
-=======
-<<<<<<< HEAD
+
+
+
     "discord-py (>=2.5.2,<3.0.0)",
     "duckduckgo-search (>=8.1.1,<9.0.0)",
-=======
+
     "ddgs (>=9.0.2,<10.0.0)",
     "discord-py (>=2.5.2,<3.0.0)",
->>>>>>> 0231d01 (Refactor Discord bot to use slash commands and added ephemeral messages)
->>>>>>> e8d6eb2 (Refactor Discord bot to use slash commands and added ephemeral messages)
+
+
+    "discord-py (>=2.5.2,<3.0.0)",
+    "duckduckgo-search (>=8.1.1,<9.0.0)",
+    "ddgs (>=9.0.2,<10.0.0)"
+>>>>>>> 7ae6189 (Fixed Bugs)
+>>>>>>> 6eb4a0d (Fixed Bugs)
 ]
 
 [tool.poetry]
