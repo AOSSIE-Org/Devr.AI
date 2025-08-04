@@ -16,11 +16,12 @@ async def web_search_tool_node(state: AgentState, search_tool, llm) -> Dict[str,
     tool_result = handler_result.get("task_result", {})
     return add_tool_result(state, "web_search", tool_result)
 
-async def faq_handler_tool_node(state: AgentState, faq_tool) -> Dict[str, Any]:
+async def faq_handler_tool_node(state: AgentState, search_tool, llm) -> Dict[str, Any]:
     """Execute FAQ handler tool and add result to ReAct context"""
     logger.info(f"Executing FAQ handler tool for session {state.session_id}")
 
-    handler_result = await handle_faq_node(state, faq_tool)
+    # Updated to use search_tool and llm instead of faq_tool for dynamic FAQ
+    handler_result = await handle_faq_node(state, search_tool, llm)
     tool_result = handler_result.get("task_result", {})
     return add_tool_result(state, "faq_handler", tool_result)
 
@@ -31,7 +32,6 @@ async def onboarding_tool_node(state: AgentState) -> Dict[str, Any]:
     handler_result = await handle_onboarding_node(state)
     tool_result = handler_result.get("task_result", {})
     return add_tool_result(state, "onboarding", tool_result)
-
 
 async def github_toolkit_tool_node(state: AgentState, github_toolkit) -> Dict[str, Any]:
     """Execute GitHub toolkit tool and add result to ReAct context"""
