@@ -24,7 +24,7 @@ dependencies = [
     "aio-pika (>=9.5.5,<10.0.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
     "ddgs (>=9.0.2,<10.0.0)",
-    "discord-py (>=2.3.0,<3.0.0)",
+    "discord-py (>=2.4.0,<3.0.0)",
 ]
 
 [tool.poetry]

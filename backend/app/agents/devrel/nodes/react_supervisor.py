@@ -4,6 +4,8 @@ from typing import Dict, Any, Literal
 from app.agents.state import AgentState
 from langchain_core.messages import HumanMessage
 from ..prompts.react_prompt import REACT_SUPERVISOR_PROMPT
+from datetime import datetime
+from ..nodes.generate_response import _get_latest_message as get_latest_message_util
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +170,7 @@ def add_tool_result(state: AgentState, tool_name: str, result: Dict[str, Any]) -
             "tool": tool_name,
             "result": result,
             "iteration": state.context.get("iteration_count", 0),
-            "timestamp": json.dumps({"iteration": state.context.get("iteration_count", 0)})  # Simple timestamp
+            "timestamp": datetime.now().isoformat()  # Now actually stores timestamp
         }
 
         tool_results.append(tool_entry)
@@ -196,12 +198,7 @@ def add_tool_result(state: AgentState, tool_name: str, result: Dict[str, Any]) -
 def _get_latest_message(state: AgentState) -> str:
     """Extract the latest message from state with validation"""
     try:
-        if hasattr(state, 'messages') and state.messages:
-            latest = state.messages[-1]
-            if isinstance(latest, dict):
-                return latest.get("content", "")
-            return str(latest)
-        return state.context.get("original_message", "") if hasattr(state, 'context') else ""
+        return get_latest_message_util(state)
     except Exception as e:
         logger.error(f"Error getting latest message: {e}")
         return ""

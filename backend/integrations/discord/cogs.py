@@ -27,15 +27,17 @@ class DevRelCommands(commands.Cog):
         self.queue = queue_manager
         self._cleanup_task = None
 
+        # Set up cleanup method based on availability
+        if TASKS_AVAILABLE:
+            self._setup_tasks_cleanup()
+
     @commands.Cog.listener()
     async def on_ready(self):
-        if TASKS_AVAILABLE and hasattr(self, 'cleanup_expired_tokens'):
-            if not self.cleanup_expired_tokens.is_running():
+        if TASKS_AVAILABLE:
+            if hasattr(self, 'cleanup_expired_tokens') and not self.cleanup_expired_tokens.is_running():
                 print("--> Starting the token cleanup task...")
                 self.cleanup_expired_tokens.start()
-        else:
-            # Start manual cleanup task if tasks extension is not available
-            if not self._cleanup_task:
+            elif not self._cleanup_task:
                 self._cleanup_task = asyncio.create_task(self._manual_cleanup_loop())
                 print("--> Starting manual token cleanup task...")
 
