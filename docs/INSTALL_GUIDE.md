@@ -32,6 +32,7 @@ poetry --version  # Should show v2.0.0 or above
 3. **Install Python dependencies**
 ```sh
 poetry env use python3.10
+poetry lock
 poetry install --with dev
 ```
 
