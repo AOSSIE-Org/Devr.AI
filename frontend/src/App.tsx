@@ -13,6 +13,10 @@ import SupportPage from './components/pages/SupportPage';
 import LandingPage from './components/landing/LandingPage';
 import LoginPage from './components/pages/LoginPage';
 import ProfilePage from './components/pages/ProfilePage';
+import SignUpPage from './components/pages/SignUpPage';
+import { supabase } from './lib/supabaseClient';
+import ForgotPasswrdPage from './components/pages/ForgotPasswrdPage';
+import ResetPasswrdPage from './components/pages/ResetPasswrdPage';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -20,22 +24,21 @@ function App() {
   const [repoData, setRepoData] = useState<any>(null); // Store fetched repo stats
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check for existing authentication on app load
+  //Auto login if user has already logged in
   useEffect(() => {
-    const savedAuth = localStorage.getItem('isAuthenticated');
-    if (savedAuth === 'true') {
-      setIsAuthenticated(true);
-    }
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setIsAuthenticated(true);
+      }
+    });
   }, []);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
-    localStorage.setItem('isAuthenticated', 'true');
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem('isAuthenticated');
     setActivePage('landing');
     setRepoData(null);
   };
@@ -79,6 +82,30 @@ function App() {
                 <LoginPage onLogin={handleLogin} />
               )
             }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/" replace />
+              ) : (
+                <ForgotPasswrdPage />
+              )
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <ResetPasswrdPage/>
+            }
+          />
+          <Route
+            path="/signup"
+            element= {isAuthenticated ? (
+                <Navigate to="/" replace />
+              ) : (
+                <SignUpPage/>
+              )}
           />
           <Route
             path="/*"
