@@ -5233,4 +5233,8 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9, <4.0"
+ dynamic-faq-handler
 content-hash = "08ba3a64e2bb86ff6b0b8df3b8dc19bd737faab40e48113133b868f3496a04e0"
+
+content-hash = "650963e14f423a8460fab7ad2235b1c97f7d8da454feb95c1d366d7f6fd83094"
+main
