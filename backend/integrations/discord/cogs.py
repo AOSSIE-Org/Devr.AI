@@ -1,7 +1,8 @@
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 import logging
+import asyncio
 from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
 from app.services.auth.supabase import login_with_github
 from app.services.auth.management import get_or_create_user_by_discord
@@ -10,36 +11,69 @@ from integrations.discord.bot import DiscordBot
 from integrations.discord.views import OAuthView
 from app.core.config import settings
 
+# Try to import tasks, fallback if not available
+try:
+    from discord.ext import tasks
+    TASKS_AVAILABLE = True
+except ImportError:
+    TASKS_AVAILABLE = False
+    tasks = None
+
 logger = logging.getLogger(__name__)
 
 class DevRelCommands(commands.Cog):
     def __init__(self, bot: DiscordBot, queue_manager: AsyncQueueManager):
         self.bot = bot
         self.queue = queue_manager
+        self._cleanup_task = None
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if not self.cleanup_expired_tokens.is_running():
-            print("--> Starting the token cleanup task...")
-            self.cleanup_expired_tokens.start()
+        if TASKS_AVAILABLE and hasattr(self, 'cleanup_expired_tokens'):
+            if not self.cleanup_expired_tokens.is_running():
+                print("--> Starting the token cleanup task...")
+                self.cleanup_expired_tokens.start()
+        else:
+            # Start manual cleanup task if tasks extension is not available
+            if not self._cleanup_task:
+                self._cleanup_task = asyncio.create_task(self._manual_cleanup_loop())
+                print("--> Starting manual token cleanup task...")
 
     def cog_unload(self):
-        self.cleanup_expired_tokens.cancel()
+        if TASKS_AVAILABLE and hasattr(self, 'cleanup_expired_tokens'):
+            self.cleanup_expired_tokens.cancel()
+        if self._cleanup_task:
+            self._cleanup_task.cancel()
 
-    @tasks.loop(minutes=5)
-    async def cleanup_expired_tokens(self):
-        """Periodic cleanup of expired verification tokens"""
-        try:
-            print("--> Running token cleanup task...")
-            await cleanup_expired_tokens()
-            print("--> Token cleanup task finished.")
-        except Exception as e:
-            logger.error(f"Error during token cleanup: {e}")
+    if TASKS_AVAILABLE:
+        @tasks.loop(minutes=5)
+        async def cleanup_expired_tokens(self):
+            """Periodic cleanup of expired verification tokens"""
+            try:
+                print("--> Running token cleanup task...")
+                await cleanup_expired_tokens()
+                print("--> Token cleanup task finished.")
+            except Exception as e:
+                logger.error(f"Error during token cleanup: {e}")
 
-    @cleanup_expired_tokens.before_loop
-    async def before_cleanup(self):
-        """Wait until the bot is ready before starting cleanup"""
+        @cleanup_expired_tokens.before_loop
+        async def before_cleanup(self):
+            """Wait until the bot is ready before starting cleanup"""
+            await self.bot.wait_until_ready()
+
+    async def _manual_cleanup_loop(self):
+        """Manual cleanup loop if tasks extension is not available"""
         await self.bot.wait_until_ready()
+        while True:
+            try:
+                await asyncio.sleep(300)  # 5 minutes
+                print("--> Running manual token cleanup task...")
+                await cleanup_expired_tokens()
+                print("--> Manual token cleanup task finished.")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error during manual token cleanup: {e}")
 
     @app_commands.command(name="reset", description="Reset your DevRel thread and memory.")
     async def reset_thread(self, interaction: discord.Interaction):
@@ -104,7 +138,7 @@ class DevRelCommands(commands.Cog):
     async def verify_github(self, interaction: discord.Interaction):
         try:
             await interaction.response.defer(ephemeral=True)
-            
+
             user_profile = await get_or_create_user_by_discord(
                 discord_id=str(interaction.user.id),
                 display_name=interaction.user.display_name,
@@ -119,7 +153,7 @@ class DevRelCommands(commands.Cog):
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
                 return
-                
+
             if user_profile.verification_token:
                 embed = discord.Embed(
                     title="⏳ Verification Pending",

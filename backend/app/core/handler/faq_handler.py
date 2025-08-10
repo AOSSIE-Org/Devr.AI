@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any
 from app.core.events.base import BaseEvent
-from app.core.events.enums import EventType, PlatformType
+from app.core.events.enums import EventType
 from app.core.handler.base import BaseHandler
 
 logger = logging.getLogger(__name__)

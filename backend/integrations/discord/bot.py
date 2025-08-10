@@ -65,13 +65,13 @@ class DiscordBot(commands.Bot):
 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}")
-            
+
     async def _handle_devrel_message(self, message, triage_result: Dict[str, Any]):
         """This now handles both new requests and follow-ups in threads."""
         try:
             user_id = str(message.author.id)
             thread_id = await self._get_or_create_thread(message, user_id)
-            
+
             agent_message = {
                 "type": "devrel_request",
                 "id": f"discord_{message.id}",
@@ -91,7 +91,7 @@ class DiscordBot(commands.Bot):
             priority_map = {"high": QueuePriority.HIGH,
                             "medium": QueuePriority.MEDIUM,
                             "low": QueuePriority.LOW
-            }
+                            }
             priority = priority_map.get(triage_result.get("priority"), QueuePriority.MEDIUM)
             await self.queue_manager.enqueue(agent_message, priority)
 
@@ -101,7 +101,7 @@ class DiscordBot(commands.Bot):
                 if thread:
                     await thread.send("I'm processing your request, please hold on...")
             # ------------------------------------
-            
+
         except Exception as e:
             logger.error(f"Error handling DevRel message: {str(e)}")
 
@@ -114,7 +114,7 @@ class DiscordBot(commands.Bot):
                     return thread_id
                 else:
                     del self.active_threads[user_id]
-            
+
             # This part only runs if it's not a follow-up message in an active thread.
             if isinstance(message.channel, discord.TextChannel):
                 thread_name = f"DevRel Chat - {message.author.display_name}"

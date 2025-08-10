@@ -3085,27 +3085,6 @@ files = [
 ]
 
 [[package]]
-name = "py-cord"
-version = "2.6.1"
-description = "A Python wrapper for the Discord API"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "py_cord-2.6.1-py3-none-any.whl", hash = "sha256:e3d3b528c5e37b0e0825f5b884cbb9267860976c1e4878e28b55da8fd3af834b"},
-    {file = "py_cord-2.6.1.tar.gz", hash = "sha256:36064f225f2c7bbddfe542d5ed581f2a5744f618e039093cf7cd2659a58bc79b"},
-]
-
-[package.dependencies]
-aiohttp = ">=3.6.0,<4.0"
-typing-extensions = {version = ">=4,<5", markers = "python_version < \"3.11\""}
-
-[package.extras]
-docs = ["furo (==2023.3.23)", "myst-parser (==1.0.0)", "sphinx (==5.3.0)", "sphinx-autodoc-typehints (==1.23.0)", "sphinx-copybutton (==0.5.2)", "sphinxcontrib-trio (==1.1.2)", "sphinxcontrib-websupport (==1.2.4)", "sphinxext-opengraph (==0.9.1)"]
-speed = ["aiohttp[speedups]", "msgspec (>=0.18.6,<0.19.0)"]
-voice = ["PyNaCl (>=1.3.0,<1.6)"]
-
-[[package]]
 name = "pyasn1"
 version = "0.6.1"
 description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
@@ -5254,4 +5233,8 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9, <4.0"
+ dynamic-faq-handler
+content-hash = "08ba3a64e2bb86ff6b0b8df3b8dc19bd737faab40e48113133b868f3496a04e0"
+
 content-hash = "650963e14f423a8460fab7ad2235b1c97f7d8da454feb95c1d366d7f6fd83094"
+main
