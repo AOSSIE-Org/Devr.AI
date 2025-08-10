@@ -20,6 +20,7 @@ class AgentState(BaseModel):
     # Core identification
     session_id: str
     user_id: str
+
     platform: str  # discord, slack, github
 
     # Conversation context

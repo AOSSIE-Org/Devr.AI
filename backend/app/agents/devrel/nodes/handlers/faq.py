@@ -152,4 +152,5 @@ This might be because:
 - The search terms need to be more specific
 - There might be connectivity issues
 
+
 Try asking a more specific question, or check out our official website and documentation for the most up-to-date information about {org_name}."""
