@@ -1,28 +1,17 @@
-import os
 import logging
 from typing import List, Dict, Any
-from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 from app.agents.state import AgentState
+from app.core.config.settings import settings as app_settings
 
-# Load environment variables from .env file
-load_dotenv()
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="[%(asctime)s] %(levelname)s %(name)s - %(message)s",
 
 
-# Read org and official handles from env with fallbacks
-ORG_NAME = os.getenv("ORG_NAME", "Devr.AI")
-# Prefer ORG_* variables from env; fall back to OFFICIAL_HANDLE_*; then to sensible defaults
-_org_website = os.getenv("ORG_WEBSITE") or os.getenv("OFFICIAL_HANDLE_1") or "https://aossie.org"
-_org_github = os.getenv("ORG_GITHUB") or os.getenv("OFFICIAL_HANDLE_2") or "https://github.com/AOSSIE-Org"
-_org_twitter = os.getenv("ORG_TWITTER") or os.getenv("OFFICIAL_HANDLE_3") or "https://twitter.com/aossie_org"
-
-OFFICIAL_HANDLES = [_org_website, _org_github, _org_twitter]
+# Organization identity and official handles from centralized settings
+ORG_NAME = app_settings.org_name
+OFFICIAL_HANDLES = [app_settings.org_website, app_settings.org_github, app_settings.org_twitter]
 
 
 async def handle_faq_node(state: AgentState, search_tool: Any, llm: Any) -> dict:

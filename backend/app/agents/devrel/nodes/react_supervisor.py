@@ -169,16 +169,6 @@ def add_tool_result(state: AgentState, tool_name: str, result: Dict[str, Any]) -
 
         tool_results = state.context.get("tool_results", [])
 
-        # Safely serialize tool_results for prompt (avoid crashes from non-JSON-serializable content)
-        try:
-            if tool_results:
-                tool_results_str = json.dumps(tool_results, indent=2, default=str)
-            else:
-                tool_results_str = "No previous tool results"
-        except Exception as e:
-            logger.warning(f"Failed to serialize tool_results: {e}")
-            tool_results_str = str(tool_results) if tool_results else "No previous tool results"
-
         if not isinstance(result, dict):
             logger.warning(f"Tool result for {tool_name} is not a dict, converting")
             result = {"result": str(result)}
