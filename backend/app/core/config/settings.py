@@ -46,6 +46,12 @@ class Settings(BaseSettings):
             raise ValueError(f"{field.name} must be set")
         return v
 
+# Add the new org info fields:
+    org_name: str = "AOSSIE"
+    org_website: str = "https://aossie.org"
+    org_github: str = "https://github.com/AOSSIE-Org"
+    org_twitter: str = "https://twitter.com/aossie_org"
+
     class Config:
         env_file = ".env"
         extra = "ignore"  # to prevent errors from extra env variables
