@@ -35,13 +35,23 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
         logger.warning(f"Max iterations ({MAX_ITERATIONS}) reached for session {state.session_id}")
         return _create_completion_response(state, "Maximum iterations reached")
 
+    # Safely serialize tool_results for prompt usage
+    try:
+        if tool_results:
+            tool_results_str = json.dumps(tool_results, indent=2, default=str)
+        else:
+            tool_results_str = "No previous tool results"
+    except Exception as e:
+        logger.warning(f"Failed to serialize tool_results: {e}")
+        tool_results_str = str(tool_results) if tool_results else "No previous tool results"
+
     prompt = REACT_SUPERVISOR_PROMPT.format(
         latest_message=latest_message,
         platform=getattr(state, 'platform', 'unknown'),
         interaction_count=getattr(state, 'interaction_count', 0),
         iteration_count=iteration_count,
         conversation_history=conversation_history,
-        tool_results=json.dumps(tool_results, indent=2) if tool_results else "No previous tool results"
+        tool_results=tool_results_str
     )
 
     try:
@@ -49,7 +59,7 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
         decision = _parse_supervisor_decision(response.content)
 
         logger.debug(f"Current iteration: {iteration_count}")
-        logger.debug(f"Latest message length: {len(latest_message)}")
+        logger.debug(f"Latest message length: {len(latest_message or '')}")
         logger.info(f"ReAct Supervisor decision: {decision['action']}")
         logger.debug(f"Supervisor thinking: {decision.get('thinking', '')[:100]}...")
         logger.debug(f"Supervisor reasoning: {decision.get('reasoning', '')[:100]}...")
@@ -134,7 +144,7 @@ def supervisor_decision_router(state: AgentState) -> Literal["web_search", "faq_
         action = decision.get("action", "complete")
 
         iteration_count = state.context.get("iteration_count", 0)
-        if iteration_count > MAX_ITERATIONS:
+        if iteration_count >= MAX_ITERATIONS:
             logger.warning(f"Max iterations reached for session {state.session_id}")
             return "complete"
 
@@ -158,6 +168,16 @@ def add_tool_result(state: AgentState, tool_name: str, result: Dict[str, Any]) -
             return {"context": state.context if hasattr(state, 'context') else {}}
 
         tool_results = state.context.get("tool_results", [])
+
+        # Safely serialize tool_results for prompt (avoid crashes from non-JSON-serializable content)
+        try:
+            if tool_results:
+                tool_results_str = json.dumps(tool_results, indent=2, default=str)
+            else:
+                tool_results_str = "No previous tool results"
+        except Exception as e:
+            logger.warning(f"Failed to serialize tool_results: {e}")
+            tool_results_str = str(tool_results) if tool_results else "No previous tool results"
 
         if not isinstance(result, dict):
             logger.warning(f"Tool result for {tool_name} is not a dict, converting")

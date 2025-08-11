@@ -15,11 +15,11 @@ async def web_search_tool_node(state: AgentState, search_tool, llm) -> Dict[str,
     tool_result = handler_result.get("task_result", {})
     return add_tool_result(state, "web_search", tool_result)
 
-async def faq_handler_tool_node(state: AgentState, faq_tool, llm) -> Dict[str, Any]:
+async def faq_handler_tool_node(state: AgentState, search_tool, llm) -> Dict[str, Any]:
     """Execute FAQ handler tool and add result to ReAct context"""
     logger.info(f"Executing FAQ handler tool for session {state.session_id}")
 
-    handler_result = await handle_faq_node(state, faq_tool, llm)
+    handler_result = await handle_faq_node(state, search_tool, llm)
     tool_result = handler_result.get("task_result", {})
     return add_tool_result(state, "faq_handler", tool_result)
 

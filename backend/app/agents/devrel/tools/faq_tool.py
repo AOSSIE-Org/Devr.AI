@@ -32,9 +32,9 @@ class FAQTool:
 
         return None
 
-    async def search(self, query: str) -> Optional[str]:
-        """Alias for get_response to match expected interface"""
-        return await self.get_response(query)
+    # async def search(self, query: str) -> Optional[str]:
+    #     """Alias for get_response to match expected interface"""
+    #     return await self.get_response(query)
 
     def _is_similar_question(self, question: str, faq_key: str) -> bool:
         """Check if question is similar to FAQ key"""

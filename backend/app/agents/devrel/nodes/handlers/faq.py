@@ -10,18 +10,19 @@ load_dotenv()
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s %(name)s - %(message)s",
-)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="[%(asctime)s] %(levelname)s %(name)s - %(message)s",
+
 
 # Read org and official handles from env with fallbacks
 ORG_NAME = os.getenv("ORG_NAME", "Devr.AI")
-OFFICIAL_HANDLE_1 = os.getenv("OFFICIAL_HANDLE_1", "https://aossie.org")
-OFFICIAL_HANDLE_2 = os.getenv("OFFICIAL_HANDLE_2", "https://github.com/AOSSIE-Org")
-OFFICIAL_HANDLE_3 = os.getenv("OFFICIAL_HANDLE_3", "https://twitter.com/aossie_org")
+# Prefer ORG_* variables from env; fall back to OFFICIAL_HANDLE_*; then to sensible defaults
+_org_website = os.getenv("ORG_WEBSITE") or os.getenv("OFFICIAL_HANDLE_1") or "https://aossie.org"
+_org_github = os.getenv("ORG_GITHUB") or os.getenv("OFFICIAL_HANDLE_2") or "https://github.com/AOSSIE-Org"
+_org_twitter = os.getenv("ORG_TWITTER") or os.getenv("OFFICIAL_HANDLE_3") or "https://twitter.com/aossie_org"
 
-OFFICIAL_HANDLES = [OFFICIAL_HANDLE_1, OFFICIAL_HANDLE_2, OFFICIAL_HANDLE_3]
+OFFICIAL_HANDLES = [_org_website, _org_github, _org_twitter]
 
 
 async def handle_faq_node(state: AgentState, search_tool: Any, llm: Any) -> dict:
@@ -37,9 +38,34 @@ async def handle_faq_node(state: AgentState, search_tool: Any, llm: Any) -> dict
     elif state.context.get("original_message"):
         latest_message = state.context["original_message"]
 
+    # Early exit if no message
+    if not latest_message:
+        logger.warning("[FAQ_HANDLER] Empty latest user message; returning fallback")
+        return {
+            "task_result": {
+                "type": "faq",
+                "response": _generate_fallback_response(latest_message, ORG_NAME),
+                "source": "dynamic_web_search"
+            },
+            "current_task": "faq_handled"
+        }
+
     # Append site restrictions to the query if search tool supports it
-    site_filters = " OR ".join([f"site:{site}" for site in OFFICIAL_HANDLES])
-    logger.info(f"[FAQ_HANDLER] Applying site filters for search: {site_filters}")
+    try:
+        from urllib.parse import urlparse
+        domains = []
+        for u in OFFICIAL_HANDLES:
+            try:
+                parsed = urlparse(u)
+                domain = parsed.netloc or parsed.path  # handles bare domains
+                if domain:
+                    domains.append(domain)
+            except Exception:
+                continue
+        site_filters = " OR ".join([f"site:{d}" for d in domains])
+    except Exception:
+        site_filters = ""
+    logger.info(f"[FAQ_HANDLER] Applying site filters for search: {site_filters or '(none)'}")
 
     faq_response = await _dynamic_faq_process(
         latest_message,
