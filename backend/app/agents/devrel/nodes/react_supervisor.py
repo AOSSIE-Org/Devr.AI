@@ -144,7 +144,7 @@ def supervisor_decision_router(state: AgentState) -> Literal["web_search", "faq_
         action = decision.get("action", "complete")
 
         iteration_count = state.context.get("iteration_count", 0)
-        if iteration_count >= MAX_ITERATIONS:
+        if iteration_count > MAX_ITERATIONS:
             logger.warning(f"Max iterations reached for session {state.session_id}")
             return "complete"
 
