@@ -6,8 +6,6 @@ logger = logging.getLogger(__name__)
 class FAQTool:
     """FAQ handling tool"""
 
-    # TODO: Add FAQ responses from a database to refer organization's FAQ and Repo's FAQ
-
     def __init__(self):
         self.faq_responses = {
             "what is devr.ai": "Devr.AI is an AI-powered Developer Relations assistant that helps open-source communities by automating engagement, issue tracking, and providing intelligent support to developers.",
@@ -34,11 +32,12 @@ class FAQTool:
 
         return None
 
+    async def search(self, query: str) -> Optional[str]:
+        """Alias for get_response to match expected interface"""
+        return await self.get_response(query)
+
     def _is_similar_question(self, question: str, faq_key: str) -> bool:
         """Check if question is similar to FAQ key"""
-        # Simple keyword matching - in production, use better similarity
         question_words = set(question.split())
         faq_words = set(faq_key.split())
-
-        common_words = question_words.intersection(faq_words)
-        return len(common_words) >= 2  # At least 2 common words
+        return len(question_words.intersection(faq_words)) >= 2
