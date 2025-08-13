@@ -167,6 +167,8 @@ async def _synthesize_faq_response(
     for i, result in enumerate(search_results[:5]):  # Limit to top 5 results
         title = result.get('title', 'N/A')
         content = result.get('content', 'N/A')
+        if isinstance(content, str) and len(content) > 500:
+            content = content[:500] + "..."
         url = result.get('url', 'N/A')
         results_context += f"\nResult {i+1}:\nTitle: {title}\nContent: {content}\nURL: {url}\n"
 
