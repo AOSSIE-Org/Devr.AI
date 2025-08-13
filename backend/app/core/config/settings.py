@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Platforms
     github_token: str = ""
     discord_bot_token: str = ""
+    bot_name: str = "DevRelBot"  # 👈 Default bot name, can override via .env
 
     # DB configuration
     supabase_url: str
