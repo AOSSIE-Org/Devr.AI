@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     # Backend URL
     backend_url: str = ""
 
+    # ✅ New org info fields (pulled from .env automatically)
+    org_name: str
+    org_website: str
+    org_github: str
+    org_twitter: str
+
     @field_validator("supabase_url", "supabase_key", mode="before")
     @classmethod
     def _not_empty(cls, v, field):
