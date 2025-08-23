@@ -7,9 +7,30 @@ from ..prompts.react_prompt import REACT_SUPERVISOR_PROMPT
 
 logger = logging.getLogger(__name__)
 
+HIL_INTERRUPT_ACTIONS = ["web_search", "faq_handler", "onboarding", "github_toolkit"]
+
+
 async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
     """ReAct Supervisor: Think -> Act -> Observe"""
     logger.info(f"ReAct Supervisor thinking for session {state.session_id}")
+
+    repo = state.context.get("repository")
+    if not repo:
+        waiting_for_user_input = True
+        interrupt_details = {
+            "prompt": "Before we proceed, could you please specify the project or repository you are working on?"
+        }
+        logger.info(f"Human-in-the-Loop interrupt: asking for repository context in session {state.session_id}")
+
+        updated_context = {
+            **state.context,
+            "waiting_for_user_input": True,
+            "interrupt_details": interrupt_details
+        }
+        return {
+            "context": updated_context,
+            "current_task": "waiting_for_user_input_repo"
+        }
 
     # Get current context
     latest_message = _get_latest_message(state)
@@ -31,15 +52,35 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
 
     logger.info(f"ReAct Supervisor decision: {decision['action']}")
 
-    # Update state with supervisor's thinking
+    waiting_for_user_input = False
+    interrupt_details = {}
+
+    if decision["action"] in HIL_INTERRUPT_ACTIONS:
+        # Here you can add logic to decide if user input is needed
+        # For example, if decision thinking contains uncertainty or multiple options
+        # For demo, we just always pause at these actions to ask the user
+        waiting_for_user_input = True
+        interrupt_details = {
+            "prompt": f"The agent wants to execute the action: {decision['action']}. Please confirm or provide input."
+        }
+        logger.info(
+            f"Human-in-the-Loop interrupt triggered for action {decision['action']} in session {state.session_id}")
+
+    # Update state with supervisor's thinking and interrupt flag if needed
+    updated_context = {
+        **state.context,
+        "supervisor_thinking": response.content,
+        "supervisor_decision": decision,
+        "iteration_count": iteration_count + 1,
+    }
+
+    if waiting_for_user_input:
+        updated_context["waiting_for_user_input"] = True
+        updated_context["interrupt_details"] = interrupt_details
+
     return {
-        "context": {
-            **state.context,
-            "supervisor_thinking": response.content,
-            "supervisor_decision": decision,
-            "iteration_count": iteration_count + 1
-        },
-        "current_task": f"supervisor_decided_{decision['action']}"
+        "context": updated_context,
+        "current_task": f"supervisor_decided_{decision['action']}" if not waiting_for_user_input else "waiting_for_user_input"
     }
 
 def _parse_supervisor_decision(response: str) -> Dict[str, Any]:
