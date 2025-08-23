@@ -34,6 +34,17 @@ async def create_user_profile_schema(client):
     ]
     await create_schema(client, "weaviate_user_profile", properties)
 
+async def create_agent_state_schema(client):
+    properties = [
+        wc.Property(name="session_id", data_type=wc.DataType.TEXT),
+        wc.Property(name="user_id", data_type=wc.DataType.TEXT),
+        wc.Property(name="platform", data_type=wc.DataType.TEXT),
+        wc.Property(name="messages", data_type=wc.DataType.TEXT),
+        wc.Property(name="context", data_type=wc.DataType.TEXT),
+        # Add more fields if needed
+    ]
+    await create_schema(client, "agent_states", properties)
+
 async def create_all_schemas():
     """
     Create only the user profile schema as per the model structure.
@@ -42,6 +53,7 @@ async def create_all_schemas():
     try:
         await client.connect()
         await create_user_profile_schema(client)
+        await create_agent_state_schema(client)
         print("✅ User profile schema created successfully.")
     except Exception as e:
         print(f"❌ Error creating schema: {str(e)}")
