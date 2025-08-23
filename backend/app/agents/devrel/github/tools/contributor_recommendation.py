@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.config import settings
-from app.database.weaviate.operations import search_contributors
+# from app.database.weaviate.operations import search_contributors
 from app.services.github.issue_processor import GitHubIssueProcessor
 from app.services.embedding_service.service import EmbeddingService
 from ..prompts.contributor_recommendation.query_alignment import QUERY_ALIGNMENT_PROMPT
@@ -96,6 +96,8 @@ async def handle_contributor_recommendation(query: str) -> Dict[str, Any]:
         logger.info(f"Generated embedding with dimension: {len(query_embedding)}")
 
         logger.info("Performing hybrid search (semantic + keyword matching)")
+
+        from app.database.weaviate.operations import search_contributors
 
         results = await search_contributors(
             query_embedding=query_embedding,
