@@ -5,7 +5,6 @@ from langchain_core.messages import HumanMessage
 
 from app.core.config import settings
 from app.services.embedding_service.service import EmbeddingService
-from app.services.github.user.profiling import GitHubUserProfiler
 from app.agents.devrel.github.prompts.contributor_recommendation.issue_summarization import ISSUE_SUMMARIZATION_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -31,6 +30,7 @@ class GitHubIssueProcessor:
         """
         Fetches and consolidates all text content from a GitHub issue.
         """
+        from app.services.github.user.profiling import GitHubUserProfiler
         logger.info(f"Fetching content for {self.owner}/{self.repo}#{self.issue_number}")
         async with GitHubUserProfiler() as profiler:
             issue_url = f"{profiler.base_url}/repos/{self.owner}/{self.repo}/issues/{self.issue_number}"
