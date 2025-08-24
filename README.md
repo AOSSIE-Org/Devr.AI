@@ -327,6 +327,40 @@ Devr.AI is built on a **LangGraph agent-based architecture** with autonomous, re
     -   Context-aware response personalization
     -   Platform-specific formatting and delivery optimization
 
+### 5. Human-in-the-Loop (HIL) Interactive Workflow
+
+- **Interactive User Input at Critical Decision Points**  
+  Devr.AI now pauses at key steps in the support or troubleshooting process to request specific user input (e.g., asking for the project or repository name before proceeding). This ensures the agent always works with the most relevant and accurate context.
+
+- **Interrupt-Driven Context Gathering**  
+  If crucial information is missing or a decision is ambiguous, the agent interrupts its automated reasoning and prompts the user for clarification via Discord message. The conversation halts and resumes only after receiving the required input.
+
+- **Session State Persistence**  
+  All interruptions and user responses are stored, allowing the agent to pick up exactly where it left off after human feedback is integrated.
+
+- **Seamless Multi-Turn Conversation Flow**  
+  User input is woven naturally into the ongoing discussion, keeping troubleshooting and workflows coordinated and responsive.
+
+- **Improved Accuracy & Automation Safety**  
+  By involving humans in gray-area scenarios, HIL minimizes automation errors, fosters trust, and improves outcome quality for technical support interactions.
+
+- **Text-Based Interactions (Discord)**  
+  The current implementation uses standard Discord message replies for user responses instead of buttons, ensuring stability and broad compatibility.
+
+**Example Workflow:**
+
+1. User asks a technical question in Discord.
+2. Agent pauses to ask:  
+   “Are you working in a specific project or repository? Please specify.”
+3. User replies, providing the needed information.
+4. Agent resumes troubleshooting with updated context, repeating pauses for further input as needed.
+
+**Integration Points:**
+
+- Agent workflow layer (ReAct Supervisor and AgentCoordinator)
+- Discord bot message handling
+- Session and conversation persistence (Weaviate, Supabase)
+
 ## Current Integrations
 
 ### Discord Integration
