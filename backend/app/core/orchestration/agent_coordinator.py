@@ -151,4 +151,10 @@ class AgentCoordinator:
 
     async def _send_error_response(self, original_message: Dict[str, Any], error_message: str):
         """Send error response to platform"""
-        await self._send_response_to_platform(original_message, error_message)
+        session_id = original_message.get("session_id") or str(uuid.uuid4())
+        await self._send_response_to_platform(
+            original_message,
+            error_message,
+            session_id=session_id,
+            context={}
+        )
