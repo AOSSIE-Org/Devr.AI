@@ -29,7 +29,9 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
         }
         return {
             "context": updated_context,
-            "current_task": "waiting_for_user_input_repo"
+            "current_task": "waiting_for_user_input_repo",
+            "final_response": interrupt_details["prompt"],
+            "requires_human_review": True
         }
 
     # Get current context

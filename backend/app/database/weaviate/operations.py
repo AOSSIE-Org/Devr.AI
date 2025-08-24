@@ -410,7 +410,7 @@ class WeaviateAgentStateOperations:
                     # Deserialize JSON fields
                     prop['messages'] = json.loads(prop.get('messages', '[]'))
                     prop['context'] = json.loads(prop.get('context', '{}'))
-                    return AgentState.parse_obj(prop)
+                    return AgentState.model_validate(prop)
             return None
         except Exception as e:
             logger.error(f"Weaviate error loading agent state: {e}")
@@ -418,14 +418,14 @@ class WeaviateAgentStateOperations:
 
     async def create_or_update_agent_state(self, agent_state: AgentState) -> bool:
         try:
-            state_dict = agent_state.dict()
+            state_dict = agent_state.model_dump()
             # Serialize complex fields
             state_dict['messages'] = json.dumps(state_dict.get('messages', []))
             state_dict['context'] = json.dumps(state_dict.get('context', {}))
 
+            existing_uuid = await self.find_state_by_session_id(agent_state.session_id)
             async with get_weaviate_client() as client:
                 collection = client.collections.get(self.collection_name)
-                existing_uuid = await self.find_state_by_session_id(agent_state.session_id)
                 if existing_uuid:
                     await collection.data.update(
                         uuid=existing_uuid,
