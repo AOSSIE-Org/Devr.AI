@@ -29,11 +29,8 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
         }
         return {
             "context": updated_context,
-            "current_task": "waiting_for_user_input_repo",
-            "final_response": interrupt_details["prompt"],
-            "requires_human_review": True
+            "current_task": "waiting_for_user_input_repo"
         }
-
     # Get current context
     latest_message = _get_latest_message(state)
     conversation_history = _get_conversation_history(state)
@@ -82,7 +79,14 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
 
     return {
         "context": updated_context,
-        "current_task": f"supervisor_decided_{decision['action']}" if not waiting_for_user_input else "waiting_for_user_input"
+        "current_task": (
+            f"supervisor_decided_{decision['action']}"
+            if not waiting_for_user_input else "waiting_for_user_input"
+        ),
+        **(
+            {"final_response": interrupt_details["prompt"], "requires_human_review": True}
+            if waiting_for_user_input else {}
+        )
     }
 
 def _parse_supervisor_decision(response: str) -> Dict[str, Any]:

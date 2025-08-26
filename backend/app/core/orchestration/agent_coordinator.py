@@ -78,12 +78,7 @@ class AgentCoordinator:
 
             # Send response back to platform if present
             if result_state.final_response:
-                await self._send_response_to_platform(
-                    original_message=message_data,
-                    response=result_state.final_response,
-                    session_id=result_state.session_id,
-                    context=result_state.context or {}
-                )
+                await self._send_response_to_platform(message_data, result_state.final_response)
 
         except Exception as e:
             logger.error(f"Error handling DevRel request: {str(e)}")
@@ -128,7 +123,7 @@ class AgentCoordinator:
         except Exception as e:
             logger.error(f"Error handling memory timeout: {str(e)}")
 
-    async def _send_response_to_platform(self, original_message: Dict[str, Any], response: str, session_id: str, context: Dict[str, Any]):
+    async def _send_response_to_platform(self, original_message: Dict[str, Any], response: str):
         """Send agent response back to the originating platform"""
         try:
             platform = original_message.get("platform", "discord")
@@ -140,8 +135,6 @@ class AgentCoordinator:
                     "channel_id": original_message.get("channel_id"),
                     "response": response,
                     "original_message_id": original_message.get("id"),
-                    "session_id": session_id,
-                    "context": context
                 }
 
                 await self.queue_manager.enqueue(response_message)
