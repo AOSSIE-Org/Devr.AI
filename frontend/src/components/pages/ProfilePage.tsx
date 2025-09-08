@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { User, Mail, Building, Globe, Github, Twitter, Edit, Camera, Save, DoorClosed } from 'lucide-react';
 
-const ProfilePage = ({onSignOut}:{onSignOut:()=>void}) => {
+const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
     name: 'Sarah Chen',
@@ -179,19 +179,6 @@ const ProfilePage = ({onSignOut}:{onSignOut:()=>void}) => {
               className="w-full bg-gray-800 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
             />
           </div>
-              <div className="mt-8 flex justify-end">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  onSignOut();
-                }}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors flex items-center"
-              >
-                <DoorClosed size={18} className="mr-2" />
-                Sign Out
-              </motion.button>
-              </div>
           {isEditing && (
             <div className="mt-8 flex justify-end space-x-4">
               <motion.button
