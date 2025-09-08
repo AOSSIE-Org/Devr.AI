@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
+
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
 import BotIntegrationPage from './components/integration/BotIntegrationPage';
@@ -20,11 +21,10 @@ import ResetPasswordPage from './components/pages/ResetPasswordPage';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activePage, setActivePage] = useState('landing'); // Default to landing page
-  const [repoData, setRepoData] = useState<any>(null); // Store fetched repo stats
+  const [repoData, setRepoData] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  //Auto login if user has already logged in
+  // Auto login if user has already logged in
   useEffect(() => {
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) {
@@ -38,28 +38,27 @@ function App() {
     const { data: subscription } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth event:", event, session);
-        switch(event){
-        case "SIGNED_IN":
-          setIsAuthenticated(true);
-          toast.success("Signed in!");
-          break;
+        switch (event) {
+          case "SIGNED_IN":
+            setIsAuthenticated(true);
+            toast.success("Signed in!");
+            break;
 
-        case "SIGNED_OUT":
-          setIsAuthenticated(false);
-          setActivePage("landing");
-          setRepoData(null);
-          toast.success("Signed out!");
-          break;
+          case "SIGNED_OUT":
+            setIsAuthenticated(false);
+            setRepoData(null);
+            toast.success("Signed out!");
+            break;
 
-        case "PASSWORD_RECOVERY":
-          toast("Check your email to reset your password.");
-          break;
-        case "TOKEN_REFRESHED":
-          console.log("Session refreshed");
-          break;
-        case "USER_UPDATED":
-          console.log("User updated", session?.user);
-          break;
+          case "PASSWORD_RECOVERY":
+            toast("Check your email to reset your password.");
+            break;
+          case "TOKEN_REFRESHED":
+            console.log("Session refreshed");
+            break;
+          case "USER_UPDATED":
+            console.log("User updated", session?.user);
+            break;
         }
       }
     );
@@ -68,7 +67,6 @@ function App() {
       subscription.subscription.unsubscribe();
     };
   }, []);
-
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -83,34 +81,29 @@ function App() {
     }
     toast.success('Signed out!');
     setIsAuthenticated(false);
-    setActivePage('landing');
     setRepoData(null);
   };
 
-  const renderPage = () => {
-    switch (activePage) {
-      case 'landing':
-        return <LandingPage setRepoData={setRepoData} setActivePage={setActivePage} />;
-      case 'dashboard':
-        return <Dashboard repoData={repoData} />;
-      case 'integration':
-        return <BotIntegrationPage />;
-      case 'contributors':
-        return <ContributorsPage repoData={repoData} />;
-      case 'analytics':
-        return <AnalyticsPage repoData={repoData} />;
-      case 'prs':
-        return <PullRequestsPage repoData={repoData} />;
-      case 'support':
-        return <SupportPage />;
-      case 'settings':
-        return <SettingsPage />;
-      case 'profile':
-        return <ProfilePage onSignOut={handleLogout} />;
-      default:
-        return <Dashboard repoData={repoData} />;
-    }
-  };
+  const ProtectedLayout = () => (
+    <div className="flex">
+      <Sidebar
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        onLogout={handleLogout}
+      />
+      <main
+        className={`transition-all duration-300 flex-1 ${
+          isSidebarOpen ? 'ml-64' : 'ml-20'
+        }`}
+      >
+        <div className="p-8">
+          <AnimatePresence mode="wait">
+            <Outlet />
+          </AnimatePresence>
+        </div>
+      </main>
+    </div>
+  );
 
   return (
     <Router>
@@ -137,46 +130,29 @@ function App() {
               )
             }
           />
-          <Route
-            path="/reset-password"
-            element={
-              <ResetPasswordPage/>
-            }
-          />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/signup"
-            element= {isAuthenticated ? (
-                <Navigate to="/" replace />
-              ) : (
-                <SignUpPage/>
-              )}
-          />
-          <Route
-            path="/*"
             element={
-              isAuthenticated ? (
-                <div className="flex">
-                  <Sidebar
-                    isOpen={isSidebarOpen}
-                    setIsOpen={setIsSidebarOpen}
-                    activePage={activePage}
-                    setActivePage={setActivePage}
-                  />
-                  <main
-                    className={`transition-all duration-300 flex-1 ${
-                      isSidebarOpen ? 'ml-64' : 'ml-20'
-                    }`}
-                  >
-                    <div className="p-8">
-                      <AnimatePresence mode="wait">{renderPage()}</AnimatePresence>
-                    </div>
-                  </main>
-                </div>
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              isAuthenticated ? <Navigate to="/" replace /> : <SignUpPage />
             }
           />
+          <Route
+            path="/"
+            element={
+              isAuthenticated ? <ProtectedLayout /> : <Navigate to="/login" replace />
+            }
+          >
+            <Route index element={<LandingPage setRepoData={setRepoData} />} />
+            <Route path="dashboard" element={<Dashboard repoData={repoData} />} />
+            <Route path="integration" element={<BotIntegrationPage />} />
+            <Route path="contributors" element={<ContributorsPage repoData={repoData} />} />
+            <Route path="analytics" element={<AnalyticsPage repoData={repoData} />} />
+            <Route path="prs" element={<PullRequestsPage repoData={repoData} />} />
+            <Route path="support" element={<SupportPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
         </Routes>
       </div>
     </Router>
