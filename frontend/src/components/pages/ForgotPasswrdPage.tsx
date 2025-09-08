@@ -1,7 +1,7 @@
 import { useState, ReactNode, FormEvent } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
-import { toast, Toaster } from "react-hot-toast";
+import { toast} from "react-hot-toast";
 import { supabase } from "../../lib/supabaseClient";
 
 
@@ -54,25 +54,32 @@ export default function ForgotPasswrdPage() {
   const handleAuth = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    setIsLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'http://localhost:5173/reset-password',
-    });
-    console.log(error)
-    setIsLoading(false);
-    if (error) {
-      toast.error(error.message || "An unknown error occurred!");
+    const email = String(formData.get('email') || '').trim();
+    if (!email) {
+      toast.error("Please enter your email address.");
       return;
     }
-    setMailPage(true);
+    setIsLoading(true);
+    try {
+      const base = import.meta.env.VITE_BASE_URL || window.location.origin;
+      const redirectTo = new URL('/reset-password', base).toString();
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) {
+        console.error('resetPasswordForEmail failed', error);
+      }
+      setMailPage(true);
+    } catch (err) {
+      console.error('resetPasswordForEmail unexpected error', err);
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <AuthLayout>
 
       <div className="bg-gray-900 p-8 rounded-xl border border-gray-800">
-        <Toaster position="top-right" />
         {!mailPage ? (
           <>
             <motion.div
@@ -116,7 +123,7 @@ export default function ForgotPasswrdPage() {
               <p className="text-center text-gray-400 text-sm">
                 <button
                   type="button"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => navigate('/login')}
                   className="text-gray-400 hover:text-gray-300 font-medium"
                 >
                   Back to Sign In

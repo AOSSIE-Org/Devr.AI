@@ -1,7 +1,7 @@
 import { useState, ReactNode, FormEvent } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { supabase } from "../../lib/supabaseClient";
 
 
@@ -9,6 +9,7 @@ import {
   Settings,
   Mail,
   Lock,
+  User,
   LogIn
 } from 'lucide-react';
 
@@ -59,9 +60,29 @@ export default function SignUpPage() {
     const name = formData.get('name') as string;
     const password = formData.get('password-1') as string;
     const repassword = formData.get('password-2') as string;
-
+    // Basic password requirement check
     if (password != repassword) {
       toast.error("Passwords doesn't match.Try Again");
+      return;
+    }
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      toast.error("Password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      toast.error("Password must contain at least one lowercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error("Password must contain at least one number.");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      toast.error("Password must contain at least one special character.");
       return;
     }
     setIsLoading(true);
@@ -72,7 +93,7 @@ export default function SignUpPage() {
         data: {
           display_name: name
         },
-        emailRedirectTo: 'http://localhost:5173/',
+        emailRedirectTo: import.meta.env.VITE_BASE_URL,
       },
     })
     setIsLoading(false);
@@ -90,9 +111,7 @@ export default function SignUpPage() {
 
   return (
     <AuthLayout>
-
       <div className="bg-gray-900 p-8 rounded-xl border border-gray-800">
-        <Toaster position="top-right" />
         {!mailPage ? (
           <>
             <motion.div
@@ -106,7 +125,7 @@ export default function SignUpPage() {
             <form onSubmit={handleSignUp} className="space-y-6">
               <div className="space-y-4">
                 <InputField
-                  icon={Mail}
+                  icon={User}
                   name="name"
                   placeholder="Username"
                   required
@@ -120,8 +139,8 @@ export default function SignUpPage() {
                 />
                 <InputField
                   icon={Lock}
-                  type="password-1"
-                  name="password"
+                  type="password"
+                  name="password-1"
                   placeholder="Password"
                   required
                 />
@@ -134,19 +153,6 @@ export default function SignUpPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center">
-                  <input type="checkbox" className="rounded bg-gray-800 border-gray-700 text-green-500 focus:ring-green-500" />
-                  <span className="ml-2 text-gray-300">Remember me</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => toast.success('Reset link sent!')}
-                  className="text-green-400 hover:text-green-300"
-                >
-                  Forgot password?
-                </button>
-              </div>
 
               <motion.button
                 whileHover={{ scale: 1.02 }}

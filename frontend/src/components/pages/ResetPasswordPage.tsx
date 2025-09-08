@@ -1,7 +1,8 @@
-import { useState, ReactNode, FormEvent, useEffect } from "react";
+import { useState, useEffect } from "react";
+import type { ReactNode, FormEvent } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
-import { toast, Toaster } from "react-hot-toast";
+import { toast} from "react-hot-toast";
 import { supabase } from "../../lib/supabaseClient";
 import {
   Settings,
@@ -46,7 +47,7 @@ const InputField = ({ icon: Icon, ...props }: InputFieldProps) => (
 
 
 
-export default function ResetPasswrdPage() {
+export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -57,20 +58,34 @@ export default function ResetPasswrdPage() {
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
 
+    const clearUrlHash = () => {
+      if (window.location.hash) {
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      }
+    };
+
     if (accessToken && refreshToken) {
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      })
-        .then(({ error }) => {
+      (async () => {
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
           if (error) {
-            toast.error("Error setting session:" + error.message);
-            navigate('/login');
+            toast.error("Error setting session: " + error.message);
+            navigate('/login', { replace: true });
           }
-        });
+        } catch {
+          toast.error("Error setting session");
+          navigate('/login', { replace: true });
+        } finally {
+          clearUrlHash();
+        }
+      })();
     } else {
-      toast.error("Access Denied");
-      navigate('/login');
+      toast.error("Access denied");
+      navigate('/login', { replace: true });
+      clearUrlHash();
     }
   }, [navigate]);
 
@@ -84,20 +99,44 @@ export default function ResetPasswrdPage() {
       toast.error("Passwords doesn't match. Try Again");
       return;
     }
-    setIsLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: password })
-    setIsLoading(false);
-    if (error) {
-      toast.error(error.message || "An unknown error occurred!");
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters long.");
       return;
     }
-    navigate("/");
-  };
-
+    if (!/[A-Z]/.test(password)) {
+      toast.error("Password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      toast.error("Password must contain at least one lowercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error("Password must contain at least one number.");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      toast.error("Password must contain at least one special character.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        toast.error(error.message || "An unknown error occurred!");
+        return;
+      }
+      toast.success("Password updated successfully.");
+      navigate("/");
+    } catch {
+      toast.error("Unexpected error updating password.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
   return (
     <AuthLayout>
       <div className="bg-gray-900 p-8 rounded-xl border border-gray-800">
-        <Toaster position="top-right" />
         <>
           <motion.div
             initial={{ opacity: 0 }}
@@ -148,7 +187,7 @@ export default function ResetPasswrdPage() {
             <p className="text-center text-gray-400 text-sm">
               <button
                 type="button"
-                onClick={() => navigate('/signup')}
+                onClick={() => navigate('/login')}
                 className="text-gray-400 hover:text-gray-300 font-medium"
               >
                 Back to Sign In

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
 import BotIntegrationPage from './components/integration/BotIntegrationPage';
@@ -16,7 +16,7 @@ import ProfilePage from './components/pages/ProfilePage';
 import SignUpPage from './components/pages/SignUpPage';
 import { supabase } from './lib/supabaseClient';
 import ForgotPasswrdPage from './components/pages/ForgotPasswrdPage';
-import ResetPasswrdPage from './components/pages/ResetPasswrdPage';
+import ResetPasswordPage from './components/pages/ResetPasswordPage';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -26,18 +26,62 @@ function App() {
 
   //Auto login if user has already logged in
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setIsAuthenticated(true);
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        toast.error('User Login Failed');
+        console.error('Error checking session:', error);
+        return;
       }
+      setIsAuthenticated(!!data.session);
     });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("Auth event:", event, session);
+        switch(event){
+        case "SIGNED_IN":
+          setIsAuthenticated(true);
+          toast.success("Signed in!");
+          break;
+
+        case "SIGNED_OUT":
+          setIsAuthenticated(false);
+          setActivePage("landing");
+          setRepoData(null);
+          toast.success("Signed out!");
+          break;
+
+        case "PASSWORD_RECOVERY":
+          toast("Check your email to reset your password.");
+          break;
+        case "TOKEN_REFRESHED":
+          console.log("Session refreshed");
+          break;
+        case "USER_UPDATED":
+          console.log("User updated", session?.user);
+          break;
+        }
+      }
+    );
+
+    return () => {
+      subscription.subscription.unsubscribe();
+    };
   }, []);
+
 
   const handleLogin = () => {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error('Logout failed');
+      console.error('Error during logout:', error);
+      return;
+    }
+    toast.success('Signed out!');
     setIsAuthenticated(false);
     setActivePage('landing');
     setRepoData(null);
@@ -62,7 +106,7 @@ function App() {
       case 'settings':
         return <SettingsPage />;
       case 'profile':
-        return <ProfilePage />;
+        return <ProfilePage onSignOut={handleLogout} />;
       default:
         return <Dashboard repoData={repoData} />;
     }
@@ -96,7 +140,7 @@ function App() {
           <Route
             path="/reset-password"
             element={
-              <ResetPasswrdPage/>
+              <ResetPasswordPage/>
             }
           />
           <Route
