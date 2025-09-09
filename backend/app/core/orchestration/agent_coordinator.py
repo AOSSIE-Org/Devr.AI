@@ -6,6 +6,8 @@ from app.agents.state import AgentState
 from app.core.orchestration.queue_manager import AsyncQueueManager
 from app.agents.devrel.nodes.summarization import store_summary_to_database
 from langsmith import traceable
+from app.database.weaviate.operations import WeaviateAgentStateOperations
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +18,21 @@ class AgentCoordinator:
         self.queue_manager = queue_manager
         self.devrel_agent = DevRelAgent()
         self.active_sessions: Dict[str, AgentState] = {}
-
         self._register_handlers()
+        self.weaviate_agent_state_ops = WeaviateAgentStateOperations()
+
+    async def load_agent_state(self, session_id):
+        state = self.active_sessions.get(session_id)
+        if state:
+            return state
+        state = await self.weaviate_agent_state_ops.load_agent_state(session_id)
+        if state:
+            self.active_sessions[session_id] = state
+        return state
+
+    async def save_agent_state(self, agent_state):
+        self.active_sessions[agent_state.session_id] = agent_state
+        await self.weaviate_agent_state_ops.create_or_update_agent_state(agent_state)
 
     def _register_handlers(self):
         """Register message handlers"""
@@ -26,34 +41,42 @@ class AgentCoordinator:
 
     @traceable(name="devrel_request_coordination", run_type="chain")
     async def _handle_devrel_request(self, message_data: Dict[str, Any]):
-        """Handle DevRel agent requests"""
         try:
-            # Extract memory thread ID (user_id for Discord)
             memory_thread_id = message_data.get("memory_thread_id") or message_data.get("user_id", "")
-            session_id = str(uuid.uuid4())
+            session_id = message_data.get("session_id")  # Try to reuse if provided
 
-            initial_state = AgentState(
-                session_id=session_id,
-                user_id=message_data.get("user_id", ""),
-                platform=message_data.get("platform", "discord"),
-                thread_id=message_data.get("thread_id"),
-                channel_id=message_data.get("channel_id"),
-                context={
-                    "original_message": message_data.get("content", ""),
-                    "classification": message_data.get("classification", {}),
-                    "author": message_data.get("author", {})
-                }
-            )
+            # Attempt to load existing state for this session, else create new
+            agent_state = None
+            if session_id:
+                agent_state = await self.load_agent_state(session_id)
 
-            # Run agent
-            logger.info(f"Running DevRel agent for session {session_id} with memory thread {memory_thread_id}")
-            result_state = await self.devrel_agent.run(initial_state, memory_thread_id)
+            if not agent_state:
+                session_id = str(uuid.uuid4())
+                agent_state = AgentState(
+                    session_id=session_id,
+                    user_id=message_data.get("user_id", ""),
+                    platform=message_data.get("platform", "discord"),
+                    thread_id=message_data.get("thread_id"),
+                    channel_id=message_data.get("channel_id"),
+                    context={
+                        "original_message": message_data.get("content", ""),
+                        "classification": message_data.get("classification", {}),
+                        "author": message_data.get("author", {})
+                    }
+                )
 
-            # Check if thread timeout was reached during processing
+            logger.info(
+                f"Running DevRel agent for session {agent_state.session_id} with memory thread {memory_thread_id}")
+            result_state = await self.devrel_agent.run(agent_state, memory_thread_id)
+
+            # Save updated state after agent run
+            await self.save_agent_state(result_state)
+
+            # Handle memory timeout if reached
             if result_state.memory_timeout_reached:
                 await self._handle_memory_timeout(memory_thread_id, result_state)
 
-            # Send response back to platform
+            # Send response back to platform if present
             if result_state.final_response:
                 await self._send_response_to_platform(message_data, result_state.final_response)
 
@@ -111,7 +134,7 @@ class AgentCoordinator:
                     "thread_id": original_message.get("thread_id"),
                     "channel_id": original_message.get("channel_id"),
                     "response": response,
-                    "original_message_id": original_message.get("id")
+                    "original_message_id": original_message.get("id"),
                 }
 
                 await self.queue_manager.enqueue(response_message)
@@ -121,4 +144,10 @@ class AgentCoordinator:
 
     async def _send_error_response(self, original_message: Dict[str, Any], error_message: str):
         """Send error response to platform"""
-        await self._send_response_to_platform(original_message, error_message)
+        session_id = original_message.get("session_id") or str(uuid.uuid4())
+        await self._send_response_to_platform(
+            original_message,
+            error_message,
+            session_id=session_id,
+            context={}
+        )

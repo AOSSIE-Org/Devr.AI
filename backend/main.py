@@ -34,6 +34,9 @@ class DevRAIApplication:
         self.queue_manager = AsyncQueueManager()
         self.agent_coordinator = AgentCoordinator(self.queue_manager)
         self.discord_bot = DiscordBot(self.queue_manager)
+        self.agent_coordinator = AgentCoordinator(self.queue_manager)
+        self.discord_bot = DiscordBot(self.queue_manager)
+        self.discord_bot.agent_coordinator = self.agent_coordinator
 
     async def start_background_tasks(self):
         """Starts the Discord bot and queue workers in the background."""
@@ -49,7 +52,7 @@ class DevRAIApplication:
                 await self.discord_bot.load_extension("integrations.discord.cogs")
             except (ImportError, commands.ExtensionError) as e:
                 logger.error("Failed to load Discord cog extension: %s", e)
-            
+
             # Start the bot as a background task.
             asyncio.create_task(
                 self.discord_bot.start(settings.discord_bot_token)

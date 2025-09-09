@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 from app.models.database.weaviate import WeaviateUserProfile
 from app.database.weaviate.client import get_weaviate_client
+from app.agents.state import AgentState
 import weaviate.exceptions as weaviate_exceptions
 import weaviate.classes as wvc
 from weaviate.classes.query import Filter
@@ -377,3 +378,66 @@ async def search_contributors(
     return await operations.hybrid_search_contributors(
         query_embedding, keywords, limit, vector_weight, bm25_weight
     )
+class WeaviateAgentStateOperations:
+    def __init__(self, collection_name: str = "agent_states"):
+        self.collection_name = collection_name
+
+    async def find_state_by_session_id(self, session_id: str) -> Optional[str]:
+        try:
+            async with get_weaviate_client() as client:
+                collection = client.collections.get(self.collection_name)
+                response = await collection.query.fetch_objects(
+                    filters=Filter.by_property("session_id").equal(session_id),
+                    limit=1
+                )
+                if response.objects:
+                    return str(response.objects[0].uuid)
+                return None
+        except Exception as e:
+            logger.error(f"Weaviate error finding agent state by session_id: {e}")
+            return None
+
+    async def load_agent_state(self, session_id: str) -> Optional[AgentState]:
+        try:
+            async with get_weaviate_client() as client:
+                collection = client.collections.get(self.collection_name)
+                response = await collection.query.fetch_objects(
+                    filters=Filter.by_property("session_id").equal(session_id),
+                    limit=1
+                )
+                if response.objects:
+                    prop = response.objects[0].properties
+                    # Deserialize JSON fields
+                    prop['messages'] = json.loads(prop.get('messages', '[]'))
+                    prop['context'] = json.loads(prop.get('context', '{}'))
+                    return AgentState.model_validate(prop)
+            return None
+        except Exception as e:
+            logger.error(f"Weaviate error loading agent state: {e}")
+            return None
+
+    async def create_or_update_agent_state(self, agent_state: AgentState) -> bool:
+        try:
+            state_dict = agent_state.model_dump()
+            # Serialize complex fields
+            state_dict['messages'] = json.dumps(state_dict.get('messages', []))
+            state_dict['context'] = json.dumps(state_dict.get('context', {}))
+
+            existing_uuid = await self.find_state_by_session_id(agent_state.session_id)
+            async with get_weaviate_client() as client:
+                collection = client.collections.get(self.collection_name)
+                if existing_uuid:
+                    await collection.data.update(
+                        uuid=existing_uuid,
+                        properties=state_dict
+                    )
+                    logger.info(f"Updated agent state for session {agent_state.session_id}")
+                else:
+                    await collection.data.insert(
+                        properties=state_dict
+                    )
+                    logger.info(f"Created new agent state for session {agent_state.session_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Weaviate error creating/updating agent state: {e}")
+            return False
