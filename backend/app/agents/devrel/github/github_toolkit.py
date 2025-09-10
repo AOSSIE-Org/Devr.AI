@@ -104,13 +104,13 @@ class GitHubToolkit:
             if classification == "contributor_recommendation":
                 result = await handle_contributor_recommendation(query)
             elif classification == "repo_support":
-                result = "Not implemented"
+                result = {"status": "not_implemented", "message": "Repo support not implemented yet"}
                 # result = await handle_repo_query(query)
             elif classification == "issue_creation":
                 result = "Not implemented"
                 # result = await handle_issue_creation(query)
             elif classification == "documentation_generation":
-                result = "Not implemented"
+                result = {"status": "not_implemented", "message": "Documentation generation is not yet implemented"}
                 # result = await handle_documentation_generation(query)
             elif classification == "web_search":
                 result = await handle_web_search(query)
