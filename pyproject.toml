@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Devr.AI is an AI-powered Developer Relations (DevRel) assistant designed to seamlessly integrate with open-source communities across platforms like Discord, Slack, GitHub, and Discourse."
 authors = [{ name = "Your Name", email = "you@example.com" }]
 readme = "README.md"
-requires-python = ">=3.9, <4.0"
+requires-python = ">=3.10,<4.0"
 dependencies = [
     "supabase (>=2.13.0,<3.0.0)",
     "fastapi (>=0.115.11,<0.116.0)",
@@ -25,6 +25,7 @@ dependencies = [
     "aio-pika (>=9.5.5,<10.0.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
     "ddgs (>=9.0.2,<10.0.0)",
+    "fastmcp>=2.11.3,<3.0.0",
     "discord-py (>=2.5.2,<3.0.0)",
 ]
 

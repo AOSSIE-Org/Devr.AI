@@ -17,11 +17,9 @@ class DevRelCommands(commands.Cog):
         self.bot = bot
         self.queue = queue_manager
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if not self.cleanup_expired_tokens.is_running():
-            print("--> Starting the token cleanup task...")
-            self.cleanup_expired_tokens.start()
+    def cog_load(self):
+        """Called when the cog is loaded"""
+        self.cleanup_expired_tokens.start()
 
     def cog_unload(self):
         self.cleanup_expired_tokens.cancel()
