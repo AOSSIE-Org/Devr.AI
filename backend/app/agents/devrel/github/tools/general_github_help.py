@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 from langchain_core.messages import HumanMessage
 from app.agents.devrel.nodes.handlers.web_search import _extract_search_query
@@ -8,7 +8,7 @@ from app.agents.devrel.github.prompts.general_github_help import GENERAL_GITHUB_
 logger = logging.getLogger(__name__)
 
 
-async def handle_general_github_help(query: str, llm) -> Dict[str, Any]:
+async def handle_general_github_help(query: str, llm, hint: Optional[str] = None) -> Dict[str, Any]:
     """Execute general GitHub help with web search and LLM knowledge"""
     logger.info("Providing general GitHub help")
 
@@ -23,10 +23,16 @@ async def handle_general_github_help(query: str, llm) -> Dict[str, Any]:
         else:
             search_context = "No search results available."
 
-        help_prompt = GENERAL_GITHUB_HELP_PROMPT.format(
-            query=query,
-            search_context=search_context
-        )
+        if hint:
+            help_prompt = GENERAL_GITHUB_HELP_PROMPT.format(
+                query=f"{query}\n\nAssistant hint: {hint}",
+                search_context=search_context
+            )
+        else:
+            help_prompt = GENERAL_GITHUB_HELP_PROMPT.format(
+                query=query,
+                search_context=search_context
+            )
 
         response = await llm.ainvoke([HumanMessage(content=help_prompt)])
 

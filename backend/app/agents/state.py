@@ -26,6 +26,9 @@ class AgentState(BaseModel):
     messages: Annotated[List[Dict[str, Any]], add] = Field(default_factory=list)
     context: Dict[str, Any] = Field(default_factory=dict)
 
+    # Channel-specific conversation state (e.g., onboarding workflow progress)
+    onboarding_state: Dict[str, Any] = Field(default_factory=dict)
+
     # TODO: PERSISTENT MEMORY DATA (survives across sessions via summarization)
     user_profile: Dict[str, Any] = Field(default_factory=dict)
 

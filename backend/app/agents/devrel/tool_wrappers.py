@@ -30,7 +30,18 @@ async def onboarding_tool_node(state: AgentState) -> Dict[str, Any]:
 
     handler_result = await handle_onboarding_node(state)
     tool_result = handler_result.get("task_result", {})
-    return add_tool_result(state, "onboarding", tool_result)
+    state_update = add_tool_result(state, "onboarding", tool_result)
+
+    if "onboarding_state" in handler_result:
+        state_update["onboarding_state"] = handler_result["onboarding_state"]
+
+    next_tool = tool_result.get("next_tool")
+    if next_tool:
+        context = dict(state_update.get("context", {}))
+        context["force_next_tool"] = next_tool
+        state_update["context"] = context
+
+    return state_update
 
 
 async def github_toolkit_tool_node(state: AgentState, github_toolkit) -> Dict[str, Any]:

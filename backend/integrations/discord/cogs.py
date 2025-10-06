@@ -1,14 +1,22 @@
+import logging
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-import logging
+
+from app.agents.devrel.onboarding.messages import (
+    build_encourage_verification_message,
+    build_new_user_welcome,
+    build_verified_capabilities_intro,
+    build_verified_welcome,
+)
+from app.core.config import settings
 from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
-from app.services.auth.supabase import login_with_github
 from app.services.auth.management import get_or_create_user_by_discord
+from app.services.auth.supabase import login_with_github
 from app.services.auth.verification import create_verification_session, cleanup_expired_tokens
 from integrations.discord.bot import DiscordBot
-from integrations.discord.views import OAuthView
-from app.core.config import settings
+from integrations.discord.views import OAuthView, OnboardingView, build_final_handoff_embed
 
 logger = logging.getLogger(__name__)
 
@@ -179,3 +187,124 @@ class DevRelCommands(commands.Cog):
 async def setup(bot: commands.Bot):
     """This function is called by the bot to load the cog."""
     await bot.add_cog(DevRelCommands(bot, bot.queue_manager))
+    await bot.add_cog(OnboardingCog(bot))
+
+
+class OnboardingCog(commands.Cog):
+    """Handles onboarding flow: welcome DM, verification prompt, and skip option."""
+
+    def __init__(self, bot: DiscordBot):
+        self.bot = bot
+
+    def _build_welcome_embed(self, member: discord.abc.User) -> discord.Embed:
+        welcome_text = build_new_user_welcome()
+        first_paragraph, _, remainder = welcome_text.partition("\n\n")
+        if first_paragraph.startswith("👋 "):
+            first_paragraph = first_paragraph[2:]
+
+        description_blocks = [first_paragraph]
+        if remainder:
+            description_blocks.append(remainder.strip())
+
+        embed = discord.Embed(
+            title="Welcome to Devr.AI! 👋",
+            description="\n\n".join(description_blocks).strip(),
+            color=discord.Color.blue(),
+        )
+        embed.set_author(name=member.display_name if hasattr(member, "display_name") else str(member))
+        embed.set_footer(text="Link expires after a short time for security.")
+        return embed
+
+    @app_commands.command(name="onboarding_test", description="DM the onboarding flow to yourself (dev only)")
+    async def onboarding_test(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        user = interaction.user
+        status = await self._send_onboarding_flow(user)
+        messages = {
+            "verified": "Sent final hand-off DM (already verified).",
+            "session_unavailable": "Sent fallback DMs (session unavailable).",
+            "auth_unavailable": "Sent fallback DMs (no auth URL).",
+            "onboarding_sent": "Sent onboarding DM to you.",
+            "dm_forbidden": "I can’t DM you (DMs disabled).",
+            "error": "Hit an error while sending onboarding DM.",
+        }
+        await interaction.followup.send(messages.get(status, "Completed."), ephemeral=True)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        # We don't need different behavior here; just run the shared flow
+        await self._send_onboarding_flow(member)
+
+    async def _send_onboarding_flow(self, user: discord.abc.User) -> str:
+        """Shared onboarding flow used by both /onboarding_test and on_member_join.
+
+        Returns a status string for telemetry/UX messages:
+        - "verified": user already linked; final hand-off sent
+        - "session_unavailable": could not create verification session; fallback DMs sent
+        - "auth_unavailable": could not get OAuth URL; fallback DMs sent
+        - "onboarding_sent": welcome DM with buttons sent
+        - "dm_forbidden": cannot DM the user
+        - "error": unexpected error (fallback attempted)
+        """
+        try:
+            # Ensure DB record exists
+            profile = await get_or_create_user_by_discord(
+                discord_id=str(user.id),
+                display_name=getattr(user, "display_name", str(user)),
+                discord_username=getattr(user, "name", str(user)),
+                avatar_url=str(user.avatar.url) if getattr(user, "avatar", None) else None,
+            )
+
+            # Already verified: send final hand-off and finish
+            if getattr(profile, "is_verified", False) and getattr(profile, "github_id", None):
+                try:
+                    await user.send(build_verified_welcome(profile.github_username))
+                    await user.send(build_verified_capabilities_intro(profile.github_username))
+                    await user.send(embed=build_final_handoff_embed())
+                except Exception:
+                    pass
+                return "verified"
+
+            # Determine whether to show OAuth button
+            show_oauth_button = getattr(settings, 'onboarding_show_oauth_button', True)
+            auth_url = None
+
+            if show_oauth_button:
+                # Create verification session
+                session_id = await create_verification_session(str(user.id))
+                if not session_id:
+                    try:
+                        await user.send("I couldn't start verification right now. You can use /verify_github anytime.")
+                        await user.send(build_encourage_verification_message(reminder_count=1))
+                        await user.send(embed=build_final_handoff_embed())
+                    except Exception:
+                        pass
+                    return "session_unavailable"
+
+                # Generate GitHub OAuth URL via Supabase
+                callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
+                auth = await login_with_github(redirect_to=callback_url)
+                auth_url = auth.get("url")
+                if not auth_url:
+                    try:
+                        await user.send("Couldn't generate a verification link. Please use /verify_github.")
+                        await user.send(build_encourage_verification_message(reminder_count=1))
+                        await user.send(embed=build_final_handoff_embed())
+                    except Exception:
+                        pass
+                    return "auth_unavailable"
+
+            # Send welcome DM with actions (auth_url may be None when button disabled)
+            embed = self._build_welcome_embed(user)
+            await user.send(embed=embed, view=OnboardingView(auth_url))
+            return "onboarding_sent"
+        except discord.Forbidden:
+            return "dm_forbidden"
+        except Exception as e:
+            logger.error(f"onboarding flow error: {e}")
+            try:
+                await user.send("I hit an error. You can still run /verify_github and /help.")
+                await user.send(build_encourage_verification_message(reminder_count=1))
+            except Exception:
+                pass
+            return "error"
