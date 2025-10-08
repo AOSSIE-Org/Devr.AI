@@ -1,0 +1,142 @@
+<html>
+	<head></head>
+		<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+		<script src="https://unpkg.com/webcola/WebCola/cola.min.js"></script>
+		<script src="https://cytoscape.org/cytoscape.js-cola/cytoscape-cola.js"></script>
+<style>
+	#cy {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+</style>
+	<body>
+		<div id='cy'></div>
+	</body>
+
+	<script>
+		const NODE_COLORS = {
+			'File'    : '#264653',
+			'Function': '#2a9d8f',
+			'Module'  : '#e9c46a',
+			'Class'   : '#e9c46a',
+			'Struct'  : '#f4a261'
+		};
+
+		function node_color(node) {
+			lbl = node.data('label');
+			return NODE_COLORS[lbl];
+		}
+
+		layout = {
+			name: 'cola',
+			animate: true,
+			randomize: false,
+		};
+
+		async function graph_entities(graph_id) {
+			try {
+				// Use the base URL if `url` is a relative path
+				const base_url = 'http://127.0.0.1:5000/graph_entities';
+				const url = base_url + '?graph_id=' + graph_id;
+				const url_obj = new URL(url);
+
+				// Perform the fetch request and wait for the response
+				const response = await fetch(url_obj);
+
+				// Parse the JSON response and return the data
+				const data = await response.json();
+				return data;
+
+			} catch (error) {
+				// Log the error and rethrow it
+				console.error('Error:', error);
+				throw error;
+			}
+		}
+
+		async function expand_node(graph_id, node_id) {
+			try {
+				// Use the base URL if `url` is a relative path
+				const base_url = 'http://127.0.0.1:5000/get_neighbors';
+				const url = base_url + '?node_id=' + node_id + '&graph_id=' + graph_id;
+				const url_obj = new URL(url);
+
+				// Perform the fetch request and wait for the response
+				const response = await fetch(url_obj);
+
+				// Parse the JSON response and return the data
+				const data = await response.json();
+				return data;
+
+			} catch (error) {
+				// Log the error and rethrow it
+				console.error('Error:', error);
+				throw error;
+			}
+		}
+
+		document.addEventListener('DOMContentLoaded', function() {
+			var cy = cytoscape({
+
+				container: document.getElementById('cy'), // container to render in
+
+				style: [ // the stylesheet for the graph
+					{
+						selector: 'node',
+						style: {
+							'background-color': node_color,
+							'label': 'data(label)'
+						}
+					},
+
+					{
+						selector: 'edge',
+						style: {
+							'width': 1,
+							'line-color': '#ccc',
+							'target-arrow-color': '#ccc',
+							'target-arrow-shape': 'triangle',
+							'curve-style': 'bezier'
+						}
+					}
+				],
+				layout: layout
+			});
+
+			// Re-apply the layout on node drag
+            cy.on('dragfree', 'node', function(evt) {
+                cy.layout(layout).run();
+            });
+
+			// Double-click event handling using dbltap
+			cy.on('dbltap', 'node', function(event) {
+				var node = event.target;
+				// Expand node
+				expand_node('redis/redis', node.id())
+					.then(elements => {
+						cy.add(elements);
+						cy.layout(layout).run(); // Apply a layout after adding elements
+					})
+					.catch(error => {
+						console.error('error: ' + error);
+					});
+				// Expand node
+				console.log('Double-clicked on node: ' + node.id());
+			});
+
+			// Example usage
+			graph_entities('redis/redis')
+				.then(elements => {
+					cy.add(elements);
+					cy.layout(layout).run(); // Apply a layout after adding elements
+				})
+				.catch(error => {
+					console.error('error: ' + error);
+				});
+
+			});
+
+
+	</script>
+</html>
