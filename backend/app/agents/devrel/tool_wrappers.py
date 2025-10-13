@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from app.agents.state import AgentState
 from .nodes.react_supervisor import add_tool_result
-from .nodes.handlers.faq import handle_faq_node
+from app.agents.devrel.tools.faq_tool import handle_faq_node
 from .nodes.handlers.web_search import handle_web_search_node
 from .nodes.handlers.onboarding import handle_onboarding_node
 
