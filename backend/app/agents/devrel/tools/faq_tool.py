@@ -5,6 +5,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage
 from app.agents.state import AgentState
 from app.core.config.settings import settings as app_settings
+from app.agents.devrel.tools.search_tool.tavilly import TavilySearchTool
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +44,21 @@ def load_prompt(name: str) -> str:
 
 class FAQTool:
     """
-    Dynamic FAQ handling tool integrating search and LLM synthesis.
+    Dynamic FAQ handling tool integrating Tavily search and LLM synthesis.
     Handles FAQ queries by refining search terms, fetching relevant data,
     and synthesizing coherent responses with source citations.
     """
 
-    def __init__(self, search_tool: Any, llm: Any):
-        self.search_tool = search_tool
+    def __init__(self, llm: Any):
+        """
+        Initialize FAQ tool with Tavily search and LLM capabilities.
+        
+        Args:
+            llm: Language model for query refinement and synthesis
+        """
+        self.search_tool = TavilySearchTool()
         self.llm = llm
+        logger.info("[FAQ_TOOL] Initialized with Tavily search")
 
     async def get_response(self, state: AgentState) -> Optional[Dict[str, Any]]:
         """
@@ -71,7 +79,7 @@ class FAQTool:
                 "task_result": {
                     "type": "faq",
                     "response": self._generate_fallback_response(latest_message),
-                    "source": "dynamic_web_search",
+                    "source": "tavily_search",
                 },
                 "current_task": "faq_handled",
             }
@@ -90,7 +98,7 @@ class FAQTool:
                 "task_result": {
                     "type": "faq",
                     "response": faq_response,
-                    "source": "dynamic_web_search",
+                    "source": "tavily_search",
                 },
                 "current_task": "faq_handled",
             }
@@ -133,16 +141,21 @@ class FAQTool:
             logger.debug(f"[FAQ_TOOL] Refining query for org '{ORG_NAME}'")
             refined_query = await self._refine_faq_query(message)
 
-            if site_filters:
-                refined_query = f"({refined_query}) AND ({site_filters})"
-            logger.debug(f"[FAQ_TOOL] Final query: {refined_query}")
+            logger.debug(f"[FAQ_TOOL] Refined query: {refined_query}")
 
-            # Step 2: Search
-            logger.info(f"[FAQ_TOOL] Searching for: {refined_query}")
+            # Step 2: Search with Tavily
+            logger.info(f"[FAQ_TOOL] Searching with Tavily: {refined_query}")
             try:
                 search_results = await asyncio.wait_for(
-                    self.search_tool.search(refined_query), timeout=FAQ_SEARCH_TIMEOUT
+                    self.search_tool.search(refined_query, max_results=5),
+                    timeout=FAQ_SEARCH_TIMEOUT
                 )
+                
+                # Filter results by domain if site_filters exist
+                if site_filters and search_results:
+                    search_results = self._filter_results_by_domain(search_results)
+                    logger.info(f"[FAQ_TOOL] After domain filtering: {len(search_results)} results")
+                    
             except Exception as err:
                 logger.error(f"[FAQ_TOOL] Search failed: {err}")
                 return self._generate_fallback_response(message)
@@ -151,17 +164,54 @@ class FAQTool:
                 logger.warning(f"[FAQ_TOOL] No results for: {refined_query}")
                 return self._generate_fallback_response(message)
 
-            # Step 3–4: Synthesize response
+            # Step 3: Synthesize response
             logger.info("[FAQ_TOOL] Synthesizing FAQ response")
             synthesized = await self._synthesize_faq_response(message, search_results)
 
-            # Step 5: Format final response
+            # Step 4: Format final response
             logger.info("[FAQ_TOOL] Formatting response with citations")
             return self._format_faq_response(synthesized, search_results)
 
         except Exception as e:
             logger.error(f"[FAQ_TOOL] Error in dynamic FAQ process: {e}")
             return self._generate_fallback_response(message)
+
+
+    def _filter_results_by_domain(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Filter search results to only include URLs from official domains.
+        """
+        from urllib.parse import urlparse
+        
+        # Extract domains from official handles
+        allowed_domains = set()
+        for handle in OFFICIAL_HANDLES:
+            try:
+                parsed = urlparse(handle)
+                domain = parsed.netloc or parsed.path
+                if domain:
+                    allowed_domains.add(domain.lower())
+            except Exception:
+                continue
+        
+        if not allowed_domains:
+            return results
+        
+        # Filter results
+        filtered = []
+        for result in results:
+            url = result.get("url", "")
+            try:
+                parsed = urlparse(url)
+                result_domain = parsed.netloc.lower()
+                
+                # Check if domain matches any allowed domain
+                if any(allowed in result_domain or result_domain in allowed for allowed in allowed_domains):
+                    filtered.append(result)
+            except Exception:
+                continue
+        
+        return filtered
 
 
     async def _refine_faq_query(self, message: str) -> str:
@@ -221,19 +271,19 @@ class FAQTool:
     def _generate_fallback_response(self, message: str) -> str:
         """Return a friendly fallback message when no data is found."""
         return (
-            f"I’d love to help you learn about {ORG_NAME}, but I couldn’t find current information for your question:\n"
-            f"“{message}”\n\n"
-            "This might be because:\n"
-            "- The information isn’t publicly available yet\n"
-            "- The search terms need to be more specific\n"
-            "- There might be temporary connectivity issues\n\n"
-            f"Try asking a more specific question, or visit our official website and documentation for the most up-to-date info about {ORG_NAME}."
-        )
+    f"I'd love to help you learn about {ORG_NAME}, but I couldn't find current information for your question:\n"
+    f"{message}\n\n"
+    "This might be because:\n"
+    "- The information isn't publicly available yet\n"
+    "- The search terms need to be more specific\n"
+    "- There might be temporary connectivity issues\n\n"
+    f"Try asking a more specific question, or visit our official website and documentation for the most up-to-date info about {ORG_NAME}."
+)
 
-async def handle_faq_node(state: AgentState, search_tool: Any, llm: Any) -> dict:
+async def handle_faq_node(state: AgentState, llm: Any) -> dict:
     """
     Legacy compatibility wrapper for backward support.
     Use FAQTool.get_response() directly in new code.
     """
-    tool = FAQTool(search_tool, llm)
+    tool = FAQTool(llm)
     return await tool.get_response(state)
