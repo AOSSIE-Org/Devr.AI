@@ -52,6 +52,3 @@ class TestEmbeddingService(unittest.IsolatedAsyncioTestCase):
         _ = self.embedding_service.model
         self.assertIsNotNone(self.embedding_service._model)
 
-# run the tests
-if __name__ == "__main__":
-    unittest.main()
