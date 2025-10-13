@@ -28,7 +28,7 @@ class DevRelAgent(BaseAgent):
             google_api_key=settings.gemini_api_key
         )
         self.search_tool = DuckDuckGoSearchTool()
-        self.faq_tool = FAQTool(search_tool=self.search_tool, llm=self.llm)
+        self.faq_tool = FAQTool(llm=self.llm)
         self.github_toolkit = GitHubToolkit()
         self.checkpointer = InMemorySaver()
         super().__init__("DevRelAgent", self.config)
@@ -43,9 +43,6 @@ class DevRelAgent(BaseAgent):
         # Phase 2: ReAct Supervisor - Decide what to do next
         workflow.add_node("react_supervisor", partial(react_supervisor_node, llm=self.llm))
         workflow.add_node("web_search_tool", partial(web_search_tool_node, search_tool=self.search_tool, llm=self.llm))
-
-        workflow.add_node("faq_handler_tool", partial(
-            faq_handler_tool_node, search_tool=self.search_tool, llm=self.llm))
 
         workflow.add_node("faq_handler_tool", partial(faq_handler_tool_node, search_tool=self.search_tool, llm=self.llm))
 
