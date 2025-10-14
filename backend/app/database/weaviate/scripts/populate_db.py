@@ -302,5 +302,4 @@ def main():
     asyncio.run(populate_all_collections())
 
 
-if __name__ == "__main__":
-    main()
+
