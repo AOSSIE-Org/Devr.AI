@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, Optional
 from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
 from app.classification.classification_router import ClassificationRouter
+from app.middleware import DiscordRateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,10 @@ class DiscordBot(commands.Bot):
         self.queue_manager = queue_manager
         self.classifier = ClassificationRouter()
         self.active_threads: Dict[str, str] = {}
+        self.rate_limiter = DiscordRateLimiter(
+            messages_per_user_per_minute=10,
+            messages_per_channel_per_minute=30
+        )
         self._register_queue_handlers()
 
     def _register_queue_handlers(self):
@@ -70,6 +75,23 @@ class DiscordBot(commands.Bot):
         """This now handles both new requests and follow-ups in threads."""
         try:
             user_id = str(message.author.id)
+            channel_id = str(message.channel.id)
+            
+            # Check user rate limit
+            user_allowed, user_cooldown = self.rate_limiter.is_user_allowed(user_id)
+            if not user_allowed:
+                await message.channel.send(
+                    f"{message.author.mention} Please slow down! You can send another message in {user_cooldown} seconds.",
+                    delete_after=10
+                )
+                return
+            
+            # Check channel rate limit
+            channel_allowed, channel_cooldown = self.rate_limiter.is_channel_allowed(channel_id)
+            if not channel_allowed:
+                logger.warning(f"Channel {channel_id} rate limit exceeded")
+                return
+            
             thread_id = await self._get_or_create_thread(message, user_id)
             
             agent_message = {
