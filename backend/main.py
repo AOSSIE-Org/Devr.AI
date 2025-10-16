@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
@@ -49,7 +50,7 @@ class DevRAIApplication:
                 await self.discord_bot.load_extension("integrations.discord.cogs")
             except (ImportError, commands.ExtensionError) as e:
                 logger.error("Failed to load Discord cog extension: %s", e)
-            
+
             # Start the bot as a background task.
             asyncio.create_task(
                 self.discord_bot.start(settings.discord_bot_token)
@@ -102,6 +103,20 @@ async def lifespan(app: FastAPI):
 
 
 api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan)
+
+# Configure CORS
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  # Vite default dev server
+        "http://localhost:3000",  # Alternative dev server
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @api.get("/favicon.ico")
 async def favicon():

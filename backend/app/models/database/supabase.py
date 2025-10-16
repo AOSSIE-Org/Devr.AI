@@ -186,3 +186,27 @@ class ConversationContext(BaseModel):
     session_end_time: Optional[datetime] = None
 
     created_at: datetime = Field(default_factory=datetime.now)
+
+
+class OrganizationIntegration(BaseModel):
+    """
+    Represents a registered organization (just metadata, no credentials).
+
+    Attributes:
+      id (UUID): Unique identifier for the integration.
+      user_id (UUID): User/Owner who registered this organization.
+      platform (str): Platform name (github, discord, slack, discourse).
+      organization_name (str): Name of the organization.
+      is_active (bool): Whether the integration is active.
+      created_at (datetime): Timestamp when registered.
+      updated_at (datetime): Timestamp when last updated.
+      config (dict): Platform-specific data (org link, guild_id, etc.).
+    """
+    id: UUID
+    user_id: UUID
+    platform: str
+    organization_name: str
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+    config: Optional[dict] = None

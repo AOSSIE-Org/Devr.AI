@@ -1,3 +1,5 @@
 VITE_SUPABASE_URL=YOUR SUPABASE URL
-VITE_BASE_URL = http://localhost:5173/
+VITE_BASE_URL=http://localhost:5173/
 VITE_SUPABASE_KEY=YOUR SUPABASE ANON KEY
+VITE_BACKEND_URL=http://localhost:8000
+VITE_DISCORD_BOT_INVITE_URL=https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=YOUR_PERMISSIONS&integration_type=0&scope=bot+applications.commands
