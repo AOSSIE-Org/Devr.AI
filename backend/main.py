@@ -49,7 +49,7 @@ class DevRAIApplication:
                 await self.discord_bot.load_extension("integrations.discord.cogs")
             except (ImportError, commands.ExtensionError) as e:
                 logger.error("Failed to load Discord cog extension: %s", e)
-            
+
             # Start the bot as a background task.
             asyncio.create_task(
                 self.discord_bot.start(settings.discord_bot_token)

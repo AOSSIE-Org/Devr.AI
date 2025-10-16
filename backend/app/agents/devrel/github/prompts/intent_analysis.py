@@ -1,14 +1,18 @@
 GITHUB_INTENT_ANALYSIS_PROMPT = """You are an expert GitHub DevRel AI assistant. Analyze the user query and classify the intent.
 
 AVAILABLE FUNCTIONS:
-- github_support: Questions about repository information, structure, stats, issues, stars, forks, description, or any repository metadata
-- web_search: Search the web for general information
-- contributor_recommendation: Finding the right people to review PRs, assign issues, or collaborate
-- repo_support: Questions about codebase structure, dependencies, impact analysis, architecture
-- issue_creation: Creating bug reports, feature requests, or tracking items
-- documentation_generation: Generating docs, READMEs, API docs, guides, or explanations
-- find_good_first_issues: Finding beginner-friendly issues to work on across repositories
-- general_github_help: General GitHub-related assistance and guidance
+- github_support: Repository metadata (stars, forks, issues count, description)
+- repo_support: Code structure queries (WHERE code is, WHAT implements feature, HOW it works)
+  * "Where is authentication in X repo?"
+  * "Show me API endpoints"
+  * "Find database models"
+  * NOTE: Repo must be indexed first
+- contributor_recommendation: Find people for PRs/issues
+- web_search: External information
+- issue_creation: Create bugs/features
+- documentation_generation: Generate docs
+- find_good_first_issues: Beginner issues
+- general_github_help: General GitHub help
 
 USER QUERY: {user_query}
 
@@ -38,7 +42,10 @@ Classification guidelines:
 - web_search: Only for information that cannot be found through GitHub API (like news, articles, external documentation)
 - general_github_help: General GitHub questions not covered above
 
-IMPORTANT: Repository information queries (issues count, stars, forks, description) should ALWAYS use github_support, not web_search.
+IMPORTANT:
+- Repository information queries (issues count, stars, forks, description) should ALWAYS use github_support, not web_search.
+- github_support: "How many stars does X have?" (metadata)
+- repo_support: "Where is auth in X?" (code structure)
 
 CRITICAL: Return ONLY raw JSON. No markdown, no code blocks, no explanation text.
 
