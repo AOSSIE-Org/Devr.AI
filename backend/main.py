@@ -13,6 +13,11 @@ from app.core.orchestration.queue_manager import AsyncQueueManager
 from app.database.weaviate.client import get_weaviate_client
 from integrations.discord.bot import DiscordBot
 from discord.ext import commands
+from app.middleware import (
+    ValidationMiddleware,
+    RateLimitMiddleware,
+    setup_cors
+)
 # DevRel commands are now loaded dynamically (commented out below)
 # from integrations.discord.cogs import DevRelCommands
 
@@ -101,7 +106,68 @@ async def lifespan(app: FastAPI):
     await app_instance.stop_background_tasks()
 
 
-api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan)
+api = FastAPI(
+    title="Devr.AI API",
+    version="1.0.0",
+    description="""AI-Powered Developer Relations Assistant API
+    
+    Devr.AI provides intelligent community support through Discord/GitHub integrations,
+    powered by LangGraph agent architecture and Google Gemini LLM.
+    
+    ## Features
+    - 🤖 AI-powered community support
+    - 💬 Discord bot integration
+    - 🔗 GitHub OAuth authentication
+    - 🧠 Conversational memory management
+    - 🔍 Real-time agent responses
+    
+    ## Authentication
+    Most endpoints require authentication via Supabase session tokens.
+    """,
+    contact={
+        "name": "Devr.AI Team",
+        "url": "https://github.com/AOSSIE-Org/Devr.AI",
+        "email": "aossie.oss@gmail.com"
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT"
+    },
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {
+            "name": "Health",
+            "description": "Health check endpoints for monitoring service status"
+        },
+        {
+            "name": "Authentication",
+            "description": "OAuth authentication and session management"
+        },
+        {
+            "name": "Agent",
+            "description": "AI agent interactions and workflow management"
+        }
+    ]
+)
+
+# Setup CORS middleware
+setup_cors(api)
+
+# Add rate limiting middleware
+api.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=60,
+    requests_per_hour=1000,
+    burst_size=10,
+    exempt_paths=["/v1/health", "/v1/health/weaviate", "/v1/health/discord", "/favicon.ico"]
+)
+
+# Add validation middleware
+api.add_middleware(ValidationMiddleware, max_body_size=1_000_000)
+
+logger.info("Security middleware configured successfully")
 
 @api.get("/favicon.ico")
 async def favicon():
