@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Request, HTTPException, Query, Depends
 from fastapi.responses import HTMLResponse
 from app.database.supabase.client import get_supabase_client
 from app.services.auth.verification import find_user_by_session_and_verify, get_verification_session_info
@@ -6,12 +6,23 @@ from app.services.github.user.profiling import profile_user_from_github
 from typing import Optional
 import logging
 import asyncio
+from typing import TYPE_CHECKING
+from app.core.dependencies import get_app_instance
+from integrations.discord.views import send_final_handoff_dm
+
+if TYPE_CHECKING:
+    from main import DevRAIApplication
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/callback", response_class=HTMLResponse)
-async def auth_callback(request: Request, code: Optional[str] = Query(None), session: Optional[str] = Query(None)):
+async def auth_callback(
+    request: Request,
+    code: Optional[str] = Query(None),
+    session: Optional[str] = Query(None),
+    app_instance: "DevRAIApplication" = Depends(get_app_instance),
+):
     """
     Handles the OAuth callback from Supabase after a user authorizes on GitHub.
     """
@@ -24,13 +35,13 @@ async def auth_callback(request: Request, code: Optional[str] = Query(None), ses
 
     if not session:
         logger.error("Missing session ID in callback")
-        return _error_response("Missing session ID. Please try the !verify_github command again.")
+        return _error_response("Missing session ID. Please try the /verify_github command again.")
 
     # Check if session is valid and not expired
     session_info = await get_verification_session_info(session)
     if not session_info:
         logger.error(f"Invalid or expired session ID: {session}")
-        return _error_response("Your verification session has expired. Please run the !verify_github command again.")
+        return _error_response("Your verification session has expired. Please run the /verify_github command again.")
 
     supabase = get_supabase_client()
     try:
@@ -67,7 +78,7 @@ async def auth_callback(request: Request, code: Optional[str] = Query(None), ses
 
         if not verified_user:
             logger.error("User verification failed - no pending verification found")
-            return _error_response("No pending verification found or verification has expired. Please try the !verify_github command again.")
+            return _error_response("No pending verification found or verification has expired. Please try the /verify_github command again.")
 
         logger.info(f"Successfully verified user: {verified_user.id}!")
 
@@ -77,6 +88,15 @@ async def auth_callback(request: Request, code: Optional[str] = Query(None), ses
             logger.info(f"User profiling started in background for: {verified_user.id}")
         except Exception as e:
             logger.error(f"Error starting user profiling: {verified_user.id}: {str(e)}")
+
+        # Optional: DM the user that they're all set with final hand-off message
+        try:
+            bot = app_instance.discord_bot if app_instance else None
+            if bot and getattr(verified_user, "discord_id", None):
+                discord_user = await bot.fetch_user(int(verified_user.discord_id))
+                await send_final_handoff_dm(discord_user)
+        except Exception as e:
+            logger.warning(f"Could not DM verification success: {e}")
 
         return _success_response(github_username)
 
@@ -275,7 +295,7 @@ def _error_response(error_message: str) -> str:
                 <div class="error-message">
                     <p>{error_message}</p>
                 </div>
-                <p>Please return to Discord and try the <code>!verify_github</code> command again.</p>
+                <p>Please return to Discord and try the <code>/verify_github</code> command again.</p>
                 <button class="close-btn" onclick="window.close()">Close Window</button>
                 <p class="help-text">If you continue to experience issues, please contact support.</p>
             </div>

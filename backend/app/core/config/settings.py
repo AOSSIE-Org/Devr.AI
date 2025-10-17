@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # Backend URL
     backend_url: str = ""
 
+    # Onboarding UX toggles
+    onboarding_show_oauth_button: bool = True
+
+    # MCP configuration
+    mcp_server_url: Optional[str] = None
+    mcp_api_key: Optional[str] = None
+
     @field_validator("supabase_url", "supabase_key", mode="before")
     @classmethod
     def _not_empty(cls, v, field):

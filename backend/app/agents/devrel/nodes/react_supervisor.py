@@ -17,6 +17,41 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
     tool_results = state.context.get("tool_results", [])
     iteration_count = state.context.get("iteration_count", 0)
 
+    forced_action = state.context.get("force_next_tool")
+    if forced_action:
+        logger.info(
+            "Supervisor auto-routing to %s for session %s", forced_action, state.session_id
+        )
+        decision = {
+            "action": forced_action,
+            "reasoning": "Auto-routed by onboarding workflow",
+            "thinking": "",
+        }
+        updated_context = {**state.context}
+        updated_context.pop("force_next_tool", None)
+        updated_context["supervisor_decision"] = decision
+        updated_context["iteration_count"] = iteration_count + 1
+        return {
+            "context": updated_context,
+            "current_task": f"supervisor_forced_{forced_action}",
+        }
+
+    if state.context.get("force_complete"):
+        logger.info("Supervisor forcing completion for session %s", state.session_id)
+        decision = {
+            "action": "complete",
+            "reasoning": "Auto-complete after onboarding hand-off",
+            "thinking": "",
+        }
+        updated_context = {**state.context}
+        updated_context.pop("force_complete", None)
+        updated_context["supervisor_decision"] = decision
+        updated_context["iteration_count"] = iteration_count + 1
+        return {
+            "context": updated_context,
+            "current_task": "supervisor_forced_complete",
+        }
+
     prompt = REACT_SUPERVISOR_PROMPT.format(
         latest_message=latest_message,
         platform=state.platform,
