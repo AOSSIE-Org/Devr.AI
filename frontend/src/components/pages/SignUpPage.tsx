@@ -150,9 +150,10 @@ export default function SignUpPage() {
                   icon={Lock}
                   type="password"
                   name="password-2"
-                  placeholder="Reenter Password"
+                  placeholder="Re-enter Password"
                   required
                 />
+                <p className="text-xs text-gray-400 p-2">Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.</p>  
               </div>
 
 
