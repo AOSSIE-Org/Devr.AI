@@ -145,18 +145,22 @@ async def store_summary_to_database(state: AgentState) -> None:
             logger.error(f"Missing required fields: user_id={state.user_id}, platform={state.platform}")
             return
 
-        platform_id = state.user_id
-        platform_column = f"{state.platform}_id"
+        user_uuid = state.context.get("user_uuid")
 
-        # Fetch the user's UUID from the 'users' table
-        user_response = await supabase.table("users").select("id").eq(platform_column, platform_id).limit(1).execute()
+        if not user_uuid:
+            platform_id = state.user_id
+            platform_column = f"{state.platform}_id"
 
-        if not user_response.data:
-            logger.error(f"User with {platform_column} '{platform_id}' not found in users table.")
-            return
+            user_response = await supabase.table("users").select("id").eq(platform_column, platform_id).limit(1).execute()
 
-        user_uuid = user_response.data[0]['id']
-        logger.info(f"Found user UUID: {user_uuid} for {platform_column}: {platform_id}")
+            if not user_response.data:
+                logger.error(f"User with {platform_column} '{platform_id}' not found in users table.")
+                return
+
+            user_uuid = user_response.data[0]['id']
+            logger.info(f"Found user UUID: {user_uuid} for {platform_column}: {platform_id}")
+        else:
+            logger.info(f"Using cached user UUID from context: {user_uuid}")
 
         # Record to insert/update
         record = {
