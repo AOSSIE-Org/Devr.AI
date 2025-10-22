@@ -1,5 +1,28 @@
 ---
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: devrai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - weaviate
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - devrai-network
+
   weaviate:
     command:
     - --host
@@ -10,24 +33,26 @@ services:
     - http
     image: cr.weaviate.io/semitechnologies/weaviate:1.31.0
     ports:
-    - 8080:8080
-    - 50051:50051
+    - "8080:8080"
+    - "50051:50051"
     volumes:
     - weaviate_data:/var/lib/weaviate
-    restart: on-failure:0
+    restart: unless-stopped
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
       ENABLE_API_BASED_MODULES: 'true'
       CLUSTER_HOSTNAME: 'node1'
+    networks:
+      - devrai-network
 
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
+    container_name: devrai-rabbitmq
     ports:
-      - '5672:5672'    # AMQP
-      - '15672:15672'  # Management UI
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
@@ -40,9 +65,14 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+    networks:
+      - devrai-network
+
+networks:
+  devrai-network:
+    driver: bridge
 
 volumes:
   weaviate_data:
   rabbitmq_data:
-...
 
