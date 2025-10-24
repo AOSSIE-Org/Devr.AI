@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Building, Globe, Github, Twitter, Edit, Camera, Save } from 'lucide-react';
+import { User, Mail, Building, Globe, Github, Twitter, Edit, Camera, Save, DoorClosed } from 'lucide-react';
 
 const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -179,7 +179,6 @@ const ProfilePage = () => {
               className="w-full bg-gray-800 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
             />
           </div>
-
           {isEditing && (
             <div className="mt-8 flex justify-end space-x-4">
               <motion.button

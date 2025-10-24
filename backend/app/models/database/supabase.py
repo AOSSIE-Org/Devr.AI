@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 from typing import Optional, List
 from datetime import datetime
@@ -186,3 +186,43 @@ class ConversationContext(BaseModel):
     session_end_time: Optional[datetime] = None
 
     created_at: datetime = Field(default_factory=datetime.now)
+
+class OrganizationIntegration(BaseModel):
+    """
+    Represents a registered organization (just metadata, no credentials).
+
+    Attributes:
+      id (UUID): Unique identifier for the integration.
+      user_id (UUID): User/Owner who registered this organization.
+      platform (str): Platform name (github, discord, slack, discourse).
+      organization_name (str): Name of the organization.
+      is_active (bool): Whether the integration is active.
+      created_at (datetime): Timestamp when registered.
+      updated_at (datetime): Timestamp when last updated.
+      config (dict): Platform-specific data (org link, guild_id, etc.).
+    """
+    id: UUID
+    user_id: UUID
+    platform: str
+    organization_name: str
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+    config: Optional[dict] = None
+
+class IndexedRepository(BaseModel):
+    """Model for FalkorDB indexed repositories"""
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    repository_full_name: str
+    graph_name: str
+    indexing_status: str  # 'pending', 'completed', 'failed'
+    indexed_at: Optional[datetime] = None
+    indexed_by_discord_id: str
+    is_deleted: bool = False
+    node_count: int = 0
+    edge_count: int = 0
+    last_error: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

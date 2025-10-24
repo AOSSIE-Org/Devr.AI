@@ -2,6 +2,7 @@ import { useState, ReactNode, FormEvent } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
 import { toast } from "react-hot-toast";
+import { supabase } from "../../lib/supabaseClient";
 import {
   Settings,
   Mail,
@@ -52,15 +53,24 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
     setIsLoading(true);
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
+    const {data,error} = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
     setIsLoading(false);
-    toast.success('Successfully logged in!');
-    onLogin(); 
-    navigate('/');
+    if(data && !error){
+      toast.success('Successfully logged in!');
+      onLogin(); 
+      navigate('/');
+    }
+    else
+    {
+        toast.error(error?.message ||"An Unknown error occured!");
+    }
   };
 
   return (
@@ -80,12 +90,14 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <InputField
               icon={Mail}
               type="email"
+              name="email"
               placeholder="Email address"
               required
             />
             <InputField
               icon={Lock}
               type="password"
+              name="password"
               placeholder="Password"
               required
             />
@@ -98,7 +110,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </label>
             <button
               type="button"
-              onClick={() => toast.success('Reset link sent!')}
+              onClick={() => navigate('/forgot-password')}
               className="text-green-400 hover:text-green-300"
             >
               Forgot password?

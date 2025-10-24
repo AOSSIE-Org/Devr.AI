@@ -1,9 +1,11 @@
 import logging
 import json
 from typing import Dict, Any
+from datetime import datetime
 from app.agents.state import AgentState
 from langchain_core.messages import HumanMessage
 from ..prompts.response_prompt import RESPONSE_PROMPT
+from app.database.supabase.services import store_interaction
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,9 @@ async def generate_response_node(state: AgentState, llm) -> Dict[str, Any]:
 
     try:
         final_response = await _create_response(state, llm)
+
+        # Store interaction to database
+        await _store_interaction_to_db(state, final_response)
 
         return {
             "final_response": final_response,
@@ -99,3 +104,43 @@ def _get_latest_message(state: AgentState) -> str:
     if state.messages:
         return state.messages[-1].get("content", "")
     return state.context.get("original_message", "")
+
+async def _store_interaction_to_db(state: AgentState, final_response: str) -> None:
+    """Store the interaction to database"""
+    try:
+        user_uuid = state.context.get("user_uuid")
+
+        if not user_uuid:
+            logger.warning(f"No user_uuid in context, skipping interaction storage for session {state.session_id}")
+            return
+
+        # Get the latest user message content
+        latest_message = _get_latest_message(state)
+
+        # Extract classification data
+        classification = state.context.get("classification", {})
+        # TODO: intent key not present in classification schema (contains: needs_devrel, priority, reasoning)
+        # Modify prompt to include intent key
+        intent = classification.get("reasoning")  # Fallback to reasoning for intent
+
+        # Store the interaction
+        await store_interaction(
+            user_uuid=user_uuid,
+            platform=state.platform,
+            platform_specific_id=f"{state.session_id}_{datetime.now().timestamp()}",
+            channel_id=state.channel_id,
+            thread_id=state.thread_id,
+            content=latest_message,
+            interaction_type="message",
+            intent_classification=intent,
+            topics_discussed=state.key_topics if state.key_topics else None,
+            metadata={
+                "session_id": state.session_id,
+                "response": final_response[:500] if final_response else None,
+                "tools_used": state.tools_used,
+                "classification": classification
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error storing interaction to database: {str(e)}")

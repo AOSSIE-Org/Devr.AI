@@ -1,0 +1,44 @@
+# Byte-compiled files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Virtual environments
+venv/
+env/
+.virtualenv/
+
+# Distribution/build files
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+
+# Logs and debugging
+*.log
+*.trace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Testing and coverage
+htmlcov/
+*.cover
+.coverage
+.cache/
+pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Custom settings
+.env
+*.sqlite3
+.vercel

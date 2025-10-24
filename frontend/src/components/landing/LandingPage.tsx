@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   setRepoData: (data: any) => void; // Function to pass data to parent
-  setActivePage: (page: string) => void; // Function to navigate to other pages
 }
 
-const LandingPage: React.FC<Props> = ({ setRepoData, setActivePage }) => {
+const LandingPage: React.FC<Props> = ({ setRepoData }) => {
   const [repoUrl, setRepoUrl] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const navigate = useNavigate();
   const fetchRepoStats = async () => {
     if (!repoUrl) {
       toast.error('Please enter a valid GitHub repository URL.');
@@ -23,7 +23,7 @@ const LandingPage: React.FC<Props> = ({ setRepoData, setActivePage }) => {
       const response = await axios.post('http://localhost:8000/api/repo-stats', { repo_url: repoUrl });
       setRepoData(response.data); // Pass fetched data to parent
       toast.success('Repository stats fetched successfully!');
-      setActivePage('dashboard'); // Navigate to dashboard
+      navigate('/dashboard'); // Navigate to dashboard
     } catch (error) {
       toast.error('Failed to fetch repository stats. Please check the URL or backend server.');
     } finally {

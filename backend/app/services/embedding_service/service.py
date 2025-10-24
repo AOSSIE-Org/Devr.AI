@@ -1,9 +1,8 @@
 import logging
-import os
+import config
 from typing import List, Dict, Any, Optional
 import torch
 from pydantic import BaseModel
-from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
@@ -11,11 +10,11 @@ from app.core.config import settings
 from app.models.database.weaviate import WeaviateUserProfile
 from app.services.embedding_service.profile_summarization.prompts.summarization_prompt import PROFILE_SUMMARIZATION_PROMPT
 
-load_dotenv()
 
-MODEL_NAME = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
-MAX_BATCH_SIZE = int(os.getenv("EMBEDDING_MAX_BATCH_SIZE", "32"))
-EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "cpu")
+MODEL_NAME = config.MODEL_NAME
+MAX_BATCH_SIZE = config.MAX_BATCH_SIZE
+EMBEDDING_DEVICE = config.EMBEDDING_DEVICE
+
 
 logger = logging.getLogger(__name__)
 

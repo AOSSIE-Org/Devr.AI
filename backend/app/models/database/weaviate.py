@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -63,67 +63,66 @@ class WeaviateUserProfile(BaseModel):
     last_updated: datetime = Field(default_factory=datetime.now,
                                    description="The date and time the profile was last updated.")
 
-    class Config:
-        """
-        Pydantic model configuration.
-        """
-        orm_mode = True
-        schema_extra = {
-            "example": {
-                "user_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
-                "github_username": "jane-dev",
-                "display_name": "Jane Developer",
-                "bio": "Creator of innovative open-source tools. Full-stack developer with a passion for Rust and WebAssembly.",
-                "location": "Berlin, Germany",
-                "repositories": [
-                    {
-                        "name": "rust-web-framework",
-                        "description": "A high-performance web framework for Rust.",
-                        "languages": ["Rust", "TOML"],
-                        "topics": ["rust", "webdev", "performance", "framework"],
-                        "stars": 2500,
-                        "forks": 400
-                    },
-                    {
-                        "name": "data-viz-lib",
-                        "description": "A declarative data visualization library for JavaScript.",
-                        "languages": ["JavaScript", "TypeScript"],
-                        "topics": ["data-visualization", "d3", "charts"],
-                        "stars": 1200,
-                        "forks": 150
-                    }
-                ],
-                "pull_requests": [
-                    {
-                        "title": "Add async support for database connections",
-                        "body": "This PR adds comprehensive async support for database connections, improving performance by 40%...",
-                        "state": "closed",
-                        "repository": "microsoft/vscode",
-                        "created_at": "2024-01-15T10:30:00Z",
-                        "closed_at": "2024-01-20T14:20:00Z",
-                        "merged_at": "2024-01-20T14:20:00Z",
-                        "labels": ["enhancement", "database", "performance"],
-                        "url": "https://github.com/microsoft/vscode/pull/12345",
-                    },
-                    {
-                        "title": "Fix memory leak in WebAssembly module",
-                        "body": "Fixes a critical memory leak that was causing crashes in production environments...",
-                        "state": "open",
-                        "repository": "facebook/react",
-                        "created_at": "2024-02-01T09:15:00Z",
-                        "closed_at": None,
-                        "merged_at": None,
-                        "labels": ["bug", "wasm", "critical"],
-                        "url": "https://github.com/facebook/react/pull/67890",
-                    }
-                ],
-                "languages": ["Rust", "JavaScript", "TypeScript", "TOML"],
-                "topics": ["rust", "webdev", "performance", "framework", "data-visualization", "d3", "charts"],
-                "followers_count": 1800,
-                "following_count": 250,
-                "total_stars_received": 3700,
-                "total_forks": 550,
-                "profile_text_for_embedding": "Jane Developer, Creator of innovative open-source tools. Full-stack developer with a passion for Rust and WebAssembly. Repositories: rust-web-framework, A high-performance web framework for Rust. data-viz-lib, A declarative data visualization library for JavaScript. Languages: Rust, JavaScript, TypeScript. Topics: rust, webdev, performance, data-visualization.",
-                "last_updated": "2025-06-23T12:21:00Z"
-            }
+    model_config = ConfigDict(
+    from_attributes = True,
+    json_schema_extra = {
+        "example": {
+            "user_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+            "github_username": "jane-dev",
+            "display_name": "Jane Developer",
+            "bio": "Creator of innovative open-source tools. Full-stack developer with a passion for Rust and WebAssembly.",
+            "location": "Berlin, Germany",
+            "repositories": [
+                {
+                    "name": "rust-web-framework",
+                    "description": "A high-performance web framework for Rust.",
+                    "languages": ["Rust", "TOML"],
+                    "topics": ["rust", "webdev", "performance", "framework"],
+                    "stars": 2500,
+                    "forks": 400
+                },
+                {
+                    "name": "data-viz-lib",
+                    "description": "A declarative data visualization library for JavaScript.",
+                    "languages": ["JavaScript", "TypeScript"],
+                    "topics": ["data-visualization", "d3", "charts"],
+                    "stars": 1200,
+                    "forks": 150
+                }
+            ],
+            "pull_requests": [
+                {
+                    "title": "Add async support for database connections",
+                    "body": "This PR adds comprehensive async support for database connections, improving performance by 40%...",
+                    "state": "closed",
+                    "repository": "microsoft/vscode",
+                    "created_at": "2024-01-15T10:30:00Z",
+                    "closed_at": "2024-01-20T14:20:00Z",
+                    "merged_at": "2024-01-20T14:20:00Z",
+                    "labels": ["enhancement", "database", "performance"],
+                    "url": "https://github.com/microsoft/vscode/pull/12345",
+                },
+                {
+                    "title": "Fix memory leak in WebAssembly module",
+                    "body": "Fixes a critical memory leak that was causing crashes in production environments...",
+                    "state": "open",
+                    "repository": "facebook/react",
+                    "created_at": "2024-02-01T09:15:00Z",
+                    "closed_at": None,
+                    "merged_at": None,
+                    "labels": ["bug", "wasm", "critical"],
+                    "url": "https://github.com/facebook/react/pull/67890",
+                }
+            ],
+            "languages": ["Rust", "JavaScript", "TypeScript", "TOML"],
+            "topics": ["rust", "webdev", "performance", "framework", "data-visualization", "d3", "charts"],
+            "followers_count": 1800,
+            "following_count": 250,
+            "total_stars_received": 3700,
+            "total_forks": 550,
+            "profile_text_for_embedding": "Jane Developer, Creator of innovative open-source tools. Full-stack developer with a passion for Rust and WebAssembly. Repositories: rust-web-framework, A high-performance web framework for Rust. data-viz-lib, A declarative data visualization library for JavaScript. Languages: Rust, JavaScript, TypeScript. Topics: rust, webdev, performance, data-visualization.",
+            "last_updated": "2025-06-23T12:21:00Z"
         }
+    }
+
+    )

@@ -85,7 +85,6 @@ export default function BotIntegrationPage () {
         <BotIntegration 
           platform="GitHub"
           icon={<Github size={24} />}
-          connected={true}
           description="Automate repository management and improve contributor experience"
           features={[
             'Automated issue triage and labeling',
@@ -98,7 +97,6 @@ export default function BotIntegrationPage () {
         <BotIntegration 
           platform="Discord"
           icon={<MessageSquare size={24} />}
-          connected={false}
           description="Build an engaging community space for developers"
           features={[
             'Support channel automation',
@@ -111,8 +109,8 @@ export default function BotIntegrationPage () {
         <BotIntegration 
           platform="Slack"
           icon={<Slack size={24} />}
-          connected={true}
           description="Streamline team communication and project updates"
+          comingSoon={true}
           features={[
             'Real-time project notifications',
             'Command center for quick actions',
@@ -124,8 +122,8 @@ export default function BotIntegrationPage () {
         <BotIntegration 
           platform="Discourse"
           icon={<MessageCircleQuestion size={24} />}
-          connected={false}
           description="Enhance your community forum experience"
+          comingSoon={true}
           features={[
             'Topic categorization',
             'Automated responses',

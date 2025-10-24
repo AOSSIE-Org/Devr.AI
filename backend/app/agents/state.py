@@ -1,5 +1,5 @@
 from typing import Dict, Any, List, Optional, Annotated
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from operator import add
 
@@ -25,6 +25,9 @@ class AgentState(BaseModel):
     # Conversation context
     messages: Annotated[List[Dict[str, Any]], add] = Field(default_factory=list)
     context: Dict[str, Any] = Field(default_factory=dict)
+
+    # Channel-specific conversation state (e.g., onboarding workflow progress)
+    onboarding_state: Dict[str, Any] = Field(default_factory=dict)
 
     # TODO: PERSISTENT MEMORY DATA (survives across sessions via summarization)
     user_profile: Dict[str, Any] = Field(default_factory=dict)
@@ -69,5 +72,6 @@ class AgentState(BaseModel):
     # Response
     final_response: Optional[str] = None
 
-    class Config:
+    model_config = ConfigDict(
         arbitrary_types_allowed = True
+    )

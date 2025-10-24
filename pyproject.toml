@@ -2,9 +2,9 @@
 name = "devr-ai"
 version = "0.1.0"
 description = "Devr.AI is an AI-powered Developer Relations (DevRel) assistant designed to seamlessly integrate with open-source communities across platforms like Discord, Slack, GitHub, and Discourse."
-authors = [{ name = "Your Name", email = "you@example.com" }]
+authors = [{ name = "Kartik Bhatt", email = "kartikbhtt7@gmail.com" }]
 readme = "README.md"
-requires-python = ">=3.9, <4.0"
+requires-python = ">=3.10,<3.14"
 dependencies = [
     "supabase (>=2.13.0,<3.0.0)",
     "fastapi (>=0.115.11,<0.116.0)",
@@ -23,9 +23,23 @@ dependencies = [
     "langchain-google-genai (>=2.1.5,<3.0.0)",
     "python-dotenv (>=1.1.1,<2.0.0)",
     "aio-pika (>=9.5.5,<10.0.0)",
-    "uvicorn (>=0.35.0,<0.36.0)",
+    "uvicorn (>=0.38.0,<0.39.0)",
     "ddgs (>=9.0.2,<10.0.0)",
-    "discord-py (>=2.5.2,<3.0.0)",
+    "fastmcp>=2.11.3,<3.0.0",
+    "discord-py (>=2.6.4,<3.0.0)",
+    "graphrag-sdk (>=0.8.1,<0.9.0)",
+    "tree-sitter (>=0.25.2,<0.26.0)",
+    "validators (>=0.35.0,<0.36.0)",
+    "falkordb (>=1.2.0,<2.0.0)",
+    "tree-sitter-c (>=0.24.1,<0.25.0)",
+    "tree-sitter-python (>=0.25.0,<0.26.0)",
+    "tree-sitter-java (>=0.23.5,<0.24.0)",
+    "flask (>=3.1.2,<4.0.0)",
+    "multilspy @ git+https://github.com/AviAvni/multilspy.git@python-init-params",
+    "javatools (>=1.6.0,<2.0.0)",
+    "pygit2 (>=1.18.2,<2.0.0)",
+    "toml (>=0.10.2,<0.11.0)",
+    "websockets (>=15.0.1,<16.0.0)",
 ]
 
 [tool.poetry]
