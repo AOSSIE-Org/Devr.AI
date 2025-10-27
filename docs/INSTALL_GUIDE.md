@@ -1,6 +1,7 @@
 # Devr.AI Installation Guide
 
 Follow this guide to set up Devr.AI's development environment on your local machine.
+For Setup guide video tutorial go to [Devr Setup Guide](https://drive.google.com/file/d/1vlwGE5oJrbXb1gkZJv2NT2rHyt-z-RDv/view?usp=sharing)
 
 ## Prerequisites
 
@@ -54,19 +55,26 @@ cp env.example .env
 nano .env  # or use your preferred editor
 ```
 
-6. **Start Weaviate database**
+6. **Set up Docker container**
 ```sh
 cd backend
-docker-compose up -d weaviate
+docker-compose up -d # Start weaviate, falkordb, rabbitmq
 ```
 
-7. **Start the backend server**
+7. **Start Docker containers**
+```sh
+Go to docker dekstop and start the containers
+```
+
+8. **Start the backend server**
 ```sh
 cd backend
-poetry run python main.py
+poetry run python main.py # Terminal 1
+poetry run python start_github_mcp_server.py # Terminal 2 (Start MCP server)
+flask --app api/index.py run --debug --port 5000 # Terminal 3 (Start graphDB)
 ```
 
-8. **Start the frontend** (in a new terminal)
+9. **Start the frontend** (in a new terminal)
 ```sh
 cd frontend
 npm install
