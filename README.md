@@ -1,6 +1,6 @@
 <div align="center">
  <span>
- <img src="assets\images\DevrAI.svg" alt="Devr.AI logo" width="150" height="auto" />
+ <img src="assets\images\Devr logo.png" alt="Devr.AI logo" width="150" height="auto" />
  </span>
 
 # 🤖 Devr.AI - AI-Powered Developer Relations Assistant
