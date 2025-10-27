@@ -41,7 +41,7 @@ class AsyncQueueManager:
                 await self.channel.declare_queue(queue_name, durable=True)
             logger.info("Successfully connected to RabbitMQ")
         except Exception as e:
-            logger.error(f"Failed to connect to RabbitMQ: {e}")
+            logger.error(f"Failed to connect to RabbitMQ: {e}", exc_info=True)
             raise
 
     async def start(self, num_workers: int = 3):
@@ -114,13 +114,13 @@ class AsyncQueueManager:
                             await self._process_item(item, worker_name)
                             await message.ack()
                         except Exception as e:
-                            logger.error(f"Error processing message: {e}")
+                            logger.error(f"Error processing message: {e}", exc_info=True)
                             await message.nack(requeue=False)
                 except asyncio.CancelledError:
                     logger.info(f"Worker {worker_name} cancelled")
                     return
                 except Exception as e:
-                    logger.error(f"Worker {worker_name} error: {e}")
+                    logger.error(f"Worker {worker_name} error: {e}", exc_info=True)
             await asyncio.sleep(0.1)
 
     async def _process_item(self, item: Dict[str, Any], worker_name: str):
@@ -141,4 +141,4 @@ class AsyncQueueManager:
                 logger.warning(f"No handler found for message type: {message_type}")
 
         except Exception as e:
-            logger.error(f"Error processing item {item.get('id', 'unknown')}: {str(e)}")
+            logger.error(f"Error processing item {item.get('id', 'unknown')}: {str(e)}", exc_info=True)

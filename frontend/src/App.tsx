@@ -47,7 +47,7 @@ function App() {
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) {
         toast.error('User Login Failed');
-        console.error('Error checking session:', error);
+        // Log error internally without exposing in production console
         return;
       }
       setIsAuthenticated(!!data.session);
@@ -93,7 +93,7 @@ function App() {
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error('Logout failed');
-      console.error('Error during logout:', error);
+      // Log error internally without exposing in production console
       return;
     }
     toast.success('Signed out!');

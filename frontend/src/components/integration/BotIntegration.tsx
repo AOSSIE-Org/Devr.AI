@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { toast } from 'react-hot-toast';
-import { Settings, ChevronRight, Shield } from 'lucide-react';
+import { ChevronRight, Shield } from 'lucide-react';
 import IntegrationModal, { IntegrationFormData } from './IntegrationModal';
 import ComingSoonModal from './ComingSoonModal';
 import { apiClient, Platform, Integration } from '../../lib/api';
@@ -24,15 +23,10 @@ const BotIntegration: React.FC<BotIntegrationProps> = ({
   onIntegrationChange
 }) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [integration, setIntegration] = useState<Integration | null>(null);
 
-  useEffect(() => {
-    loadIntegrationStatus();
-  }, [platform]);
-
-  const loadIntegrationStatus = async () => {
+  const loadIntegrationStatus = useCallback(async () => {
     try {
       const status = await apiClient.getIntegrationStatus(platform.toLowerCase() as Platform);
       setIsConnected(status.is_connected);
@@ -46,40 +40,42 @@ const BotIntegration: React.FC<BotIntegrationProps> = ({
       } else {
         setIntegration(null);
       }
-    } catch (error) {
-      console.error('Error loading integration status:', error);
+    } catch {
+      // Error loading integration status - reset component state
+      setIsConnected(false);
+      setIntegration(null);
     }
-  };
+  }, [platform]);
+
+  useEffect(() => {
+    loadIntegrationStatus();
+  }, [loadIntegrationStatus]);
 
   const handleManageClick = () => {
     setIsModalOpen(true);
   };
 
   const handleSubmitIntegration = async (formData: IntegrationFormData) => {
-    try {
-      if (integration) {
-        await apiClient.updateIntegration(integration.id, {
-          organization_name: formData.organization_name,
-          organization_link: formData.organization_link,
-          config: formData.config,
-        });
-      } else {
-        await apiClient.createIntegration({
-          platform: platform.toLowerCase() as Platform,
-          organization_name: formData.organization_name,
-          organization_link: formData.organization_link,
-          config: formData.config,
-        });
-      }
-      
-      await loadIntegrationStatus();
-      setIsModalOpen(false);
-      
-      if (onIntegrationChange) {
-        onIntegrationChange();
-      }
-    } catch (error) {
-      throw error;
+    if (integration) {
+      await apiClient.updateIntegration(integration.id, {
+        organization_name: formData.organization_name,
+        organization_link: formData.organization_link,
+        config: formData.config,
+      });
+    } else {
+      await apiClient.createIntegration({
+        platform: platform.toLowerCase() as Platform,
+        organization_name: formData.organization_name,
+        organization_link: formData.organization_link,
+        config: formData.config,
+      });
+    }
+    
+    await loadIntegrationStatus();
+    setIsModalOpen(false);
+    
+    if (onIntegrationChange) {
+      onIntegrationChange();
     }
   };
 
@@ -130,22 +126,10 @@ const BotIntegration: React.FC<BotIntegrationProps> = ({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleManageClick}
-          disabled={isLoading}
-          className="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg flex items-center justify-center group disabled:opacity-50"
+          className="w-full mt-4 bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg flex items-center justify-center group"
         >
-          {isLoading ? (
-            <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            >
-              <Settings size={16} />
-            </motion.div>
-          ) : (
-            <>
-              {isConnected ? 'Manage Integration' : 'Connect'} 
-              <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
-            </>
-          )}
+          {isConnected ? 'Manage Integration' : 'Connect'} 
+          <ChevronRight className="ml-2 group-hover:translate-x-1 transition-transform" size={16} />
         </motion.button>
       </motion.div>
 

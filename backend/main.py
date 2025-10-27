@@ -49,7 +49,7 @@ class DevRAIApplication:
             try:
                 await self.discord_bot.load_extension("integrations.discord.cogs")
             except (ImportError, commands.ExtensionError) as e:
-                logger.error("Failed to load Discord cog extension: %s", e)
+                logger.error("Failed to load Discord cog extension: %s", e, exc_info=True)
 
             # Start the bot as a background task.
             asyncio.create_task(
@@ -68,7 +68,7 @@ class DevRAIApplication:
                 if await client.is_ready():
                     logger.info("Weaviate connection successful and ready")
         except Exception as e:
-            logger.error(f"Failed to connect to Weaviate: {e}")
+            logger.error(f"Failed to connect to Weaviate: {e}", exc_info=True)
             raise
 
     async def stop_background_tasks(self):

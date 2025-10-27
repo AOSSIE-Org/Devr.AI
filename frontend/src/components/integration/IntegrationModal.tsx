@@ -61,7 +61,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({
       toast.success(`${platform} integration ${existingData ? 'updated' : 'created'} successfully!`);
       onClose();
     } catch (error: any) {
-      console.error('Error submitting integration:', error);
+      // Handle integration submission error gracefully
       toast.error(error.response?.data?.detail || `Failed to ${existingData ? 'update' : 'create'} integration`);
     } finally {
       setIsLoading(false);
