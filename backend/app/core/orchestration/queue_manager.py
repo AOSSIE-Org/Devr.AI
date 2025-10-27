@@ -41,7 +41,7 @@ class AsyncQueueManager:
                 await self.channel.declare_queue(queue_name, durable=True)
             logger.info("Successfully connected to RabbitMQ")
         except Exception as e:
-            logger.error(f"Failed to connect to RabbitMQ: {e}")
+            logger.error(f"Failed to connect to RabbitMQ: {e}", exc_info=True)
             raise
 
     async def start(self, num_workers: int = 3):

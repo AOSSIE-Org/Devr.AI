@@ -86,7 +86,7 @@ class ApiClient {
             (error) => {
                 if (error.response?.status === 401) {
                     // Handle unauthorized - could redirect to login
-                    console.error('Unauthorized request');
+                    // Silently handle unauthorized requests
                 }
                 return Promise.reject(error);
             }
@@ -165,8 +165,7 @@ class ApiClient {
         try {
             const response = await this.client.get('/v1/health');
             return response.status === 200;
-        } catch (error) {
-            console.error('Backend health check failed:', error);
+        } catch {
             return false;
         }
     }
