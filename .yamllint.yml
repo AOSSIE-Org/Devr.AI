@@ -18,8 +18,6 @@ rules:
     forbid-in-block-mappings: false
     forbid-in-flow-mappings: false
 
-  # Allow duplicate keys (sometimes needed in workflows)
-  key-duplicates: disable
 
   # Be more lenient with indentation
   indentation:
