@@ -133,7 +133,7 @@ jobs:
     name: 🚨 Apply Security Updates
     runs-on: ubuntu-latest
     needs: dependency-audit
-    if: needs.dependency-audit.outputs.security-updates > 0
+    if: needs.dependency-audit.outputs.security-updates != '0' && needs.dependency-audit.outputs.security-updates != ''
     
     permissions:
       contents: write
