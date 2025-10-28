@@ -108,10 +108,7 @@ jobs:
           poetry run bandit -r . \
             -f json \
             -o bandit-report.json \
-            --exclude ./tests,./venv,./.venv || true
-          
-          poetry run bandit -r . \
-            --exclude ./tests,./venv,./.venv || true
+            --exclude ./tests,./venv,./.venv
 
       # CodeQL Analysis
       - name: 🔬 Initialize CodeQL
