@@ -1,0 +1,271 @@
+name: 🔒 Security Scanning & Vulnerability Assessment
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  # ============================================================================
+  # DEPENDENCY VULNERABILITY SCANNING
+  # ============================================================================
+  dependency-scan:
+    name: 🔍 Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        component: [backend, frontend]
+      fail-fast: false
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      # Backend Dependency Scanning
+      - name: 🐍 Setup Python (Backend)
+        if: matrix.component == 'backend'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install Poetry (Backend)
+        if: matrix.component == 'backend'
+        uses: snok/install-poetry@v1
+
+      - name: 🔍 Python Dependency Security Check
+        if: matrix.component == 'backend'
+        working-directory: backend
+        run: |
+          poetry install --only=main
+          poetry export -f requirements.txt --output requirements.txt
+          pip install safety
+          safety check -r requirements.txt --json --output safety-report.json
+          safety check -r requirements.txt
+
+      # Frontend Dependency Scanning  
+      - name: 🟢 Setup Node.js (Frontend)
+        if: matrix.component == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: 🔍 Frontend Security Audit
+        if: matrix.component == 'frontend'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm audit --audit-level high --json > npm-audit-report.json 
+          npm audit --audit-level high 
+
+      - name: 📋 Upload Dependency Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-scan-${{ matrix.component }}
+          path: |
+            backend/safety-report.json
+            backend/requirements.txt
+            frontend/npm-audit-report.json
+
+  # ============================================================================
+  # CODE SECURITY ANALYSIS
+  # ============================================================================
+  code-security:
+    name: 🛡️ Static Code Security Analysis
+    runs-on: ubuntu-latest
+    
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: 📥 Install Dependencies
+        working-directory: backend
+        run: poetry install --with dev
+
+      # Bandit Security Linting
+      - name: 🔍 Python Security Linting (Bandit)
+        working-directory: backend
+        run: |
+          poetry run bandit -r . \
+            -f json \
+            -o bandit-report.json \
+            --exclude ./tests,./venv,./.venv
+
+      # CodeQL Analysis
+      - name: 🔬 Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript
+          queries: security-extended,security-and-quality
+
+      - name: 🏗️ Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: 🔍 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+      - name: 📋 Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-security-reports
+          path: |
+            backend/bandit-report.json
+
+  # ============================================================================
+  # SECRET SCANNING
+  # ============================================================================
+  secret-scan:
+    name: 🔐 Secret & Credential Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive scanning
+
+      - name: 🔍 TruffleHog Secret Scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # ============================================================================
+  # DOCKER IMAGE SECURITY
+  # ============================================================================
+  container-security:
+    name: 🐳 Container Security Scan
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, 'docker') || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Test Image
+        working-directory: backend
+        run: |
+          # Create a simple Dockerfile for testing if it doesn't exist
+          if [ ! -f Dockerfile ]; then
+            cat > Dockerfile << EOF
+          FROM python:3.13-slim
+          WORKDIR /app
+          COPY pyproject.toml poetry.lock ./
+          RUN pip install poetry && poetry config virtualenvs.create false
+          RUN poetry install --only=main
+          COPY . .
+          CMD ["python", "main.py"]
+          EOF
+          fi
+          docker build -t devr-ai:test .
+
+      - name: 🔍 Trivy Container Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'devr-ai:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: 📋 Upload Trivy Scan Results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ============================================================================
+  # SECURITY SUMMARY & NOTIFICATION
+  # ============================================================================
+  security-summary:
+    name: 📊 Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, code-security, secret-scan]
+    if: always()
+
+    steps:
+      - name: 📥 Download Security Reports
+        uses: actions/download-artifact@v4
+        with:
+          path: security-reports/
+
+      - name: 📊 Generate Security Summary
+        run: |
+          echo "### 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check job statuses
+          if [ "${{ needs.dependency-scan.result }}" = "success" ]; then
+            echo "✅ **Dependency Scan**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Dependency Scan**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.code-security.result }}" = "success" ]; then
+            echo "✅ **Code Security**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Code Security**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.secret-scan.result }}" = "success" ]; then
+            echo "✅ **Secret Scan**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Secret Scan**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📋 **Detailed reports available in workflow artifacts**" >> $GITHUB_STEP_SUMMARY
+
+      - name: 💬 Comment Security Results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comment = '## 🔒 Security Scan Results\n\n';
+            
+            const results = {
+              'Dependency Scan': '${{ needs.dependency-scan.result }}',
+              'Code Security': '${{ needs.code-security.result }}',
+              'Secret Scan': '${{ needs.secret-scan.result }}'
+            };
+            
+            for (const [check, result] of Object.entries(results)) {
+              const icon = result === 'success' ? '✅' : '❌';
+              comment += `${icon} **${check}**: ${result}\n`;
+            }
+            
+            comment += '\n📋 Check the workflow run for detailed reports.';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
