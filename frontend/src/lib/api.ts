@@ -83,10 +83,15 @@ class ApiClient {
         // Add response interceptor for error handling
         this.client.interceptors.response.use(
             (response) => response,
-            (error) => {
+            async (error) => {
                 if (error.response?.status === 401) {
-                    // Handle unauthorized - could redirect to login
-                    console.error('Unauthorized request');
+                    // Clear session and redirect to login
+                    // Avoid infinite redirect loop if already on login page
+                    if (!window.location.pathname.includes('/login')) {
+                        await supabase.auth.signOut();
+                        const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location.href = `/login?returnUrl=${returnUrl}`;
+                    }
                 }
                 return Promise.reject(error);
             }
@@ -166,7 +171,10 @@ class ApiClient {
             const response = await this.client.get('/v1/health');
             return response.status === 200;
         } catch (error) {
-            console.error('Backend health check failed:', error);
+            // Log in development for debugging
+            if (import.meta.env.DEV) {
+                console.error('Health check failed:', error);
+            }
             return false;
         }
     }
