@@ -12,7 +12,8 @@ BACKEND_DIR = Path(__file__).parent / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 os.chdir(BACKEND_DIR)
 
-if __name__ == "__main__":
+def main():
+    """Entry point for poetry script."""
     try:
         from main import api
         import uvicorn
@@ -21,3 +22,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Error: {e}")
         print("💡 Make sure dependencies are installed: poetry install")
+
+if __name__ == "__main__":
+    main()
