@@ -45,8 +45,8 @@ jobs:
           poetry install --only=main
           poetry export -f requirements.txt --output requirements.txt
           pip install safety
-          safety check -r requirements.txt --json --output safety-report.json || true
-          safety check -r requirements.txt || true
+          safety check -r requirements.txt --json --output safety-report.json
+          safety check -r requirements.txt
 
       # Frontend Dependency Scanning  
       - name: 🟢 Setup Node.js (Frontend)
