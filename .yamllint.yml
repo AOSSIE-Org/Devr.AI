@@ -1,0 +1,37 @@
+# YAML linting configuration for yamllint
+
+extends: default
+
+rules:
+  # Allow long lines in YAML (common in GitHub Actions)
+  line-length:
+    max: 120
+    level: warning
+
+  # Allow truthy values like 'yes', 'no', 'on', 'off'  
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+
+  # Allow empty values (common in GitHub Actions)
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+  # Allow duplicate keys (sometimes needed in workflows)
+  key-duplicates: disable
+
+  # Be more lenient with indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Allow comments with less than 2 spaces
+  comments:
+    min-spaces-from-content: 1
+
+ignore: |
+  /.github/workflows/*
+  /docker-compose*.yml
+  /*.yml

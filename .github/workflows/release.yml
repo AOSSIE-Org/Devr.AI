@@ -1,0 +1,408 @@
+name: 🚀 Release & Deployment
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # VALIDATE RELEASE
+  # ============================================================================
+  validate-release:
+    name: ✅ Validate Release
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is-prerelease: ${{ steps.version.outputs.is-prerelease }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏷️ Extract Version Info
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+          else
+            VERSION="${{ github.ref_name }}"
+            # Check if version contains alpha, beta, rc
+            if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+              IS_PRERELEASE="true"
+            else
+              IS_PRERELEASE="false"  
+            fi
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          
+          echo "### 🏷️ Release Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pre-release**: $IS_PRERELEASE" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔍 Validate Version Format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: v1.0.0 or v1.0.0-beta1"
+            exit 1
+          fi
+          echo "✅ Version format is valid: $VERSION"
+
+      - name: 🔍 Check if Tag Exists
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "❌ Tag $VERSION already exists"
+            exit 1
+          fi
+          echo "✅ Tag $VERSION is available"
+
+  # ============================================================================
+  # BUILD RELEASE ARTIFACTS
+  # ============================================================================
+  build-artifacts:
+    name: 🏗️ Build Release Artifacts
+    runs-on: ubuntu-latest
+    needs: validate-release
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: 📦 Install Poetry
+        uses: snok/install-poetry@v1
+
+      # Build Backend Package
+      - name: 🐍 Build Python Package
+        working-directory: backend
+        run: |
+          poetry version ${{ needs.validate-release.outputs.version }}
+          poetry build
+          
+          # Create backend archive
+          tar -czf ../devr-ai-backend-${{ needs.validate-release.outputs.version }}.tar.gz .
+          
+      # Build Frontend Package
+      - name: ⚛️ Build Frontend
+        working-directory: frontend
+        run: |
+          # Update version in package.json
+          npm version ${{ needs.validate-release.outputs.version }} --no-git-tag-version
+          npm ci
+          npm run build
+          
+          # Create frontend archive
+          tar -czf ../devr-ai-frontend-${{ needs.validate-release.outputs.version }}.tar.gz dist/
+
+      # Create Complete Release Archive
+      - name: 📦 Create Release Archive
+        run: |
+          mkdir -p release-package
+          
+          # Copy important files
+          cp README.md release-package/
+          cp LICENSE release-package/ || echo "No LICENSE file found"
+          cp env.example release-package/
+          cp -r docs/ release-package/ || echo "No docs directory found"
+          
+          # Copy built artifacts
+          cp backend/dist/* release-package/ || true
+          cp devr-ai-backend-${{ needs.validate-release.outputs.version }}.tar.gz release-package/
+          cp devr-ai-frontend-${{ needs.validate-release.outputs.version }}.tar.gz release-package/
+          
+          # Create installation script
+          cat > release-package/install.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          echo "🚀 Installing Devr.AI..."
+          
+          # Check prerequisites
+          command -v python3 >/dev/null 2>&1 || { echo "❌ Python 3 is required"; exit 1; }
+          command -v node >/dev/null 2>&1 || { echo "❌ Node.js is required"; exit 1; }
+          command -v docker >/dev/null 2>&1 || { echo "❌ Docker is required"; exit 1; }
+          
+          # Extract backend
+          echo "📦 Extracting backend..."
+          tar -xzf devr-ai-backend-*.tar.gz -C backend/
+          
+          # Extract frontend  
+          echo "📦 Extracting frontend..."
+          mkdir -p frontend/
+          tar -xzf devr-ai-frontend-*.tar.gz -C frontend/
+          
+          # Setup environment
+          echo "🔧 Setting up environment..."
+          cp env.example .env
+          
+          echo "✅ Devr.AI installed successfully!"
+          echo "📖 Please read README.md for configuration instructions."
+          EOF
+          
+          chmod +x release-package/install.sh
+          
+          # Create final archive
+          tar -czf devr-ai-${{ needs.validate-release.outputs.version }}.tar.gz release-package/
+
+      - name: 📋 Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            devr-ai-${{ needs.validate-release.outputs.version }}.tar.gz
+            devr-ai-backend-${{ needs.validate-release.outputs.version }}.tar.gz
+            devr-ai-frontend-${{ needs.validate-release.outputs.version }}.tar.gz
+
+  # ============================================================================
+  # BUILD & PUSH RELEASE DOCKER IMAGES
+  # ============================================================================
+  build-release-images:
+    name: 🐳 Build Release Docker Images
+    runs-on: ubuntu-latest
+    needs: validate-release
+    
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.validate-release.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.validate-release.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.validate-release.outputs.version }}
+
+      # Use the Dockerfiles created in docker.yml workflow
+      - name: 🐍 Create Backend Dockerfile
+        if: matrix.component == 'backend'
+        working-directory: backend
+        run: |
+          cat > Dockerfile << 'EOF'
+          FROM python:3.13-slim as builder
+          RUN apt-get update && apt-get install -y build-essential curl && rm -rf /var/lib/apt/lists/*
+          RUN pip install poetry==2.2.1
+          RUN poetry config virtualenvs.create false
+          WORKDIR /app
+          COPY pyproject.toml poetry.lock ./
+          RUN poetry install --only=main --no-dev
+          
+          FROM python:3.13-slim as production
+          RUN groupadd -r appuser && useradd -r -g appuser appuser
+          RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+          COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+          COPY --from=builder /usr/local/bin /usr/local/bin
+          WORKDIR /app
+          COPY --chown=appuser:appuser . .
+          USER appuser
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD curl -f http://localhost:8000/api/v1/health || exit 1
+          EXPOSE 8000
+          CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "8000"]
+          EOF
+
+      - name: ⚛️ Create Frontend Dockerfile  
+        if: matrix.component == 'frontend'
+        working-directory: frontend
+        run: |
+          cat > Dockerfile << 'EOF'
+          FROM node:22-alpine as builder
+          WORKDIR /app
+          COPY package*.json ./
+          RUN npm ci --only=production
+          COPY . .
+          RUN npm run build
+          
+          FROM nginx:alpine as production
+          COPY --from=builder /app/dist /usr/share/nginx/html
+          RUN echo 'server { listen 80; location / { root /usr/share/nginx/html; try_files $uri /index.html; } }' > /etc/nginx/conf.d/default.conf
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD curl -f http://localhost/ || exit 1
+          EXPOSE 80
+          CMD ["nginx", "-g", "daemon off;"]
+          EOF
+
+      - name: 🏗️ Build and Push Release Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.component }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # ============================================================================
+  # GENERATE CHANGELOG
+  # ============================================================================
+  generate-changelog:
+    name: 📝 Generate Changelog
+    runs-on: ubuntu-latest
+    needs: validate-release
+    
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📝 Generate Changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG="${{ needs.validate-release.outputs.version }}"
+          
+          echo "Generating changelog from $PREVIOUS_TAG to $CURRENT_TAG"
+          
+          # Create changelog
+          CHANGELOG="## What's Changed\n\n"
+          
+          if [ -n "$PREVIOUS_TAG" ]; then
+            # Get commits since last tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD)
+          else
+            # Get all commits if no previous tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)")
+          fi
+          
+          # Categorize commits
+          FEATURES=$(echo "$COMMITS" | grep -i "feat\|feature\|add" || true)
+          FIXES=$(echo "$COMMITS" | grep -i "fix\|bug" || true)
+          IMPROVEMENTS=$(echo "$COMMITS" | grep -i "improve\|enhance\|update" || true)
+          OTHERS=$(echo "$COMMITS" | grep -v -i "feat\|feature\|add\|fix\|bug\|improve\|enhance\|update" || true)
+          
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG="${CHANGELOG}### 🚀 New Features\n$FEATURES\n\n"
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            CHANGELOG="${CHANGELOG}### 🐛 Bug Fixes\n$FIXES\n\n"
+          fi
+          
+          if [ -n "$IMPROVEMENTS" ]; then
+            CHANGELOG="${CHANGELOG}### 🔧 Improvements\n$IMPROVEMENTS\n\n"
+          fi
+          
+          if [ -n "$OTHERS" ]; then
+            CHANGELOG="${CHANGELOG}### 📋 Other Changes\n$OTHERS\n\n"
+          fi
+          
+          # Add installation instructions
+          CHANGELOG="${CHANGELOG}### 📦 Installation\n\n"
+          CHANGELOG="${CHANGELOG}**Docker:**\n"
+          CHANGELOG="${CHANGELOG}\`\`\`bash\n"
+          CHANGELOG="${CHANGELOG}docker pull ghcr.io/${{ github.repository }}-backend:$CURRENT_TAG\n"
+          CHANGELOG="${CHANGELOG}docker pull ghcr.io/${{ github.repository }}-frontend:$CURRENT_TAG\n"
+          CHANGELOG="${CHANGELOG}\`\`\`\n\n"
+          CHANGELOG="${CHANGELOG}**Manual:**\n"
+          CHANGELOG="${CHANGELOG}Download and extract \`devr-ai-$CURRENT_TAG.tar.gz\` from the release assets.\n\n"
+          
+          # Save changelog
+          echo -e "$CHANGELOG" > CHANGELOG.md
+          
+          # Output for GitHub release
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 📋 Upload Changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: CHANGELOG.md
+
+  # ============================================================================
+  # CREATE GITHUB RELEASE
+  # ============================================================================
+  create-release:
+    name: 🎉 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate-release, build-artifacts, build-release-images, generate-changelog]
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📋 Download Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+
+      - name: 🎉 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate-release.outputs.version }}
+          name: ${{ needs.validate-release.outputs.version }}
+          body: ${{ needs.generate-changelog.outputs.changelog }}
+          prerelease: ${{ needs.validate-release.outputs.is-prerelease }}
+          files: |
+            devr-ai-${{ needs.validate-release.outputs.version }}.tar.gz
+            devr-ai-backend-${{ needs.validate-release.outputs.version }}.tar.gz
+            devr-ai-frontend-${{ needs.validate-release.outputs.version }}.tar.gz
+          generate_release_notes: true
+
+      - name: 📊 Release Summary
+        run: |
+          echo "### 🎉 Release Created Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.validate-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pre-release**: ${{ needs.validate-release.outputs.is-prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker Images**: Available on GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Assets**: Complete installation packages attached" >> $GITHUB_STEP_SUMMARY
