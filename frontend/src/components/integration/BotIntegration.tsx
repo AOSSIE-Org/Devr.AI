@@ -46,10 +46,14 @@ const BotIntegration: React.FC<BotIntegrationProps> = ({
       } else {
         setIntegration(null);
       }
-    } catch {
-      // Silently handle integration status loading errors
+    } catch (error) {
+      // Handle integration status loading errors
       setIsConnected(false);
       setIntegration(null);
+      // Log in development for debugging
+      if (import.meta.env.DEV) {
+        console.error('Failed to load integration status:', error);
+      }
     }
   };
 

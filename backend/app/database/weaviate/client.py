@@ -1,19 +1,14 @@
 import weaviate
+import weaviate.exceptions
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 import logging
 
 logger = logging.getLogger(__name__)
 
-_client = None
-
-
 def get_client():
-    """Get or create the global Weaviate client instance."""
-    global _client
-    if _client is None:
-        _client = weaviate.use_async_with_local()
-    return _client
+    """Create a new async Weaviate client instance per context use."""
+    return weaviate.use_async_with_local()
 
 @asynccontextmanager
 async def get_weaviate_client() -> AsyncGenerator[weaviate.WeaviateClient, None]:
@@ -22,11 +17,11 @@ async def get_weaviate_client() -> AsyncGenerator[weaviate.WeaviateClient, None]
     try:
         await client.connect()
         yield client
-    except Exception as e:
-        logger.error(f"Weaviate client error: {str(e)}", exc_info=True)
+    except weaviate.exceptions.WeaviateBaseError as e:
+        logger.error("Weaviate client error: %s", e, exc_info=True)
         raise
     finally:
         try:
             await client.close()
         except Exception as e:
-            logger.warning(f"Error closing Weaviate client: {str(e)}", exc_info=True)
+            logger.warning("Error closing Weaviate client: %s", e, exc_info=True)
