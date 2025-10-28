@@ -46,6 +46,9 @@ dependencies = [
 packages = [{ include = "devr" }]
 package-mode = false
 
+[tool.poetry.scripts]
+start = "start:main"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 flake8 = "^7.1.2"
