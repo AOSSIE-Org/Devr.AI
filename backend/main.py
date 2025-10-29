@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import sys
 from contextlib import asynccontextmanager
 
@@ -9,19 +8,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.logging_config import setup_logging, get_logger
+from app.core.middleware import ErrorHandlingMiddleware, setup_error_handlers
 from app.core.orchestration.agent_coordinator import AgentCoordinator
 from app.core.orchestration.queue_manager import AsyncQueueManager
 from app.database.weaviate.client import get_weaviate_client
 from integrations.discord.bot import DiscordBot
 from discord.ext import commands
-# DevRel commands are now loaded dynamically (commented out below)
-# from integrations.discord.cogs import DevRelCommands
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Setup logging first
+setup_logging()
+logger = get_logger(__name__)
 
 
 class DevRAIApplication:
@@ -49,7 +46,7 @@ class DevRAIApplication:
             try:
                 await self.discord_bot.load_extension("integrations.discord.cogs")
             except (ImportError, commands.ExtensionError) as e:
-                logger.error("Failed to load Discord cog extension: %s", e, exc_info=True)
+                logger.error("Failed to load Discord cog extension: %s", e)
 
             # Start the bot as a background task.
             asyncio.create_task(
@@ -68,7 +65,7 @@ class DevRAIApplication:
                 if await client.is_ready():
                     logger.info("Weaviate connection successful and ready")
         except Exception as e:
-            logger.error(f"Failed to connect to Weaviate: {e}", exc_info=True)
+            logger.error(f"Failed to connect to Weaviate: {e}")
             raise
 
     async def stop_background_tasks(self):
@@ -102,21 +99,30 @@ async def lifespan(app: FastAPI):
     await app_instance.stop_background_tasks()
 
 
-api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan)
+api = FastAPI(
+    title="Devr.AI API", 
+    version="1.0", 
+    lifespan=lifespan,
+    description="AI-powered Developer Relations platform",
+    docs_url="/docs" if settings.is_development() else None,
+    redoc_url="/redoc" if settings.is_development() else None
+)
+
+# Add error handling middleware
+api.add_middleware(ErrorHandlingMiddleware)
 
 # Configure CORS
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite default dev server
-        "http://localhost:3000",  # Alternative dev server
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Correlation-ID", "X-Process-Time"]
 )
+
+# Setup error handlers
+setup_error_handlers(api)
 
 @api.get("/favicon.ico")
 async def favicon():
@@ -127,21 +133,39 @@ api.include_router(api_router)
 
 
 if __name__ == "__main__":
-    required_vars = [
-        "DISCORD_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_KEY",
-        "BACKEND_URL", "GEMINI_API_KEY", "TAVILY_API_KEY", "GITHUB_TOKEN"
-    ]
-    missing_vars = [var for var in required_vars if not getattr(settings, var.lower(), None)]
-
-    if missing_vars:
-        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+    try:
+        # Validate configuration
+        missing_services = settings.validate_required_services()
+        if missing_services and settings.is_production():
+            logger.error(f"Missing required services in production: {', '.join(missing_services)}")
+            sys.exit(1)
+        elif missing_services:
+            logger.warning(f"Missing optional services: {', '.join(missing_services)}")
+        
+        logger.info(f"Starting Devr.AI API in {settings.environment} mode")
+        logger.info(f"Log level set to: {settings.log_level}")
+        
+        # Configure uvicorn settings based on environment
+        uvicorn_config = {
+            "app": "__main__:api",
+            "host": "0.0.0.0",
+            "port": 8000,
+            "ws_ping_interval": 20,
+            "ws_ping_timeout": 20,
+            "access_log": True,
+            "log_level": settings.log_level.lower()
+        }
+        
+        # Enable reload only in development
+        if settings.is_development():
+            uvicorn_config["reload"] = True
+            uvicorn_config["debug"] = settings.debug
+        
+        uvicorn.run(**uvicorn_config)
+        
+    except KeyboardInterrupt:
+        logger.info("Application shutdown requested by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Failed to start application: {e}", exc_info=True)
         sys.exit(1)
-
-    uvicorn.run(
-        "__main__:api",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        ws_ping_interval=20,
-        ws_ping_timeout=20
-    )

@@ -46,7 +46,7 @@ class EmbeddingService:
                 logger.info(
                     f"Model loaded successfully. Embedding dimension: {self._model.get_sentence_embedding_dimension()}")
             except Exception as e:
-                logger.error(f"Error loading model {self.model_name}: {str(e)}", exc_info=True)
+                logger.error(f"Error loading model {self.model_name}: {str(e)}")
                 raise
         return self._model
 
@@ -62,7 +62,7 @@ class EmbeddingService:
                 )
                 logger.info("LLM initialized for profile summarization")
             except Exception as e:
-                logger.error(f"Error initializing LLM: {str(e)}", exc_info=True)
+                logger.error(f"Error initializing LLM: {str(e)}")
                 raise
         return self._llm
 
@@ -85,7 +85,7 @@ class EmbeddingService:
             logger.debug(f"Generated embedding with dimension: {len(embedding_list)}")
             return embedding_list
         except Exception as e:
-            logger.error(f"Error generating embedding: {str(e)}", exc_info=True)
+            logger.error(f"Error generating embedding: {str(e)}")
             raise
 
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
@@ -104,7 +104,7 @@ class EmbeddingService:
             logger.info(f"Generated {len(embedding_list)} embeddings")
             return embedding_list
         except Exception as e:
-            logger.error(f"Error generating batch embeddings: {str(e)}", exc_info=True)
+            logger.error(f"Error generating batch embeddings: {str(e)}")
             raise
 
     async def summarize_user_profile(self, profile: WeaviateUserProfile) -> ProfileSummaryResult:
