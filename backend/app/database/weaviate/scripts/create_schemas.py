@@ -54,5 +54,3 @@ def main():
     asyncio.run(create_all_schemas())
 
 
-if __name__ == "__main__":
-    main()

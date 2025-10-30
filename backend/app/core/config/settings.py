@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pydantic import field_validator, ConfigDict
 from typing import Optional
+from pydantic import Field, AliasChoices
 
 load_dotenv()
 
@@ -39,8 +40,16 @@ class Settings(BaseSettings):
     # Backend URL
     backend_url: str = ""
 
+
+# Organization identity (populated from env)
+    org_name: str = Field(..., validation_alias=AliasChoices("ORG_NAME", "org_name"))
+    org_website: str = Field(..., validation_alias=AliasChoices("ORG_WEBSITE", "org_website"))
+    org_github: str = Field(..., validation_alias=AliasChoices("ORG_GITHUB", "org_github"))
+    org_twitter: str = Field(..., validation_alias=AliasChoices("ORG_TWITTER", "org_twitter"))
+
     # Onboarding UX toggles
     onboarding_show_oauth_button: bool = True
+
 
     @field_validator("supabase_url", "supabase_key", mode="before")
     @classmethod
