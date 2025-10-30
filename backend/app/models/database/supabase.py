@@ -33,7 +33,7 @@ class User(BaseModel):
       last_active_github (Optional[datetime]): Timestamp when the user was last active on GitHub.
       last_active_slack (Optional[datetime]): Timestamp when the user was last active on Slack.
       total_interactions_count (int): Total number of interactions.
-      preferred_languages (List[str]): List of preferred programming languages.
+      preferred_languages (Optional[List[str]]): List of preferred programming languages.
     """
     id: UUID
     created_at: datetime
@@ -66,7 +66,7 @@ class User(BaseModel):
     last_active_slack: Optional[datetime] = None
 
     total_interactions_count: int = 0
-    preferred_languages: List[str] = Field(default_factory=list)
+    preferred_languages: Optional[List[str]] = None
 
 
 class Repository(BaseModel):
@@ -85,8 +85,8 @@ class Repository(BaseModel):
       stars_count (int): Number of stars the repository has received.
       forks_count (int): Number of times the repository has been forked.
       open_issues_count (int): Number of open issues in the repository.
-      languages_used (List[str]): List of programming languages used in the repository.
-      topics (List[str]): List of topics/tags associated with the repository.
+      languages_used (Optional[List[str]]): List of programming languages used in the repository.
+      topics (Optional[List[str]]): List of topics/tags associated with the repository.
       is_indexed (bool): Indicates if the repository has been indexed.
       indexed_at (Optional[datetime]): Timestamp when the repository was indexed.
       indexing_status (Optional[str]): Current status of the indexing process.
@@ -106,8 +106,8 @@ class Repository(BaseModel):
     forks_count: int = 0
     open_issues_count: int = 0
 
-    languages_used: List[str] = Field(default_factory=list)
-    topics: List[str] = Field(default_factory=list)
+    languages_used: Optional[List[str]] = None
+    topics: Optional[List[str]] = None
 
     is_indexed: bool = False
     indexed_at: Optional[datetime] = None
@@ -128,11 +128,11 @@ class Interaction(BaseModel):
       platform_specific_id (str): Platform-specific identifier for the interaction.
       channel_id (Optional[str]): Identifier for the channel where the interaction took place, if applicable.
       thread_id (Optional[str]): Identifier for the thread within the channel, if applicable.
-      content (str): The textual content of the interaction.
-      interaction_type (str): Type of interaction (e.g., message, comment, issue).
+      content (Optional[str]): The textual content of the interaction.
+      interaction_type (Optional[str]): Type of interaction (e.g., message, comment, issue).
       sentiment_score (Optional[float]): Sentiment analysis score of the interaction content.
       intent_classification (Optional[str]): Classification of the user's intent in the interaction.
-      topics_discussed (List[str]): List of topics discussed in the interaction.
+      topics_discussed (Optional[List[str]]): List of topics discussed in the interaction.
       metadata (Optional[dict]): Additional metadata related to the interaction.
     """
     id: UUID
@@ -146,12 +146,12 @@ class Interaction(BaseModel):
     channel_id: Optional[str] = None
     thread_id: Optional[str] = None
 
-    content: str
-    interaction_type: str
+    content: Optional[str] = None
+    interaction_type: Optional[str] = None
 
     sentiment_score: Optional[float] = None
     intent_classification: Optional[str] = None
-    topics_discussed: List[str] = Field(default_factory=list)
+    topics_discussed: Optional[List[str]] = None
 
     metadata: Optional[dict] = None
 

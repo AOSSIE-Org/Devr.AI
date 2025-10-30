@@ -1,6 +1,6 @@
 <div align="center">
  <span>
- <img src="[TO BE FILLED - DevR.AI LOGO]" alt="Devr.AI logo" width="150" height="auto" />
+ <img src="assets\images\Devr logo.png" alt="Devr.AI logo" width="150" height="auto" />
  </span>
 
 # 🤖 Devr.AI - AI-Powered Developer Relations Assistant
@@ -91,10 +91,10 @@ For detailed setup instructions, troubleshooting, and deployment guides, please 
 
 ## 🎯 Bot Commands
 
-- `!verify_github` - Link your GitHub account for enhanced personalization
-- `!verification_status` - Check your GitHub account linking status
-- `!reset` - Clear conversation memory and start fresh
-- `!help_devrel` - Display available commands and bot capabilities
+- `/verify_github` - Link your GitHub account for enhanced personalization
+- `/verification_status` - Check your GitHub account linking status
+- `/reset` - Clear conversation memory and start fresh
+- `/help_devrel` - Display available commands and bot capabilities
 
 <!-- TODO -->
 <!-- ## 🎬 Feature Showcase
