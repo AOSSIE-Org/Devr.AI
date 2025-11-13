@@ -1,7 +1,7 @@
 {
     // auto-formatter for python
     "[python]": {
-        "editor.defaultFormatter": "ms-python.autopep8",
+        "editor.defaultFormatter": "trunk.io",
         "editor.formatOnSave": true,
     },
     // linting for python

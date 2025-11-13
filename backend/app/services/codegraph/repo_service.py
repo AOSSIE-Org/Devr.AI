@@ -44,7 +44,7 @@ class RepoService:
             "Expected: 'owner/repo' or 'https://github.com/owner/repo'"
         )
 
-    async def index_repo(self, repo_input: str, discord_id: str) -> Dict[str, Any]:
+    async def index_repo(self, repo_input: str, discord_id: str = "web_user") -> Dict[str, Any]:
         """Index a GitHub repository."""
         try:
             # Parse repository URL
