@@ -166,7 +166,7 @@ class RepoService:
             Dict with status and answer
         """
         try:
-            result = await self.supabase.table("indexed_repositories").select(
+            result = await self.supabase.table("repositories").select(
                 "graph_name, indexing_status"
             ).eq(
                 "repository_full_name", repo_full_name
