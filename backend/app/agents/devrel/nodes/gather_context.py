@@ -48,17 +48,16 @@ async def gather_context_node(state: AgentState) -> Dict[str, Any]:
                     avatar_url=avatar_url,
                 )
                 profile_data = user.model_dump()
-            except Exception as exc:  # pragma: no cover - graceful degradation
+            except Exception as exc:
                 logger.warning("Failed to refresh Discord user profile for %s: %s", discord_id, exc)
 
     context_data = {
         "user_profile": profile_data or {"user_id": state.user_id, "platform": state.platform},
-        "conversation_context": len(state.messages) + 1,  # +1 for the new message
+        "conversation_context": len(state.messages) + 1
         "session_info": {"session_id": state.session_id},
         "user_uuid": user_uuid
     }
 
-    # Only retrieve from database if we don't have conversation context already
     should_fetch_from_db = not state.conversation_summary and not state.key_topics
 
     if user_uuid and should_fetch_from_db:
@@ -68,14 +67,14 @@ async def gather_context_node(state: AgentState) -> Dict[str, Any]:
             logger.info(f"Retrieved previous conversation context from database")
             context_data["previous_conversation"] = prev_context
 
-            # Populate state with previous conversation summary and topics
             return {
                 "messages": [new_message],
                 "context": {**state.context, **context_data},
                 "conversation_summary": prev_context.get("conversation_summary"),
                 "key_topics": prev_context.get("key_topics", []),
                 "current_task": "context_gathered",
-                "last_interaction_time": datetime.now()
+                "last_interaction_time": datetime.now(),
+                "hil_message": state.hil_message,
             }
         else:
             logger.info(f"No previous conversation context found in database")
@@ -91,6 +90,7 @@ async def gather_context_node(state: AgentState) -> Dict[str, Any]:
         "context": updated_context,
         "current_task": "context_gathered",
         "last_interaction_time": datetime.now(),
+        "hil_message": state.hil_message,
     }
 
     if profile_data:

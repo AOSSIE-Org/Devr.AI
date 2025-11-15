@@ -58,7 +58,8 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
         interaction_count=state.interaction_count,
         iteration_count=iteration_count,
         conversation_history=conversation_history,
-        tool_results=json.dumps(tool_results, indent=2) if tool_results else "No previous tool results"
+        tool_results=json.dumps(tool_results, indent=2) if tool_results else "No previous tool results",
+        current_task=state.current_task or "None" # Pass in the current task
     )
 
     response = await llm.ainvoke([HumanMessage(content=prompt)])
@@ -66,7 +67,6 @@ async def react_supervisor_node(state: AgentState, llm) -> Dict[str, Any]:
 
     logger.info(f"ReAct Supervisor decision: {decision['action']}")
 
-    # Update state with supervisor's thinking
     return {
         "context": {
             **state.context,
@@ -82,14 +82,18 @@ def _parse_supervisor_decision(response: str) -> Dict[str, Any]:
     try:
         lines = response.strip().split('\n')
         decision = {"action": "complete", "reasoning": "", "thinking": ""}
+        
+        valid_actions = ["web_search", "faq_handler", "onboarding", "github_toolkit", "technical_support", "complete"]
 
         for line in lines:
             if line.startswith("THINK:"):
                 decision["thinking"] = line.replace("THINK:", "").strip()
             elif line.startswith("ACT:"):
                 action = line.replace("ACT:", "").strip().lower()
-                if action in ["web_search", "faq_handler", "onboarding", "github_toolkit", "complete"]:
+                
+                if action in valid_actions:
                     decision["action"] = action
+                    
             elif line.startswith("REASON:"):
                 decision["reasoning"] = line.replace("REASON:", "").strip()
 
@@ -98,7 +102,7 @@ def _parse_supervisor_decision(response: str) -> Dict[str, Any]:
         logger.error(f"Error parsing supervisor decision: {e}")
         return {"action": "complete", "reasoning": "Error in decision parsing", "thinking": ""}
 
-def supervisor_decision_router(state: AgentState) -> Literal["web_search", "faq_handler", "onboarding", "github_toolkit", "complete"]:
+def supervisor_decision_router(state: AgentState) -> Literal["web_search", "faq_handler", "onboarding", "github_toolkit", "technical_support", "complete"]:
     """Route based on supervisor's decision"""
     decision = state.context.get("supervisor_decision", {})
     action = decision.get("action", "complete")
