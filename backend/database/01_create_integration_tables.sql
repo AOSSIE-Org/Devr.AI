@@ -1,5 +1,5 @@
 -- =========================================================
--- STEP 1: FULL CLEANUP
+-- STEP 1: FULL CLEANUP (Re-initialization)
 -- =========================================================
 DROP TABLE IF EXISTS public.indexed_repositories CASCADE;
 DROP TABLE IF EXISTS public.interactions CASCADE;
@@ -58,7 +58,7 @@ ALTER TABLE public.organization_integrations ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public Access Orgs" ON organization_integrations FOR ALL USING (true) WITH CHECK (true);
 
 -- =========================================================
--- STEP 4: MEMORY TABLES
+-- STEP 4: MEMORY TABLES (Context & Interactions)
 -- =========================================================
 CREATE TABLE public.conversation_context (
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -83,7 +83,7 @@ ALTER TABLE public.interactions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public Interaction Access" ON interactions FOR ALL USING (true) WITH CHECK (true);
 
 -- =========================================================
--- STEP 5: INDEXED REPOSITORIES (With Fixed Column)
+-- STEP 5: INDEXED REPOSITORIES (Complete Definition)
 -- =========================================================
 CREATE TABLE public.indexed_repositories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -91,8 +91,10 @@ CREATE TABLE public.indexed_repositories (
     repository_full_name TEXT NOT NULL,
     graph_name TEXT NOT NULL,
     
-
+    -- ✅ All Critical Columns Included Here
     indexed_by_discord_id TEXT,
+    last_error TEXT,
+    indexed_at TIMESTAMPTZ DEFAULT NOW(),
     
     branch TEXT DEFAULT 'main',
     node_count INTEGER DEFAULT 0,
