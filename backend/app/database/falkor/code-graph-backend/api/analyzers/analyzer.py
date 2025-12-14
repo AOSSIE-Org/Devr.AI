@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Optional
 
 from tree_sitter import Language, Node, Parser, Point
-from api.entities.entity import Entity
-from api.entities.file import File
+from ..entities.entity import Entity
+from ..entities.file import File
 from abc import ABC, abstractmethod
 from multilspy import SyncLanguageServer
 

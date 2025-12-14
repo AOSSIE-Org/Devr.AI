@@ -2,8 +2,8 @@ from contextlib import nullcontext
 from pathlib import Path
 from typing import Optional
 
-from api.entities.entity import Entity
-from api.entities.file import File
+from ..entities.entity import Entity
+from ..entities.file import File
 
 from ..graph import Graph
 from .analyzer import AbstractAnalyzer

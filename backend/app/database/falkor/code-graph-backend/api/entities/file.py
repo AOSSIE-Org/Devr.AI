@@ -1,7 +1,7 @@
 from pathlib import Path
 from tree_sitter import Node, Tree
 
-from api.entities.entity import Entity
+from .entity import Entity
 
 
 class File:
