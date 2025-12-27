@@ -4,8 +4,8 @@ from pathlib import Path
 from functools import wraps
 from dotenv import load_dotenv
 
-from api.project import Project
-from api.auto_complete import prefix_search
+from ..api.project import Project
+from ..api.auto_complete import prefix_search
 from flask import Flask, request, jsonify
 
 # Load environment variables from .env file

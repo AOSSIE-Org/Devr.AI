@@ -6,13 +6,13 @@ from functools import wraps
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 
-from api.analyzers.source_analyzer import SourceAnalyzer
-from api.git_utils import git_utils
-from api.git_utils.git_graph import GitGraph
-from api.graph import Graph, get_repos, graph_exists
-from api.info import get_repo_info
-from api.llm import ask
-from api.project import Project
+from .analyzers.source_analyzer import SourceAnalyzer
+from .git_utils import git_utils
+from .git_utils.git_graph import GitGraph
+from .graph import Graph, get_repos, graph_exists
+from .info import get_repo_info
+from .llm import ask
+from .project import Project
 from .auto_complete import prefix_search
 
 # Load environment variables from .env file
