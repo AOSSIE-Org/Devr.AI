@@ -46,7 +46,7 @@ class GitHubRepoStatsService:
         if self.session:
             await self.session.close()
 
-    async def _make_request(self, url: str, params: Dict = None) -> Optional[Any]:
+    async def _make_request(self, url: str, params: Dict | None = None) -> Optional[Any]:
         """Make a GET request to GitHub API"""
         try:
             async with self.session.get(url, params=params) as response:
@@ -313,5 +313,5 @@ class GitHubRepoStatsService:
             }
 
         except Exception as e:
-            logger.error(f"Error fetching comprehensive stats for {owner}/{repo}: {str(e)}")
+            logger.exception(f"Error fetching comprehensive stats for {owner}/{repo}: {str(e)}")
             raise

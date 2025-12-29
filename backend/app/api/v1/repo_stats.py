@@ -160,7 +160,7 @@ async def analyze_repository(request: RepoStatsRequest):
         try:
             owner, repo = parse_repo_url(request.repo_url)
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
         
         logger.info(f"Fetching stats for {owner}/{repo}")
         
@@ -175,11 +175,11 @@ async def analyze_repository(request: RepoStatsRequest):
     except HTTPException:
         raise
     except ValueError as e:
-        logger.error(f"Value error: {e}")
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.exception(f"Value error: {e}")
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Error analyzing repository: {e}", exc_info=True)
+        logger.exception(f"Error analyzing repository: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to analyze repository: {str(e)}"
-        )
+        ) from e

@@ -58,7 +58,7 @@ cp backend/.env.example backend/.env
 
 # 3. Frontend
 # Create a .env file in frontend/ directory
-cp frontend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 
 
 # Edit the .env files with your API keys and configuration

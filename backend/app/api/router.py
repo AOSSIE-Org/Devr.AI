@@ -26,7 +26,7 @@ api_router.include_router(
 
 api_router.include_router(
     repo_stats_router,
-    prefix="/api",
+    prefix="/api",        # Note: Keeping "/api" prefix as frontend depends on it
     tags=["Repository Stats"]
 )
 
