@@ -215,30 +215,45 @@ const Waitlist: React.FC = () => {
                       />
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <label htmlFor="role" className="block text-sm font-semibold text-gray-300 mb-2">
-                      Your Role
+                          Your Role
                     </label>
+
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <select
-                        id="role"
-                        name="role"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        required
-                        className="relative w-full px-4 py-4 bg-dark-card/80 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-white backdrop-blur-sm transition-all duration-300 hover:border-gray-600"
-                      >
-                        <option value="" className="bg-dark-card">Select your role</option>
-                        {roleOptions.map((option) => (
-                          <option key={option} value={option} className="bg-dark-card">
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <select
+                  id="role"
+                  name="role"
+        value={role}
+        onChange={(e) => setRole(e.target.value)}
+        required
+        className="relative w-full px-4 py-4 pr-14 appearance-none bg-dark-card/80 border border-gray-700 rounded-xl text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-300 hover:border-gray-600">
+          <option value="" className="bg-dark-card">
+            Select your role
+          </option>
+          {roleOptions.map((option) => (
+          <option key={option} value={option} className="bg-dark-card">
+            {option}
+          </option>
+          ))}
+      </select>
+        <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-300 group-hover:text-gray-300">
+          <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </div>
+  </div>
+</div>
 
                   <div className="space-y-2">
                     <label htmlFor="suggestions" className="block text-sm font-semibold text-gray-300 mb-2">
