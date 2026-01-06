@@ -114,11 +114,12 @@ interface Props {
 }
 
 const AnalyticsPage: React.FC<Props> = ({ repoData }) => {
+    const [selectedRange, setSelectedRange] = React.useState('Last Week');
+    const [activeIndex, setActiveIndex] = React.useState(0);
+
     if (!repoData || !repoData.pull_requests) {
         return <div>No data available. Please analyze a repository first.</div>;
     }
-    const [selectedRange, setSelectedRange] = React.useState('Last Week');
-    const [activeIndex, setActiveIndex] = React.useState(0);
 
     const onPieEnter = (_: any, index: number) => {
         setActiveIndex(index);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ContributorCard from './ContributorCard';
@@ -9,13 +9,7 @@ interface Props {
 }
 
 const ContributorsPage: React.FC<Props> = ({ repoData }) => {
-  const [contributors, setContributors] = useState<any[]>(repoData?.contributors || []);
-
-  useEffect(() => {
-    if (repoData?.contributors) {
-      setContributors(repoData.contributors);
-    }
-  }, [repoData]);
+  const contributors = repoData?.contributors || [];
 
   const handleExportReport = () => {
     toast.success('Generating contributor report...');

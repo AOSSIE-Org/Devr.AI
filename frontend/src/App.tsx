@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
@@ -20,6 +20,26 @@ import ResetPasswordPage from './components/pages/ResetPasswordPage';
 import { useAuth } from './hooks/useAuth';
 import { RepositoryData } from './types';
 
+const ProtectedLayout = ({ isSidebarOpen, setIsSidebarOpen, handleLogout }: any) => (
+  <div className="flex">
+    <Sidebar
+      isOpen={isSidebarOpen}
+      setIsOpen={setIsSidebarOpen}
+      onLogout={handleLogout}
+    />
+    <main
+      className={`transition-all duration-300 flex-1 ${isSidebarOpen ? 'ml-64' : 'ml-20'
+        }`}
+    >
+      <div className="p-8">
+        <AnimatePresence mode="wait">
+          <Outlet />
+        </AnimatePresence>
+      </div>
+    </main>
+  </div>
+);
+
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [repoData, setRepoData] = useState<RepositoryData | null>(null);
@@ -29,33 +49,10 @@ function App() {
     return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">Loading...</div>;
   }
 
-  const handleLogin = () => {
-    // Auth state is handled by the useAuth hook listener
-  };
-
   const handleLogout = async () => {
     await logout();
   };
 
-  const ProtectedLayout = () => (
-    <div className="flex">
-      <Sidebar
-        isOpen={isSidebarOpen}
-        setIsOpen={setIsSidebarOpen}
-        onLogout={handleLogout}
-      />
-      <main
-        className={`transition-all duration-300 flex-1 ${isSidebarOpen ? 'ml-64' : 'ml-20'
-          }`}
-      >
-        <div className="p-8">
-          <AnimatePresence mode="wait">
-            <Outlet />
-          </AnimatePresence>
-        </div>
-      </main>
-    </div>
-  );
 
   return (
     <Router>
@@ -68,7 +65,7 @@ function App() {
               isAuthenticated ? (
                 <Navigate to="/" replace />
               ) : (
-                <LoginPage onLogin={handleLogin} />
+                <LoginPage />
               )
             }
           />
@@ -92,7 +89,15 @@ function App() {
           <Route
             path="/"
             element={
-              isAuthenticated ? <ProtectedLayout /> : <Navigate to="/login" replace />
+              isAuthenticated ? (
+                <ProtectedLayout
+                  isSidebarOpen={isSidebarOpen}
+                  setIsSidebarOpen={setIsSidebarOpen}
+                  handleLogout={handleLogout}
+                />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             }
           >
             <Route index element={<LandingPage setRepoData={setRepoData} />} />

@@ -9,7 +9,6 @@ export const useAuth = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) {
-        toast.error('Session check failed');
         console.error('Error checking session:', error);
       }
       setIsAuthenticated(!!data?.session);

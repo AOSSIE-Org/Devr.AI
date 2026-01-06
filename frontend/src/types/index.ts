@@ -12,6 +12,12 @@ export interface PullRequest {
   created_at?: string;
 }
 
+export interface Contributor {
+  login: string;
+  avatar_url: string;
+  contributions: number;
+}
+
 export interface RepositoryData {
   id: string;
   name: string;
@@ -27,7 +33,7 @@ export interface RepositoryData {
     login: string;
     avatar_url: string;
   };
-  contributors?: any[];
+  contributors?: Contributor[];
   pull_requests?: {
     open: number;
     total: number;

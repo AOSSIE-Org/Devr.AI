@@ -54,18 +54,18 @@ const Dashboard: React.FC<Props> = ({ repoData }) => {
           icon={<GitPullRequest size={24} />}
           title="Open PRs"
           value={repoData.pull_requests?.open || 0}
-          trend={repoData.pull_requests?.open || 0}
+          trend={8} // Real growth percentage placeholder
         />
         <StatCard
           icon={<MessageSquare size={24} />}
           title="Community Posts"
-          value="892"
+          value="892" // TODO: Make dynamic
           trend={8}
         />
         <StatCard
           icon={<Activity size={24} />}
           title="Response Rate"
-          value="94%"
+          value="94%" // TODO: Make dynamic
           trend={5}
         />
       </div>

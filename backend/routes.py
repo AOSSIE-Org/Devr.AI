@@ -1,5 +1,8 @@
 import hmac
 import hashlib
+import logging
+import uuid
+import json
 from fastapi import APIRouter, Request, HTTPException, Header
 from app.core.events.event_bus import EventBus
 from app.core.events.enums import EventType, PlatformType
@@ -35,7 +38,7 @@ def register_event_handlers():
     event_bus.register_handler(EventType.PR_COMMENTED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.PR_MERGED, sample_handler, PlatformType.GITHUB)
 
-async def verify_signature(request: Request, x_hub_signature_256: str = Header(None)):
+async def verify_signature(body: bytes, x_hub_signature_256: str = Header(None)):
     """Verify that the payload was sent from GitHub by validating the SHA256 signature."""
     if not settings.github_webhook_secret:
         # If secret is not configured, we skip verification (not recommended for production)
@@ -44,7 +47,6 @@ async def verify_signature(request: Request, x_hub_signature_256: str = Header(N
     if not x_hub_signature_256:
         raise HTTPException(status_code=401, detail="X-Hub-Signature-256 header is missing")
 
-    body = await request.body()
     signature = hmac.new(
         settings.github_webhook_secret.encode(),
         body,
@@ -60,10 +62,16 @@ async def github_webhook(
     x_github_event: str = Header(None),
     x_hub_signature_256: str = Header(None)
 ):
-    # Verify GitHub signature
-    await verify_signature(request, x_hub_signature_256)
+    # Read body once to avoid stream exhaustion
+    body = await request.body()
 
-    payload = await request.json()
+    # Verify GitHub signature
+    await verify_signature(body, x_hub_signature_256)
+
+    try:
+        payload = json.loads(body.decode())
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
     logging.info(f"Received GitHub event: {x_github_event}")
 
     event_type = None
