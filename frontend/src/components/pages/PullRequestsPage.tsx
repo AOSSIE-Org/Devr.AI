@@ -1,30 +1,21 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-
-interface PullRequest {
-  number: number;
-  title: string;
-  author: {
-    login: string;
-    avatar_url: string;
-    profile_url: string;
-  };
-  state: string;
-  url: string;
-  comments?: number;
-  created_at?: string;
-}
+import { RepositoryData } from '../../types';
 
 interface Props {
-  repoData: { pull_requests: { details: PullRequest[] } } | null;
+  repoData: RepositoryData | null;
 }
 
 const PullRequestsPage: React.FC<Props> = ({ repoData }) => {
   if (!repoData || !repoData.pull_requests) {
-    return <div>No data available. Please analyze a repository first.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400 font-medium">
+        <p className="text-xl">No data available. Please analyze a repository first.</p>
+      </div>
+    );
   }
 
-  const prs = repoData.pull_requests.details;
+  const prs = repoData.pull_requests.details || [];
 
   const getStatusColor = (state: string) => {
     switch (state.toLowerCase()) {
@@ -51,41 +42,51 @@ const PullRequestsPage: React.FC<Props> = ({ repoData }) => {
         <h1 className="text-3xl font-bold">Pull Requests</h1>
       </div>
 
-      <div className="bg-gray-900 rounded-xl overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-800">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Title</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Author</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PR Number</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Link</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-800">
-            {prs.map((pr) => (
-              <tr key={pr.number} className="hover:bg-gray-800">
-                <td className="px-6 py-4 whitespace-nowrap text-white">{pr.title}</td>
-                <td className="px-6 py-4 whitespace-nowrap flex items-center gap-2">
-                  <img src={pr.author.avatar_url} alt={pr.author.login} className="w-8 h-8 rounded-full" />
-                  <a href={pr.author.profile_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">
-                    {pr.author.login}
-                  </a>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`${getStatusColor(pr.state)} capitalize`}>{pr.state}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-300">#{pr.number}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <a href={pr.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
-                    View PR
-                  </a>
-                </td>
+      {prs.length === 0 ? (
+        <div className="bg-gray-900 p-12 rounded-xl text-center text-gray-400">
+          No pull requests found for this repository.
+        </div>
+      ) : (
+        <div className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+          <table className="w-full">
+            <thead className="bg-gray-800/50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Title</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Author</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">PR Number</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Link</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {prs.map((pr) => (
+                <tr key={pr.number} className="hover:bg-gray-800/30 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-white font-medium">{pr.title}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <img src={pr.author.avatar_url} alt={pr.author.login} className="w-8 h-8 rounded-full border border-gray-700" />
+                      <a href={pr.author.profile_url} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 transition-colors text-sm">
+                        {pr.author.login}
+                      </a>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`${getStatusColor(pr.state)} capitalize px-2 py-1 bg-gray-800 rounded text-xs font-semibold`}>
+                      {pr.state}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-400 text-sm font-mono">#{pr.number}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <a href={pr.url} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 underline text-sm">
+                      View PR
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </motion.div>
   );
 };
