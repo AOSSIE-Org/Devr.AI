@@ -20,7 +20,13 @@ import ResetPasswordPage from './components/pages/ResetPasswordPage';
 import { useAuth } from './hooks/useAuth';
 import { RepositoryData } from './types';
 
-const ProtectedLayout = ({ isSidebarOpen, setIsSidebarOpen, handleLogout }: any) => (
+interface ProtectedLayoutProps {
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (isOpen: boolean) => void;
+  handleLogout: () => Promise<void>;
+}
+
+const ProtectedLayout = ({ isSidebarOpen, setIsSidebarOpen, handleLogout }: ProtectedLayoutProps) => (
   <div className="flex">
     <Sidebar
       isOpen={isSidebarOpen}

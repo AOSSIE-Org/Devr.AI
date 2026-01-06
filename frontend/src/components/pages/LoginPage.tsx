@@ -18,9 +18,6 @@ interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon: React.ElementType;
 }
 
-interface LoginPageProps {
-  onLogin?: () => void;
-}
 
 const AuthLayout = ({ children }: AuthLayoutProps) => (
   <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
@@ -47,7 +44,7 @@ const InputField = ({ icon: Icon, ...props }: InputFieldProps) => (
   </div>
 );
 
-export default function LoginPage({ }: LoginPageProps) {
+export default function LoginPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -67,7 +64,7 @@ export default function LoginPage({ }: LoginPageProps) {
       navigate('/');
     }
     else {
-      toast.error(error?.message || "An Unknown error occured!");
+      toast.error(error?.message || "An Unknown error occurred!");
     }
   };
 

@@ -38,7 +38,7 @@ def register_event_handlers():
     event_bus.register_handler(EventType.PR_COMMENTED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.PR_MERGED, sample_handler, PlatformType.GITHUB)
 
-async def verify_signature(body: bytes, x_hub_signature_256: str = Header(None)):
+async def verify_signature(body: bytes, x_hub_signature_256: str):
     """Verify that the payload was sent from GitHub by validating the SHA256 signature."""
     if not settings.github_webhook_secret:
         # If secret is not configured, we skip verification (not recommended for production)
@@ -71,7 +71,7 @@ async def github_webhook(
     try:
         payload = json.loads(body.decode())
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        raise HTTPException(status_code=400, detail="Invalid JSON payload") from None
     logging.info(f"Received GitHub event: {x_github_event}")
 
     event_type = None
@@ -93,9 +93,6 @@ async def github_webhook(
         "pull_request_review_comment": {
             "created": EventType.PR_COMMENTED,
         },
-        "pull_request_comment": {
-            "created": EventType.PR_COMMENTED,
-        }
     }
 
     if x_github_event in event_mapping:
