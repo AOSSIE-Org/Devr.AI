@@ -133,6 +133,23 @@ class RepoService:
                             "nodes": data.get("node_count", 0),
                             "edges": data.get("edge_count", 0)
                         }
+                    elif response.status == 429:
+                        error_text = await response.text()
+                        error_msg = error_text[:500]
+                    
+                        await self.supabase.table("indexed_repositories").update({
+                            "indexing_status": "failed",
+                            "last_error": error_msg
+                        }).eq("repository_full_name", repo_info['full_name']).eq(
+                            "is_deleted", False
+                        ).execute()
+                    
+                        return {
+                            "status": "error",
+                            "error_code": "RATE_LIMITED",
+                            "retryable": True,
+                            "message": "Rate limit exceeded. Please try again later."
+                        }
                     elif 500 <= response.status < 600:
                         error_text = await response.text()
                         error_msg = error_text[:500]
