@@ -133,8 +133,26 @@ class RepoService:
                             "nodes": data.get("node_count", 0),
                             "edges": data.get("edge_count", 0)
                         }
+                    elif 500 <= response.status < 600:
+                        error_text = await response.text()
+                        error_msg = error_text[:500]
+                    
+                        await self.supabase.table("indexed_repositories").update({
+                            "indexing_status": "failed",
+                            "last_error": error_msg
+                        }).eq("repository_full_name", repo_info['full_name']).eq(
+                            "is_deleted", False
+                        ).execute()
+                    
+                        return {
+                            "status": "error",
+                            "error_code": "BACKEND_ERROR",
+                            "retryable": True,
+                            "message": "Indexing service encountered an internal error. Please try again later."
+                        }
                     else:
-                        error_msg = (await response.text())[:500]
+                        error_text = await response.text()
+                        error_msg = error_text[:500]
 
                         await self.supabase.table("indexed_repositories").update({
                             "indexing_status": "failed",
@@ -143,16 +161,35 @@ class RepoService:
                             "is_deleted", False
                         ).execute()
 
-                        return {"status": "error", "message": f"Indexing failed: {error_msg}"}
-
+                        return {
+                            "status": "error",
+                            "error_code": "INVALID_REQUEST",
+                            "retryable": False,
+                            "message": "Indexing request was rejected. Please verify the repository."
+                        }
         except ValueError as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "error_code": "INVALID_REPOSITORY",
+                "retryable": False,
+                "message": str(e)
+            }
         except aiohttp.ClientError as e:
             logger.exception(f"Network error indexing {repo_input}: {e}")
-            return {"status": "error", "message": "Network error. Please try again."}
+            return {
+                "status": "error",
+                "error_code": "BACKEND_UNAVAILABLE",
+                "retryable": True,
+                "message": "Indexing service is currently unavailable. Please try again later."
+            }
         except Exception:
             logger.exception(f"Failed to index {repo_input}")
-            return {"status": "error", "message": "Indexing failed. Please contact support."}
+            return {
+                "status": "error",
+                "error_code": "INDEXING_FAILED",
+                "retryable": False,
+                "message": "Indexing failed due to an unexpected error."
+            }
 
     async def query_repo(self, question: str, repo_full_name: str) -> Dict[str, Any]:
         """
