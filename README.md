@@ -89,6 +89,51 @@ Devr.AI utilizes a complex multi-service architecture with AI agents, message qu
 
 For detailed setup instructions, troubleshooting, and deployment guides, please refer to our [Installation Guide](./docs/INSTALL_GUIDE.md).
 
+Backend Setup (Development)
+
+This section describes how to run the backend locally for development.
+
+Prerequisites
+
+- Python 3.10+
+- Git
+- Virtual environment support (venv)
+
+Setup Steps :
+1. Clone the repository and navigate to the project root.
+2. Create and activate a virtual environment.
+
+PowerShell (Windows):
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+Git Bash:
+python -m venv venv
+source venv/Scripts/activate
+
+3. Upgrade pip and install backend dependencies.
+pip install -U pip
+pip install -e .
+
+Required Runtime Dependencies
+While running the backend locally, the following runtime dependencies are required:
+
+- uvicorn
+- pydantic-settings
+- supabase
+- aiohttp
+- weaviate-client
+
+If these dependencies are missing, the backend may fail during startup with import or runtime errors.
+
+Running the Backend
+From the project root or backend directory:
+python backend/main.py
+
+Notes on Weaviate Client Compatibility
+The backend currently uses APIs from different major versions of the Weaviate Python client (v3 and v4).
+As a result, contributors may encounter startup errors depending on the installed client version.
+
 ## 🎯 Bot Commands
 
 - `/verify_github` - Link your GitHub account for enhanced personalization
