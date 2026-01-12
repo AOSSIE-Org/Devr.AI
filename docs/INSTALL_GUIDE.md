@@ -78,7 +78,8 @@ poetry run python start_github_mcp_server.py
 
 # Terminal 3 (Start graphDB / Code Graph Backend)
 cd backend/app/database/falkor/code-graph-backend
-flask --app api.index run --debug --port 5000```
+flask --app api.index run --debug --port 5000
+```
 
 9. **Start the frontend** (in a new terminal)
 ```sh
