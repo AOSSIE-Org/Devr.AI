@@ -4,58 +4,81 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Inter', sans-serif;
-  @apply bg-dark text-white antialiased;
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+    /* Use a slightly lifted dark color for better depth than pure black */
+    background-color: #09090b; 
+    @apply text-white antialiased;
+  }
+
+  /* Accessibility Fix: Placeholder Contrast */
+  /* This ensures users can actually read the hint text in input fields */
+  input::placeholder, 
+  textarea::placeholder {
+    color: #a1a1aa !important; /* Zinc-400 provides a 4.5:1 contrast ratio */
+    opacity: 1;
+  }
+
+  /* Accessibility Fix: Table row hover state */
+  tr:hover {
+    background-color: #1e1e1e !important;
+    transition: background-color 0.2s ease;
+  }
 }
 
-.gradient-text {
-  @apply bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent;
-}
+@layer components {
+  .gradient-text {
+    @apply bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent;
+  }
 
-.card {
-  @apply bg-dark-card border border-gray-700 rounded-xl p-6 transition-all hover:border-green-500;
-}
+  .card {
+    /* Improved border from gray-700 to zinc-700 for better visibility in dark mode */
+    @apply bg-dark-card border border-zinc-700 rounded-xl p-6 transition-all hover:border-green-500;
+  }
 
-.btn-primary {
-  @apply px-6 py-3 rounded-lg bg-primary hover:bg-primary-hover transition-all text-white font-medium;
-}
+  .btn-primary {
+    @apply px-6 py-3 rounded-lg bg-primary hover:bg-primary-hover transition-all text-white font-medium;
+  }
 
-.btn-secondary {
-  @apply px-6 py-3 rounded-lg bg-dark-lighter hover:bg-gray-800 transition-all text-white font-medium border border-gray-700;
-}
+  .btn-secondary {
+    /* Improved border and hover state for secondary buttons */
+    @apply px-6 py-3 rounded-lg bg-dark-lighter hover:bg-zinc-800 transition-all text-white font-medium border border-zinc-600;
+  }
 
-.section {
-  @apply py-12 md:py-20;
-}
+  .section {
+    @apply py-12 md:py-20;
+  }
 
-.hover-lift {
-  @apply transition-transform duration-300;
-}
+  .hover-lift {
+    @apply transition-transform duration-300;
+  }
 
-.hover-lift:hover {
-  transform: translateY(-5px);
+  .hover-lift:hover {
+    transform: translateY(-5px);
+  }
 }
 
 .radial-gradient-bg {
   background: radial-gradient(circle at center, rgba(34, 197, 94, 0.15), transparent 50%);
 }
-/* Webkit Scrollbar Styling */
+
+/* Webkit Scrollbar Styling - Keeping your custom branding */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #000; /* Optional: light background */
+  background: #000;
   border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #167a16, #171787); /* Green to blue */
+  background: linear-gradient(to bottom, #22c55e, #3b82f6); /* Slightly brighter green-to-blue */
   border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #167a16, #171787);
+  background: linear-gradient(to bottom, #16a34a, #2563eb);
 }
