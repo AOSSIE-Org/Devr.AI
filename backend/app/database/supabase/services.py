@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 import uuid
 from app.database.supabase.client import get_supabase_client
@@ -79,6 +79,153 @@ async def ensure_user_exists(
     except Exception as e:
         logger.error(f"Error ensuring user exists: {str(e)}")
         return None
+
+async def get_user_details(
+    user_id: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Return profile details of a user.
+    If a duplicate account exists (via shared Discord ID), merges data 
+    to provide a full profile, prioritizing the current user_id's data.
+    """
+    try:
+        # 1. Fetch the Primary User (The one currently logged in)
+        # Note: Removed .neq("email", None) so we can fetch pure Discord users too if needed
+        response = (
+            await supabase
+            .table("users")
+            .select("*")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+
+        if not response.data:
+            logger.warning(f"No user found for id: {user_id}")
+            return None
+
+        primary_user = response.data[0]
+        
+        # 2. Check for linked Discord ID
+        # We check both common column names just in case, prioritize discord_id
+        discord_id = primary_user.get("discord_id")
+        
+        if discord_id:
+            # 3. Search for a 'Ghost' or Duplicate row
+            # Same Discord ID, but different User UUID
+            duplicate_check = (
+                await supabase
+                .table("users")
+                .select("*")
+                .eq("discord_id", discord_id)
+                .neq("id", user_id) 
+                .limit(1)
+                .execute()
+            )
+
+            # 4. If a duplicate exists, merge them
+            if duplicate_check.data:
+                secondary_user = duplicate_check.data[0]
+                logger.info(f"Duplicate Discord user found: {secondary_user['id']}. Merging profiles.")
+
+                # MERGE STRATEGY: 
+                # Start with the Current (Primary) User.
+                # If a field in Primary is None/Empty, grab it from Secondary.
+                merged_user = primary_user.copy()
+
+                for key, value in secondary_user.items():
+                    # If primary user doesn't have a value for this field (None or empty string/list)
+                    # but the secondary user does, we adopt the secondary user's value.
+                    if not merged_user.get(key) and value:
+                        merged_user[key] = value
+                
+                # Special handling for Skills (Dictionaries)
+                # If both have skills, we might want to ensure we don't lose the old ones
+                if not merged_user.get("skills") and secondary_user.get("skills"):
+                     merged_user["skills"] = secondary_user["skills"]
+
+                return merged_user
+
+        logger.info(f"User found: {user_id}")
+        return primary_user
+
+    except Exception as e:
+        logger.error(f"Error fetching user details for {user_id}: {e}", exc_info=True)
+        return None
+
+async def update_user_details(user_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Update user profile details.
+    
+    Args:
+        user_id: The UUID of the user to update
+        updates: A dictionary of fields to update
+        
+    Returns:
+        The updated user object or None if failed
+    """
+    try:
+        key_mapping = {
+            "discord": "discord_username",
+            "github": "github_username",
+            "slack": "slack_username",
+        }
+
+        db_payload = {}
+        
+        for key, value in updates.items():
+            if value is not None:
+                db_key = key_mapping.get(key, key) 
+                db_payload[db_key] = value
+
+        if not db_payload:
+            return None
+
+        response = (
+            await supabase
+            .table("users")
+            .update(db_payload)
+            .eq("id", user_id)
+            .execute()
+        )
+        
+        if response.data:
+            logger.info(f"Updated profile for user: {user_id}")
+            return response.data[0]
+        return None
+
+    except Exception as e:
+        logger.error(f"Error updating user details for {user_id}: {e}")
+        raise e
+
+
+async def validate_user(
+    token: str,
+) -> Optional[Tuple[str, Optional[str]]]:
+    response = await supabase.auth.get_user(jwt=token)
+    print(f"Auth response: {response}")
+    if not response or not response.user:
+        return None
+    auth_user = response.user
+    auth_user_id = auth_user.id
+
+    user_metadata = auth_user.user_metadata or {}
+    display_name = user_metadata.get("display_name")
+    user_check = (
+        await supabase
+        .table("users")
+        .select("id")
+        .eq("id", auth_user_id)
+        .limit(1)
+        .execute()
+    )
+    if not user_check.data:
+        logger.error(f"Auth user {auth_user_id} not found in public.users")
+        return None
+
+    return auth_user_id, display_name
+
+
 
 
 async def store_interaction(

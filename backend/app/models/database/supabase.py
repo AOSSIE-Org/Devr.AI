@@ -226,3 +226,26 @@ class IndexedRepository(BaseModel):
     last_error: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class SkillsModel(BaseModel):
+    languages: List[str] = []
+    frameworks: List[str] = []
+
+class UserProfileEdit(BaseModel):
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    discord: Optional[str] = None
+    github: Optional[str] = None
+    slack: Optional[str] = None
+    skills: Optional[SkillsModel] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "display_name": "Dev Guru",
+                "bio": "Full stack developer interested in AI",
+                "skills": ["python", "fastapi", "react"],
+                "github": "devguru_code"
+            }
+        }
