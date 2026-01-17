@@ -12,5 +12,9 @@ GITHUB_ORG = os.getenv("GITHUB_ORG", "Aossie-org")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
 
 MODEL_NAME = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
-MAX_BATCH_SIZE = int(os.getenv("EMBEDDING_MAX_BATCH_SIZE", "32"))
+try:
+    MAX_BATCH_SIZE = int(os.getenv("EMBEDDING_MAX_BATCH_SIZE", "32"))
+except ValueError:
+    logging.warning("Invalid integer for EMBEDDING_MAX_BATCH_SIZE. Defaulting to 32.")
+    MAX_BATCH_SIZE = 32
 EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "cpu")
