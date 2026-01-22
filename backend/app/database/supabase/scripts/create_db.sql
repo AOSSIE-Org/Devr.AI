@@ -23,6 +23,7 @@ CREATE TABLE users (
 
     display_name TEXT NOT NULL,
     avatar_url TEXT,
+    avatar_path TEXT,
     bio TEXT,
     location TEXT,
 

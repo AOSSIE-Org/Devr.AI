@@ -41,6 +41,7 @@ CREATE OR REPLACE FUNCTION create_users_at_db()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, auth
 AS $$
 BEGIN
     INSERT INTO public.users (
@@ -50,7 +51,8 @@ BEGIN
         avatar_url,
         created_at,
         updated_at,
-        is_verified
+        is_verified,
+        verified_at
     )
     VALUES (
         NEW.id,
@@ -59,7 +61,8 @@ BEGIN
         NEW.raw_user_meta_data->>'avatar_url',
         NEW.created_at,
         NEW.created_at,
-        NEW.email_confirmed_at IS NOT NULL
+        NEW.email_confirmed_at IS NOT NULL,
+        NEW.email_confirmed_at
     );
 
     RETURN NEW;
@@ -80,12 +83,13 @@ CREATE OR REPLACE FUNCTION verify_users_at_db()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, auth
 AS $$
 BEGIN
     UPDATE public.users
     SET
         is_verified = TRUE,
-        verified_at = NEW.confirmed_at,
+        verified_at = NEW.email_confirmed_at,
         updated_at = NOW()
     WHERE id = NEW.id;
 
@@ -133,3 +137,53 @@ CREATE POLICY "Users can delete their own integrations"
 -- Add helpful comments
 COMMENT ON TABLE organization_integrations IS 'Stores registered organizations (just metadata, no tokens)';
 COMMENT ON COLUMN organization_integrations.config IS 'Platform-specific data: organization_link, discord_guild_id, etc.';
+
+
+
+--Add Buckets for storing the avatar paths
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+-- 2. Public read access (anyone can view avatars)
+drop policy if exists "Public read access for avatars" on storage.objects;
+create policy "Public read access for avatars"
+on storage.objects
+for select
+using (
+  bucket_id = 'avatars'
+);
+
+
+-- 3. Authenticated users can upload avatars
+drop policy if exists "Authenticated upload avatars" on storage.objects;
+
+create policy "Authenticated upload avatars"
+on storage.objects
+for insert
+with check (
+  bucket_id = 'avatars'
+  and auth.role() = 'authenticated'
+);
+
+-- 4. Users can update ONLY their own avatars
+drop policy if exists "Users update own avatars" on storage.objects;
+
+create policy "Users update own avatars"
+on storage.objects
+for update
+using (
+  bucket_id = 'avatars'
+  and owner = auth.uid()
+);
+
+-- 5. Users can delete ONLY their own avatars
+drop policy if exists "Users delete own avatars" on storage.objects;
+
+create policy "Users delete own avatars"
+on storage.objects
+for delete
+using (
+  bucket_id = 'avatars'
+  and owner = auth.uid()
+);

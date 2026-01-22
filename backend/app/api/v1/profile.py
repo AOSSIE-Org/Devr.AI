@@ -16,7 +16,6 @@ async def get_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     token = credentials.credentials
-    print(f"Extracted token: {token}")
     result = await validate_user(token)
     if not result:
         raise HTTPException(
@@ -34,17 +33,22 @@ async def fetch_details(user=Depends(get_user),):
         if not id:
             raise HTTPException(status_code=401, detail="Unauthorized")
         user_details = await get_user_details(id)
+        if not user_details:
+            raise HTTPException(status_code=404, detail="User not found")
         return {"user": {
             "id": user_details.get("id"),
             "email": user_details.get("email"),
             "display_name": user_details.get("display_name"),
             "avatar_url": user_details.get("avatar_url"),
+            "avatar_path": user_details.get("avatar_path"),
             "bio": user_details.get("bio"),
             "discord":user_details.get("discord_username"),
             "github":user_details.get("github_username"),
             "slack":user_details.get("slack_username"),
-            "skills": user_details.get("skills") or [],
+            "skills": user_details.get("skills") or {"languages": [], "frameworks": []},
         }}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.error(f"Fetching profile details failed: {e}")
         raise HTTPException(
@@ -89,6 +93,7 @@ async def edit_details(
             "email": updated_user.get("email"),
             "display_name": updated_user.get("display_name"),
             "avatar_url": updated_user.get("avatar_url"),
+            "avatar_path": updated_user.get("avatar_path"),
             "bio": updated_user.get("bio"),
             "discord": updated_user.get("discord_username"),
             "github": updated_user.get("github_username"),

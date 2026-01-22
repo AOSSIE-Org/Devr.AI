@@ -136,9 +136,9 @@ async def get_user_details(
                 for key, value in secondary_user.items():
                     # If primary user doesn't have a value for this field (None or empty string/list)
                     # but the secondary user does, we adopt the secondary user's value.
-                    if not merged_user.get(key) and value:
+                    primary_value = merged_user.get(key)
+                    if primary_value in (None, "", [], {}) and value not in (None, "", [], {}):
                         merged_user[key] = value
-                
                 # Special handling for Skills (Dictionaries)
                 # If both have skills, we might want to ensure we don't lose the old ones
                 if not merged_user.get("skills") and secondary_user.get("skills"):
@@ -203,7 +203,6 @@ async def validate_user(
     token: str,
 ) -> Optional[Tuple[str, Optional[str]]]:
     response = await supabase.auth.get_user(jwt=token)
-    print(f"Auth response: {response}")
     if not response or not response.user:
         return None
     auth_user = response.user
