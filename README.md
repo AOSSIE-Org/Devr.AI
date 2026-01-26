@@ -184,6 +184,8 @@ Devr.AI includes a Docker setup for the GitHub MCP server to streamline local de
     ```bash
     GITHUB_TOKEN=your_token
     GITHUB_ORG=your_org
+    SUPABASE_URL=your_supabase_url
+    SUPABASE_KEY=your_supabase_key
     ```
 
 2. **Start the Service**:

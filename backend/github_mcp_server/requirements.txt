@@ -10,7 +10,6 @@ langchain-core
 ddgs
 sqlalchemy
 langchain-community
-torch
 sentence-transformers
 weaviate-client
 supabase
