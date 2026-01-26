@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+requests
+python-dotenv
+pydantic
+langgraph==0.4.8
+langchain==0.3.26
+langchain-google-genai==2.1.5
+langchain-core
+ddgs
+sqlalchemy
+langchain-community
+torch
+sentence-transformers
+weaviate-client
+supabase
+pydantic-settings

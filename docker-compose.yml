@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  github-mcp:
+    build:
+      context: ./backend
+      dockerfile: github_mcp_server/Dockerfile
+    container_name: github-mcp
+    ports:
+      - "5001:8001"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_ORG=${GITHUB_ORG}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    volumes:
+      - ./backend:/app
+    # Use the default network so it can be reached if needed, 
+    # though it doesn't strictly depend on the backend infra for startup.
