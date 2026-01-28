@@ -19,7 +19,7 @@ Devr.AI is revolutionizing open-source community management with advanced AI-pow
 
 ### 🧠 LangGraph Agent-Based Intelligence
 
-- **ReAct Reasoning Pattern** - Think → Act → Observe workflow for intelligent decision making
+- **ReAct Reasoning Pattern** - Think → Act → Observe workflow for intelligent decision-making
 - **Conversational Memory** - Persistent context across Discord sessions with automatic summarization
 - **Multi-Tool Orchestration** - Dynamic tool selection including web search, FAQ, and GitHub operations
 - **Self-Correcting Capabilities** - Iterative problem-solving with intelligent context awareness
@@ -186,6 +186,7 @@ Devr.AI includes a Docker setup for the GitHub MCP server to streamline local de
     GITHUB_ORG=your_org
     SUPABASE_URL=your_supabase_url
     SUPABASE_KEY=your_supabase_key
+    REDIS_URL=redis://redis:6379/0 # For Docker
     ```
 
 2. **Start the Service**:

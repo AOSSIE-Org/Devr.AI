@@ -3,6 +3,9 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Install curl and dependencies in a single layer for optimization
+# Install curl and dependencies for optimization
+COPY requirements.txt .
+
 RUN apt-get update && apt-get install -y curl && \
   rm -rf /var/lib/apt/lists/* && \
   pip install --upgrade pip && \

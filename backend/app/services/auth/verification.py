@@ -18,8 +18,8 @@ class VerificationSessionStore:
     """
     PREFIX = "devr:auth:verification:"
 
-    def __init__(self):
-        self.redis = get_redis_client()
+    def __init__(self, redis_client: Any):
+        self.redis = redis_client
 
     def _get_key(self, session_id: str) -> str:
         return f"{self.PREFIX}{session_id}"
@@ -63,7 +63,9 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
     Create a verification session with expiry and return session ID.
     """
     supabase = get_supabase_client()
-    store = VerificationSessionStore()
+    supabase = get_supabase_client()
+    redis_client = await get_redis_client()
+    store = VerificationSessionStore(redis_client)
 
     token = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
@@ -96,7 +98,9 @@ async def find_user_by_session_and_verify(
     Links GitHub account to Discord user.
     """
     supabase = get_supabase_client()
-    store = VerificationSessionStore()
+    supabase = get_supabase_client()
+    redis_client = await get_redis_client()
+    store = VerificationSessionStore(redis_client)
 
     try:
         session_data = await store.get(session_id)
@@ -123,8 +127,8 @@ async def find_user_by_session_and_verify(
             await store.delete(session_id)
             return None
 
-        # Atomic consumption: Delete the session immediately to prevent replay
-        await store.delete(session_id)
+        # Atomic consumption: Removed early delete here to prevent race condition.
+        # We delete AFTER successful database update now.
 
         user_to_verify = user_res.data[0]
 
@@ -160,9 +164,13 @@ async def find_user_by_session_and_verify(
             raise Exception(f"Failed to fetch updated user with ID: {user_to_verify['id']}")
 
         logger.info(f"Successfully verified user {user_to_verify['id']} and linked GitHub account {github_username}.")
+
+        # Verify complete: NOW delete the session to prevent replay
+        await store.delete(session_id)
+
         return User(**updated_user_res.data[0])
     except Exception as e:
-        logger.error(f"Database error in find_user_by_session_and_verify: {e}", exc_info=True)
+        logger.exception(f"Database error in find_user_by_session_and_verify: {e}")
         raise
 
 async def cleanup_expired_tokens():
@@ -189,7 +197,8 @@ async def get_verification_session_info(session_id: str) -> Optional[Dict[str, s
     """
     Get information about a verification session.
     """
-    store = VerificationSessionStore()
+    redis_client = await get_redis_client()
+    store = VerificationSessionStore(redis_client)
 
     session_data = await store.get(session_id)
     if not session_data:
