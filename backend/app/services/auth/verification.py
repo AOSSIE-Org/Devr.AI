@@ -49,7 +49,8 @@ class VerificationSessionStore:
         try:
             return json.loads(data_str)
         except json.JSONDecodeError:
-            logger.error(f"Failed to decode session data for {session_id}")
+            logger.exception(f"Failed to decode session data for {session_id}")
+            await self.redis.delete(key)
             return None
 
     async def delete(self, session_id: str):
@@ -62,16 +63,15 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
     """
     Create a verification session with expiry and return session ID.
     """
-    supabase = get_supabase_client()
-    supabase = get_supabase_client()
-    redis_client = await get_redis_client()
-    store = VerificationSessionStore(redis_client)
-
-    token = str(uuid.uuid4())
-    session_id = str(uuid.uuid4())
-    expiry_time = datetime.now() + timedelta(seconds=SESSION_EXPIRY_SECONDS)
-
     try:
+        token = str(uuid.uuid4())
+        session_id = str(uuid.uuid4())
+        expiry_time = datetime.now() + timedelta(seconds=SESSION_EXPIRY_SECONDS)
+
+        supabase = get_supabase_client()
+        redis_client = await get_redis_client()
+        store = VerificationSessionStore(redis_client)
+
         update_res = await supabase.table("users").update({
             "verification_token": token,
             "verification_token_expires_at": expiry_time.isoformat(),
@@ -97,12 +97,10 @@ async def find_user_by_session_and_verify(
     Find and verify user using session ID with expiry validation.
     Links GitHub account to Discord user.
     """
-    supabase = get_supabase_client()
-    supabase = get_supabase_client()
-    redis_client = await get_redis_client()
-    store = VerificationSessionStore(redis_client)
-
     try:
+        supabase = get_supabase_client()
+        redis_client = await get_redis_client()
+        store = VerificationSessionStore(redis_client)
         session_data = await store.get(session_id)
         if not session_data:
             logger.warning(f"No verification session found for session ID: {session_id}")
