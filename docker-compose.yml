@@ -15,5 +15,12 @@ services:
       - SUPABASE_KEY=${SUPABASE_KEY}
     volumes:
       - ./backend:/app
-    # Use the default network so it can be reached if needed, 
-    # though it doesn't strictly depend on the backend infra for startup.
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: devr-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
