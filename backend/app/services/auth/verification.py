@@ -107,8 +107,6 @@ async def find_user_by_session_and_verify(
             return None
 
         discord_id = session_data["discord_id"]
-        # We rely on Redis TTL for expiry, but can double check if needed
-        # expiry_time = datetime.fromisoformat(session_data["expiry_time"])
 
         current_time = datetime.now().isoformat()
         user_res = await supabase.table("users").select("*").eq(
@@ -141,6 +139,7 @@ async def find_user_by_session_and_verify(
                 "verification_token_expires_at": None,
                 "updated_at": datetime.now().isoformat()
             }).eq("id", user_to_verify['id']).execute()
+            await store.delete(session_id)
             raise Exception(f"GitHub account {github_username} is already linked to another Discord user")
 
         update_data = {
@@ -167,8 +166,8 @@ async def find_user_by_session_and_verify(
         await store.delete(session_id)
 
         return User(**updated_user_res.data[0])
-    except Exception as e:
-        logger.exception(f"Database error in find_user_by_session_and_verify: {e}")
+    except Exception:
+        logger.exception("Database error in find_user_by_session_and_verify")
         raise
 
 async def cleanup_expired_tokens():
@@ -195,25 +194,31 @@ async def get_verification_session_info(session_id: str) -> Optional[Dict[str, s
     """
     Get information about a verification session.
     """
-    redis_client = await get_redis_client()
-    store = VerificationSessionStore(redis_client)
+    try:
+        redis_client = await get_redis_client()
+        store = VerificationSessionStore(redis_client)
 
-    session_data = await store.get(session_id)
-    if not session_data:
+        session_data = await store.get(session_id)
+        if not session_data:
+            return None
+
+        discord_id = session_data.get("discord_id")
+        expiry_time_str = session_data.get("expiry_time")
+        if not discord_id or not expiry_time_str:
+            logger.warning(f"Malformed session data for {session_id}")
+            await store.delete(session_id)
+            return None
+
+        expiry_time = datetime.fromisoformat(expiry_time_str)
+
+        # Calculate remaining time
+        now = datetime.now()
+
+        return {
+            "discord_id": discord_id,
+            "expiry_time": expiry_time_str,
+            "time_remaining": str(expiry_time - now)
+        }
+    except Exception:
+        logger.exception("Error getting verification session info")
         return None
-
-    discord_id = session_data["discord_id"]
-    expiry_time_str = session_data["expiry_time"]
-    expiry_time = datetime.fromisoformat(expiry_time_str)
-
-    # Calculate remaining time
-    now = datetime.now()
-    if now > expiry_time:
-        await store.delete(session_id)
-        return None
-
-    return {
-        "discord_id": discord_id,
-        "expiry_time": expiry_time_str,
-        "time_remaining": str(expiry_time - now)
-    }

@@ -17,7 +17,8 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   redis:
     image: redis:alpine

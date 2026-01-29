@@ -20,9 +20,12 @@ class RedisClient:
                     if "@" in log_url:
                         try:
                             schema, rest = log_url.split("://", 1)
-                            auth, host = rest.split("@", 1)
-                            log_url = f"{schema}://****:****@{host}"
-                        except Exception:
+                            userinfo, sep, host = rest.rpartition("@")
+                            if sep:
+                                log_url = f"{schema}://****:****@{host}"
+                            else:
+                                log_url = f"{schema}://****:****@..."
+                        except ValueError:
                             log_url = "redis://****:****@..."
 
                     logger.info(f"Initializing Redis client connecting to {log_url}")
