@@ -53,16 +53,19 @@ class Graph():
         self._safe_create_index(self.g.create_node_fulltext_index, "Searchable", "name")
     # index File path, name and ext fields
     def _safe_create_index(self, func, label, *args):
-        try:
-            func(label, *args)
-            logging.debug(f"Successfully created/verified index for '{label}'.")
-        except ResponseError as e:  # Catch specific DB response errors
-            if "already exists" in str(e).lower():
-                logging.info(f"Index for '{label}' already exists.")
-            else:
-                logging.error(f"Database error creating index for '{label}': {e}", exc_info=True)
-        except Exception as e:  # Catch other unexpected system errors
-            logging.error(f"Critical system failure during index creation for '{label}': {e}", exc_info=True)
+       """Safely create an index, handling 'already exists' gracefully."""
+         try:
+             func(label, *args)
+             logging.debug(f"Successfully created/verified index for '{label}'.")
+         except ResponseError as e:  # Catch specific DB response errors
+             if "already exists" in str(e).lower():
+                 logging.info(f"Index for '{label}' already exists.")
+             else:
+                 logging.error(f"Database error creating index for '{label}': {e}", exc_info=True)
+                raise  # Propagate unexpected database errors
+         except Exception as e:  # Catch other unexpected system errors
+             logging.error(f"Critical system failure during index creation for '{label}': {e}", exc_info=True)
+           raise  
 
     def clone(self, clone: str) -> "Graph":
         """
