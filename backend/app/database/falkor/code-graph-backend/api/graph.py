@@ -3,6 +3,7 @@ import time
 from .entities import *
 from typing import Optional
 from falkordb import FalkorDB, Path, Node, QueryResult
+from redis.exceptions import ResponseError
 
 # Configure the logger
 import logging
@@ -48,18 +49,20 @@ class Graph():
         self.backlog = None
 
         # create indicies
-
-        # index File path, name and ext fields
+        self._safe_create_index(self.g.create_node_range_index, "File", "name", "ext")
+        self._safe_create_index(self.g.create_node_fulltext_index, "Searchable", "name")
+    # index File path, name and ext fields
+    def _safe_create_index(self, func, label, *args):
         try:
-            self.g.create_node_range_index("File", "name", "ext")
-        except Exception:
-            pass
-
-        # index Function using full-text search
-        try:
-            self.g.create_node_fulltext_index("Searchable", "name")
-        except Exception:
-            pass
+            func(label, *args)
+            logging.debug(f"Successfully created/verified index for '{label}'.")
+        except ResponseError as e:  # Catch specific DB response errors
+            if "already exists" in str(e).lower():
+                logging.info(f"Index for '{label}' already exists.")
+            else:
+                logging.error(f"Database error creating index for '{label}': {e}", exc_info=True)
+        except Exception as e:  # Catch other unexpected system errors
+            logging.error(f"Critical system failure during index creation for '{label}': {e}", exc_info=True)
 
     def clone(self, clone: str) -> "Graph":
         """
