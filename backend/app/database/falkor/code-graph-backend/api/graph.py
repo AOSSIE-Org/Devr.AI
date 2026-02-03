@@ -46,20 +46,20 @@ class Graph():
 
         # Initialize the backlog as disabled by default
         self.backlog = None
-
         # create indicies
+        self._safe_create_index(self.g.create_node_range_index, "File", "name", "ext")
+        self._safe_create_index(self.g.create_node_fulltext_index, "Searchable", "name")
 
-        # index File path, name and ext fields
+    def _safe_create_index(self, func, label, *args):
         try:
-            self.g.create_node_range_index("File", "name", "ext")
-        except Exception:
-            pass
+            func(label, *args)
+            logging.debug(f"Successfully created/verified index for '{label}'.")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                logging.info(f"Index for '{label}' already exists.")
+            else:
+                logging.error(f"Failed to create index for '{label}': {e}", exc_info=True)
 
-        # index Function using full-text search
-        try:
-            self.g.create_node_fulltext_index("Searchable", "name")
-        except Exception:
-            pass
 
     def clone(self, clone: str) -> "Graph":
         """
