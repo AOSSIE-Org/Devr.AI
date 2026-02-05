@@ -146,8 +146,24 @@ class DevRelCommands(commands.Cog):
             if not session_id:
                 raise Exception("Failed to create verification session.")
 
+            # SECURITY FIX: Generate and store OAuth state parameter
+            from app.services.auth.supabase import store_oauth_state
+            try:
+                state_token = await store_oauth_state(session_id, ttl=300)
+            except Exception as e:
+                logger.error(f"Failed to generate OAuth state: {e}")
+                error_embed = discord.Embed(
+                    title="❌ Verification Error",
+                    description="Verification service is temporarily unavailable. Please try again.",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=error_embed, ephemeral=True)
+                return
+
             callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
-            auth_url_data = await login_with_github(redirect_to=callback_url)
+
+            # Pass state parameter to OAuth flow (RFC 6749 compliant)
+            auth_url_data = await login_with_github(redirect_to=callback_url, state=state_token)
             auth_url = auth_url_data.get("url")
             if not auth_url:
                 raise Exception("Failed to generate OAuth URL.")
@@ -499,7 +515,25 @@ class OnboardingCog(commands.Cog):
 
                 # Generate GitHub OAuth URL via Supabase
                 callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
-                auth = await login_with_github(redirect_to=callback_url)
+
+                # SECURITY FIX: Generate and store OAuth state parameter
+                from app.services.auth.supabase import store_oauth_state
+                try:
+                    state_token = await store_oauth_state(session_id, ttl=300)
+                except Exception as e:
+                    logger.error(f"Failed to generate OAuth state in onboarding: {e}")
+                    try:
+                        await user.send("Couldn't generate a verification link. Please use /verify_github.")
+                        await user.send(build_encourage_verification_message(reminder_count=1))
+                        await user.send(embed=build_final_handoff_embed())
+                    except discord.Forbidden:
+                        logger.warning(f"Cannot DM user {user.id} after auth state failure (DMs disabled)")
+                    except Exception as send_error:
+                        logger.exception(
+                            f"Failed to send auth state failure fallback DM to user {user.id}: {send_error}")
+                    return "auth_unavailable"
+
+                auth = await login_with_github(redirect_to=callback_url, state=state_token)
                 auth_url = auth.get("url")
                 if not auth_url:
                     try:
