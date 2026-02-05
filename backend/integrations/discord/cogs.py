@@ -1,5 +1,6 @@
 import logging
 import asyncio
+from typing import Optional, Tuple
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -14,13 +15,33 @@ from app.core.config import settings
 
 from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
 from app.services.auth.management import get_or_create_user_by_discord
-from app.services.auth.supabase import login_with_github
+from app.services.auth.supabase import login_with_github, store_oauth_state
 from app.services.auth.verification import create_verification_session, cleanup_expired_tokens
 from app.services.codegraph.repo_service import RepoService
 from integrations.discord.bot import DiscordBot
 from integrations.discord.views import OAuthView, OnboardingView, build_final_handoff_embed
 
 logger = logging.getLogger(__name__)
+
+async def _generate_secure_github_auth_url(session_id: str, callback_url: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Generate OAuth URL with CSRF state protection.
+    Returns (auth_url, error_message) tuple.
+    """
+    try:
+        # SECURITY FIX: Generate and store OAuth state parameter
+        state_token = await store_oauth_state(session_id, ttl=300)
+    except Exception:
+        logger.exception("Failed to generate OAuth state")
+        return None, "Verification service is temporarily unavailable. Please try again."
+
+    # Pass state parameter to OAuth flow (RFC 6749 compliant)
+    auth = await login_with_github(redirect_to=callback_url, state=state_token)
+    auth_url = auth.get("url")
+    if not auth_url:
+        return None, "Couldn't generate a verification link. Please use /verify_github."
+
+    return auth_url, None
 
 class DevRelCommands(commands.Cog):
     def __init__(self, bot: DiscordBot, queue_manager: AsyncQueueManager):
@@ -146,25 +167,20 @@ class DevRelCommands(commands.Cog):
             if not session_id:
                 raise Exception("Failed to create verification session.")
 
-            # SECURITY FIX: Generate and store OAuth state parameter
-            from app.services.auth.supabase import store_oauth_state
-            try:
-                state_token = await store_oauth_state(session_id, ttl=300)
-            except Exception as e:
-                logger.error(f"Failed to generate OAuth state: {e}")
+            callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
+
+            # Use helper to generate secure auth URL
+            auth_url, error_msg = await _generate_secure_github_auth_url(session_id, callback_url)
+
+            if error_msg:
                 error_embed = discord.Embed(
                     title="❌ Verification Error",
-                    description="Verification service is temporarily unavailable. Please try again.",
+                    description=error_msg,
                     color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=error_embed, ephemeral=True)
                 return
 
-            callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
-
-            # Pass state parameter to OAuth flow (RFC 6749 compliant)
-            auth_url_data = await login_with_github(redirect_to=callback_url, state=state_token)
-            auth_url = auth_url_data.get("url")
             if not auth_url:
                 raise Exception("Failed to generate OAuth URL.")
 
@@ -516,34 +532,19 @@ class OnboardingCog(commands.Cog):
                 # Generate GitHub OAuth URL via Supabase
                 callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
 
-                # SECURITY FIX: Generate and store OAuth state parameter
-                from app.services.auth.supabase import store_oauth_state
-                try:
-                    state_token = await store_oauth_state(session_id, ttl=300)
-                except Exception as e:
-                    logger.error(f"Failed to generate OAuth state in onboarding: {e}")
-                    try:
-                        await user.send("Couldn't generate a verification link. Please use /verify_github.")
-                        await user.send(build_encourage_verification_message(reminder_count=1))
-                        await user.send(embed=build_final_handoff_embed())
-                    except discord.Forbidden:
-                        logger.warning(f"Cannot DM user {user.id} after auth state failure (DMs disabled)")
-                    except Exception as send_error:
-                        logger.exception(
-                            f"Failed to send auth state failure fallback DM to user {user.id}: {send_error}")
-                    return "auth_unavailable"
+                # Use helper to generate secure auth URL
+                auth_url, error_msg = await _generate_secure_github_auth_url(session_id, callback_url)
 
-                auth = await login_with_github(redirect_to=callback_url, state=state_token)
-                auth_url = auth.get("url")
-                if not auth_url:
+                if error_msg:
+                    # Handle error (fallback logic)
                     try:
                         await user.send("Couldn't generate a verification link. Please use /verify_github.")
                         await user.send(build_encourage_verification_message(reminder_count=1))
                         await user.send(embed=build_final_handoff_embed())
                     except discord.Forbidden:
-                        logger.warning(f"Cannot DM user {user.id} after auth URL failure (DMs disabled)")
-                    except Exception as e:
-                        logger.exception(f"Failed to send auth failure fallback DM to user {user.id}: {e}")
+                        logger.warning(f"Cannot DM user {user.id} after auth failure (DMs disabled)")
+                    except Exception as send_error:
+                        logger.exception(f"Failed to send auth failure fallback DM to user {user.id}")
                     return "auth_unavailable"
 
             # Send welcome DM with actions (auth_url may be None when button disabled)
