@@ -543,7 +543,7 @@ class OnboardingCog(commands.Cog):
                         await user.send(embed=build_final_handoff_embed())
                     except discord.Forbidden:
                         logger.warning(f"Cannot DM user {user.id} after auth failure (DMs disabled)")
-                    except Exception as send_error:
+                    except Exception:
                         logger.exception(f"Failed to send auth failure fallback DM to user {user.id}")
                     return "auth_unavailable"
 
