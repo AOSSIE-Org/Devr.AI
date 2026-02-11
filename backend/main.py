@@ -7,13 +7,11 @@ import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.router import api_router
+from app.api.router import core_router, get_auth_router
 from app.core.config import settings
-from app.core.orchestration.agent_coordinator import AgentCoordinator
-from app.core.orchestration.queue_manager import AsyncQueueManager
-from app.database.weaviate.client import get_weaviate_client
-from integrations.discord.bot import DiscordBot
-from discord.ext import commands
+# if settings.code_intelligence_enabled:
+#     from app.core.orchestration.queue_manager import AsyncQueueManager
+#     from app.database.weaviate.client import get_weaviate_client
 # DevRel commands are now loaded dynamically (commented out below)
 # from integrations.discord.cogs import DevRelCommands
 
@@ -32,30 +30,65 @@ class DevRAIApplication:
     def __init__(self):
         """Initializes all services required by the application."""
         self.weaviate_client = None
-        self.queue_manager = AsyncQueueManager()
-        self.agent_coordinator = AgentCoordinator(self.queue_manager)
-        self.discord_bot = DiscordBot(self.queue_manager)
+        self.discord_bot = None
+        self._discord_task = None
+        self.agent_coordinator = None
+        
+        # Discord always exists if enabled
+        if settings.discord_enabled:
+            from integrations.discord.bot import DiscordBot
+            from discord.ext import commands
+            self.discord_bot = DiscordBot(queue_manager=None)
+            self.queue_manager = None
+        
+        if settings.code_intelligence_enabled:
+            from app.core.orchestration.queue_manager import AsyncQueueManager
+            from app.database.weaviate.client import get_weaviate_client
+            from app.core.orchestration.agent_coordinator import AgentCoordinator
+            self.weaviate_client = get_weaviate_client()
+            
+            self.queue_manager = AsyncQueueManager()
+            self.discord_bot= DiscordBot(self.queue_manager)
+            self.agent_coordinator = AgentCoordinator(self.queue_manager)
 
     async def start_background_tasks(self):
-        """Starts the Discord bot and queue workers in the background."""
+        """
+        Start all enabled background services including the Discord bot,
+        queue workers, and code intelligence dependencies.
+        """
         try:
-            logger.info("Starting background tasks (Discord Bot & Queue Manager)...")
+            # Discord Mode
+            if settings.discord_enabled:
+                # 1. Start queue 
+                if settings.code_intelligence_enabled:
+                    await self.queue_manager.start(num_workers=3)
 
-            await self.test_weaviate_connection()
+                # 2. Discord
+                try:
+                        await self.discord_bot.load_extension("integrations.discord.cogs")
+                        self._discord_task = asyncio.create_task(
+                            self.discord_bot.start(settings.discord_bot_token)
+                        )
+                except Exception as e:
+                    logger.exception("Discord startup failed: %s",e)
+                    self.discord_bot = None
+            
+            # Full Mode            
+            if settings.code_intelligence_enabled:
+                # Weaviate
+                try:
+                    await self.test_weaviate_connection()
+                except Exception as e:
+                    logger.warning("Weaviate disabled: %s", e)
 
-            await self.queue_manager.start(num_workers=3)
-
-            # --- Load commands inside the async startup function ---
-            try:
-                await self.discord_bot.load_extension("integrations.discord.cogs")
-            except (ImportError, commands.ExtensionError) as e:
-                logger.error("Failed to load Discord cog extension: %s", e)
-
-            # Start the bot as a background task.
-            asyncio.create_task(
-                self.discord_bot.start(settings.discord_bot_token)
-            )
-            logger.info("Background tasks started successfully!")
+                        
+            logger.info(
+            "Background services ready | queue=%s weaviate=%s discord=%s",
+            bool(settings.rabbitmq_url),
+            self.weaviate_client,
+            bool(self.discord_bot),
+            )        
+            
         except Exception as e:
             logger.error(f"Error during background task startup: {e}", exc_info=True)
             await self.stop_background_tasks()
@@ -63,7 +96,11 @@ class DevRAIApplication:
 
     async def test_weaviate_connection(self):
         """Test Weaviate connection during startup."""
+        if not settings.code_intelligence_enabled:
+            logger.info("Weaviate Is for Full Mode")
+            return 
         try:
+            from app.database.weaviate.client import get_weaviate_client
             async with get_weaviate_client() as client:
                 if await client.is_ready():
                     logger.info("Weaviate connection successful and ready")
@@ -75,7 +112,7 @@ class DevRAIApplication:
         """Stops all background tasks and connections gracefully."""
         logger.info("Stopping background tasks and closing connections...")
         try:
-            if not self.discord_bot.is_closed():
+            if settings.discord_enabled and self.discord_bot and not self.discord_bot.is_closed():
                 await self.discord_bot.close()
                 logger.info("Discord bot has been closed.")
         except Exception as e:
@@ -123,19 +160,52 @@ async def favicon():
     """Return empty favicon to prevent 404 logs"""
     return Response(status_code=204)
 
-api.include_router(api_router)
+api.include_router(core_router)
+if settings.github_enabled:
+    api.include_router(get_auth_router())
+
 
 
 if __name__ == "__main__":
     required_vars = [
-        "DISCORD_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_KEY",
-        "BACKEND_URL", "GEMINI_API_KEY", "TAVILY_API_KEY", "GITHUB_TOKEN"
+        "BACKEND_URL"
     ]
+    optional_vars = {
+        "supabase": ["SUPABASE_URL", "SUPABASE_KEY"],
+        "discord" : ["DISCORD_BOT_TOKEN"],
+        "llm":["GEMINI_API_KEY"],
+        "queue": ["RABBITMQ_URL"],  
+        "search": ["TAVILY_API_KEY"],
+        "github": ["GITHUB_TOKEN"]
+    }
     missing_vars = [var for var in required_vars if not getattr(settings, var.lower(), None)]
 
     if missing_vars:
-        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
-        sys.exit(1)
+        raise RuntimeError(f"Core backend misconfigured. Missing: {','.join(missing_vars)} ")
+    
+    capabilities = {
+    "discord_enabled": settings.discord_enabled,
+    "llm_enabled": bool(settings.gemini_api_key),
+    "github_enabled": settings.github_enabled,
+    "code_intelligence": settings.code_intelligence_enabled,
+    "search_enabled": bool(settings.tavily_api_key),
+    "queue_enabled": bool(settings.rabbitmq_url),
+    }
+    
+    if settings.code_intelligence_enabled:
+        mode = "full"
+    elif settings.github_enabled:
+        mode = "discord+github"
+    elif settings.discord_enabled:
+        mode = "discord"
+    else:
+        mode = "minimal"
+
+    logger.info(
+        "Startup | mode=%s | capabilities=%s" ,
+        mode,
+        {k: v for k, v in capabilities.items() if v},
+    )
 
     uvicorn.run(
         "__main__:api",

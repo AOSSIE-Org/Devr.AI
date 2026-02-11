@@ -3,36 +3,86 @@ import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
+from typing import Optional, TYPE_CHECKING
 
-from app.agents.devrel.onboarding.messages import (
-    build_encourage_verification_message,
-    build_new_user_welcome,
-    build_verified_capabilities_intro,
-    build_verified_welcome,
-)
 from app.core.config import settings
 
-from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
-from app.services.auth.management import get_or_create_user_by_discord
-from app.services.auth.supabase import login_with_github
-from app.services.auth.verification import create_verification_session, cleanup_expired_tokens
-from app.services.codegraph.repo_service import RepoService
 from integrations.discord.bot import DiscordBot
-from integrations.discord.views import OAuthView, OnboardingView, build_final_handoff_embed
+
+if TYPE_CHECKING:
+    from app.core.orchestration.queue_manager import AsyncQueueManager
 
 logger = logging.getLogger(__name__)
 
+# ---interactions----
+async def send_github_unavailable(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="❌ GitHub Verification Unavailable",
+        description=(
+            "GitHub verification is currently disabled on this server.\n\n"
+            "You can continue using other features, or try again later."
+        ),
+        color=discord.Color.red(),
+    )
+    if interaction.response.is_done():
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    else:
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+async def falkor_unavailable(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="❌ Code Intelligence Unavailable",
+        description=(
+            "Repository indexing and code analysis are currently disabled.\n\n"
+            "**Possible reasons:**\n"
+            "• FalkorDB is not configured\n"
+            "• Background queue is disabled\n\n"
+            "You can still use basic DevRel and GitHub features."
+        ),
+        color=discord.Color.red(),
+    )
+    # Safe send
+    if interaction.response.is_done():
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    else:
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+# ---- user dms ----
+async def send_github_unavailable_dm(user: discord.abc.User):
+    embed = discord.Embed(
+        title="🔒 GitHub Verification Disabled",
+        description=(
+            "GitHub account linking is currently unavailable.\n\n"
+            "**Why this may happen:**\n"
+            "• GitHub OAuth is not configured\n"
+            "• Supabase is disabled\n\n"
+            "You can still use the bot for general help and questions."
+        ),
+        color=discord.Color.orange(),
+    )
+
+    try:
+        await user.send(embed=embed)
+    except discord.Forbidden:
+        # User has DMs disabled — silently ignore
+        pass
+    except Exception as e:
+        logger.exception(f"Failed to send GitHub unavailable DM to {user}: {e}")
+
+
 class DevRelCommands(commands.Cog):
-    def __init__(self, bot: DiscordBot, queue_manager: AsyncQueueManager):
+    def __init__(self, bot: DiscordBot, queue_manager: Optional["AsyncQueueManager"] = None):
         self.bot = bot
         self.queue = queue_manager
 
     def cog_load(self):
         """Called when the cog is loaded"""
-        self.cleanup_expired_tokens.start()
+        if settings.github_enabled:
+            self.cleanup_expired_tokens.start()
 
     def cog_unload(self):
-        self.cleanup_expired_tokens.cancel()
+        if settings.github_enabled and self.cleanup_expired_tokens.is_running():
+            self.cleanup_expired_tokens.cancel()
 
     @tasks.loop(minutes=5)
     async def cleanup_expired_tokens(self):
@@ -58,32 +108,70 @@ class DevRelCommands(commands.Cog):
             "user_id": user_id,
             "cleanup_reason": "manual_reset"
         }
-        await self.queue.enqueue(cleanup, QueuePriority.HIGH)
         self.bot.active_threads.pop(user_id, None)
-        await interaction.response.send_message("Your DevRel thread & memory have been reset!", ephemeral=True)
+
+        if self.queue:
+            from app.core.orchestration.queue_manager import QueuePriority
+            await self.queue.enqueue(cleanup, QueuePriority.HIGH)
+            await interaction.response.send_message(
+            "Your DevRel thread has been reset!",
+            ephemeral=True,
+        )
+        else:
+            await interaction.response.send_message(
+                "Your DevRel thread has been cleared locally. "
+                "(Full memory reset unavailable in current mode.)",
+                ephemeral=True,
+            )
 
     @app_commands.command(name="help", description="Show DevRel assistant help.")
     async def help_devrel(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="DevRel Assistant Help",
-            description="I can help you with Devr.AI related questions!",
+            description="Available commands on this server:",
             color=discord.Color.blue()
         )
+
         embed.add_field(
-            name="Commands",
+            name="Basic",
             value=(
                 "• `/reset` - Reset your DevRel thread and memory\n"
-                "• `/help` - Show this help message\n"
-                "• `/verify_github` - Link your GitHub account\n"
-                "• `/verification_status` - Check your verification status\n"
+                "• `/help` - Show this help message"
             ),
             inline=False
         )
+
+        if settings.github_enabled:
+            embed.add_field(
+                name="GitHub",
+                value=(
+                    "• `/verify_github` - Link your GitHub account\n"
+                    "• `/verification_status` - Check your verification status"
+                ),
+                inline=False
+            )
+        if settings.code_intelligence_enabled:
+            embed.add_field(
+                name="Code Intelligence",
+                value=(
+                    "• `/index_repository` - Index a GitHub repository\n"
+                    "• `/delete_index` - Delete an indexed repository\n"
+                    "• `/list_indexed_repos` - List your indexed repositories"
+                ),
+                inline=False
+            )
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="verification_status",
                           description="Check your GitHub verification status.")
     async def verification_status(self, interaction: discord.Interaction):
+        if not settings.github_enabled:
+            logger.info("Verification blocked: GitHub/Supabase not configured")
+            await send_github_unavailable(interaction)
+            return 
+        
+        from integrations.discord.views import OAuthView, OnboardingView, build_final_handoff_embed
+        from app.services.auth.management import get_or_create_user_by_discord            
         try:
             user_profile = await get_or_create_user_by_discord(
                 discord_id=str(interaction.user.id),
@@ -93,13 +181,13 @@ class DevRelCommands(commands.Cog):
             )
             if user_profile.is_verified and user_profile.github_id:
                 embed = discord.Embed(title="✅ Verification Status",
-                                      color=discord.Color.green())
+                                        color=discord.Color.green())
                 embed.add_field(name="GitHub Account", value=f"`{user_profile.github_username}`", inline=True)
                 embed.add_field(name="Status", value="✅ Verified", inline=True)
             else:
                 embed = discord.Embed(title="❌ Verification Status",
-                                      description="Your GitHub account is not linked.",
-                                      color=discord.Color.red())
+                                        description="Your GitHub account is not linked.",
+                                        color=discord.Color.red())
                 embed.add_field(name="Next Steps",
                                 value="Use `/verify_github` to link your GitHub account.",
                                 inline=False)
@@ -110,8 +198,17 @@ class DevRelCommands(commands.Cog):
 
     @app_commands.command(name="verify_github", description="Link your GitHub account.")
     async def verify_github(self, interaction: discord.Interaction):
+        if not settings.github_enabled:
+            logger.info("Verification blocked: GitHub/Supabase not configured")
+            await send_github_unavailable(interaction)
+            return 
         try:
             await interaction.response.defer(ephemeral=True)
+            
+            from integrations.discord.views import OAuthView, OnboardingView, build_final_handoff_embed
+            from app.services.auth.management import get_or_create_user_by_discord
+            from app.services.auth.supabase import login_with_github
+            from app.services.auth.verification import create_verification_session
 
             user_profile = await get_or_create_user_by_discord(
                 discord_id=str(interaction.user.id),
@@ -190,7 +287,14 @@ class DevRelCommands(commands.Cog):
     @app_commands.describe(repository="GitHub URL or owner/repo (e.g., AOSSIE-Org/Devr.AI)")
     async def index_repository(self, interaction: discord.Interaction, repository: str):
         """Index a GitHub repository into FalkorDB code graph"""
+        if not settings.code_intelligence_enabled:
+            logger.info("Indexing blocked: FalkorDB not configured")
+            await falkor_unavailable(interaction)
+            return 
+        
         await interaction.response.defer(thinking=True)
+        
+        from app.services.codegraph.repo_service import RepoService
 
         try:
             service = RepoService()
@@ -317,8 +421,13 @@ class DevRelCommands(commands.Cog):
     @app_commands.describe(repository="Repository name (owner/repo)")
     async def delete_index(self, interaction: discord.Interaction, repository: str):
         """Delete a repository index"""
+        if not settings.code_intelligence_enabled:
+            logger.info("Deletion of index blocked: FalkorDB not configured")
+            await falkor_unavailable(interaction)
+            return 
+            
         await interaction.response.defer(thinking=True)
-
+        from app.services.codegraph.repo_service import RepoService
         try:
             service = RepoService()
             logger.info(f"Delete request from {interaction.user.id}: {repository}")
@@ -364,8 +473,14 @@ class DevRelCommands(commands.Cog):
     @app_commands.command(name="list_indexed_repos", description="List your indexed repositories")
     async def list_indexed_repos(self, interaction: discord.Interaction):
         """List user's indexed repositories"""
+        if not settings.code_intelligence_enabled:
+            logger.info("list indexed repo blocked: FalkorDB not configured")
+            await falkor_unavailable(interaction)
+            return 
+            
         await interaction.response.defer()
-
+        from app.services.codegraph.repo_service import RepoService
+        
         try:
             service = RepoService()
             repos = await service.list_repos(str(interaction.user.id))
@@ -398,7 +513,8 @@ class DevRelCommands(commands.Cog):
 
 async def setup(bot: commands.Bot):
     """This function is called by the bot to load the cog."""
-    await bot.add_cog(DevRelCommands(bot, bot.queue_manager))
+    queue = getattr(bot, "queue_manager", None)
+    await bot.add_cog(DevRelCommands(bot, queue))
     await bot.add_cog(OnboardingCog(bot))
 
 
@@ -458,7 +574,22 @@ class OnboardingCog(commands.Cog):
         - "dm_forbidden": cannot DM the user
         - "error": unexpected error (fallback attempted)
         """
+        if not settings.github_enabled:
+            logger.info("Verification blocked: GitHub/Supabase not configured")
+            await send_github_unavailable_dm(user)
+            return "auth_unavailable"            
         try:
+            from app.agents.devrel.onboarding.messages import (
+                build_encourage_verification_message,
+                build_new_user_welcome,
+                build_verified_capabilities_intro,
+                build_verified_welcome,
+            )
+            from integrations.discord.views import OnboardingView, build_final_handoff_embed
+
+            from app.services.auth.verification import create_verification_session
+            from app.services.auth.supabase import login_with_github
+            from app.services.auth.management import get_or_create_user_by_discord
             # Ensure DB record exists
             profile = await get_or_create_user_by_discord(
                 discord_id=str(user.id),

@@ -1,18 +1,28 @@
 import logging
-from fastapi import APIRouter, HTTPException, Depends
-from app.database.weaviate.client import get_weaviate_client
-from app.core.dependencies import get_app_instance
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from main import DevRAIApplication
+from fastapi import APIRouter, HTTPException, Request
+from app.core.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+async def get_weaviate_status() -> str:
+    if not settings.code_intelligence_enabled:
+        return "disabled"
+
+    from app.database.weaviate.client import get_weaviate_client
+    async with get_weaviate_client() as client:
+        return "ready" if await client.is_ready() else "not_ready"
+
+
+def get_discord_status(app_instance) -> str:
+    if not settings.discord_enabled:
+        return "disabled"
+
+    bot = app_instance.discord_bot
+    return "running" if bot and not bot.is_closed() else "stopped"
 
 @router.get("/health")
-async def health_check(app_instance: "DevRAIApplication" = Depends(get_app_instance)):
+async def health_check(request: Request):
     """
     General health check endpoint to verify services are running.
 
@@ -20,16 +30,15 @@ async def health_check(app_instance: "DevRAIApplication" = Depends(get_app_insta
         dict: Status of the application and its services
     """
     try:
-        async with get_weaviate_client() as client:
-            weaviate_ready = await client.is_ready()
-
+        services = {
+            "weaviate": await get_weaviate_status(),
+            "discord": get_discord_status(request.app.state.app_instance),
+        }
+ 
         return {
             "status": "healthy",
-            "services": {
-                "weaviate": "ready" if weaviate_ready else "not_ready",
-                "discord_bot": "running" if app_instance.discord_bot and not app_instance.discord_bot.is_closed() else "stopped"
+            "services": services,
             }
-        }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         raise HTTPException(
@@ -45,13 +54,11 @@ async def health_check(app_instance: "DevRAIApplication" = Depends(get_app_insta
 async def weaviate_health():
     """Check specifically Weaviate service health."""
     try:
-        async with get_weaviate_client() as client:
-            is_ready = await client.is_ready()
-
         return {
             "service": "weaviate",
-            "status": "ready" if is_ready else "not_ready"
-        }
+            "status": await get_weaviate_status(),
+            }
+    
     except Exception as e:
         logger.error(f"Weaviate health check failed: {e}")
         raise HTTPException(
@@ -65,15 +72,14 @@ async def weaviate_health():
 
 
 @router.get("/health/discord")
-async def discord_health(app_instance: "DevRAIApplication" = Depends(get_app_instance)):
+async def discord_health(request: Request):
     """Check specifically Discord bot health."""
     try:
-        bot_status = "running" if app_instance.discord_bot and not app_instance.discord_bot.is_closed() else "stopped"
-
         return {
             "service": "discord_bot",
-            "status": bot_status
+            "status": get_discord_status(request.app.state.app_instance),
         }
+    
     except Exception as e:
         logger.error(f"Discord bot health check failed: {e}")
         raise HTTPException(

@@ -1,16 +1,17 @@
 import discord
 from discord.ext import commands
 import logging
-from typing import Dict, Any, Optional
-from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
-from app.classification.classification_router import ClassificationRouter
+from typing import Dict, Any, Optional,TYPE_CHECKING
+from app.core.config import settings
+if TYPE_CHECKING:
+    from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
 
 logger = logging.getLogger(__name__)
 
 class DiscordBot(commands.Bot):
     """Discord bot with LangGraph agent integration"""
 
-    def __init__(self, queue_manager: AsyncQueueManager, **kwargs):
+    def __init__(self, queue_manager: Optional["AsyncQueueManager"] = None, **kwargs):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.guilds = True
@@ -25,18 +26,29 @@ class DiscordBot(commands.Bot):
         )
 
         self.queue_manager = queue_manager
-        self.classifier = ClassificationRouter()
+        self.classifier = None
         self.active_threads: Dict[str, str] = {}
-        self._register_queue_handlers()
-
-    def _register_queue_handlers(self):
-        """Register handlers for queue messages"""
-        self.queue_manager.register_handler("discord_response", self._handle_agent_response)
-
+        self._queue_handlers_registered = False
+    
+    def get_classifier(self):
+        if self.classifier is None:
+            from app.classification.classification_router import ClassificationRouter
+            self.classifier = ClassificationRouter()
+        return self.classifier
+    
     async def on_ready(self):
         """Bot ready event"""
         logger.info(f'Enhanced Discord bot logged in as {self.user}')
         print(f'Bot is ready! Logged in as {self.user}')
+        
+        if self.queue_manager and settings.code_intelligence_enabled:
+            if not self._queue_handlers_registered:
+                self.queue_manager.register_handler(
+                    "discord_response",
+                    self._handle_agent_response
+                )
+                self._queue_handlers_registered = True
+
         try:
             synced = await self.tree.sync()
             print(f"Synced {len(synced)} slash command(s)")
@@ -48,11 +60,12 @@ class DiscordBot(commands.Bot):
         if message.author == self.user:
             return
 
-        if message.interaction_metadata is not None:
+        # if message.interaction_metadata is not None:
+        if message.interaction is not None:
             return
 
         try:
-            triage_result = await self.classifier.should_process_message(
+            triage_result = await self.get_classifier().should_process_message(
                 message.content,
                 {
                     "channel_id": str(message.channel.id),
@@ -66,13 +79,57 @@ class DiscordBot(commands.Bot):
 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}")
-
+    
     async def _handle_devrel_message(self, message, triage_result: Dict[str, Any]):
         """This now handles both new requests and follow-ups in threads."""
-        try:
-            user_id = str(message.author.id)
-            thread_id = await self._get_or_create_thread(message, user_id)
+        user_id = str(message.author.id)
+        thread_id = await self._get_or_create_thread(message, user_id)
 
+        # UX is shared
+        if thread_id:
+            thread = self.get_channel(int(thread_id))
+            if thread:
+                await thread.send("I'm processing your request, please hold on...")
+
+        # 🔀 execution split
+        if self.queue_manager:
+            await self._handle_devrel_with_queue(message, triage_result, thread_id)
+        else:
+            await self._handle_devrel_direct(message, triage_result, thread_id)
+
+    async def _handle_devrel_direct(self,message, triage_result, thread_id):
+        try:
+            response = await self._basic_discord_response(message.content)
+
+            if thread_id:
+                thread = self.get_channel(int(thread_id))
+                if thread:
+                    await thread.send(response)
+            else:
+                await message.channel.send(response)
+
+        except Exception as e:
+            logger.exception("Basic Discord-only chat failed")
+             # Fall back to original channel if thread unavailable
+            try:
+                if thread_id:
+                    thread = self.get_channel(int("thread_id"))
+                    if thread:
+                        await thread.send("Sorry, I ran into an issue answering that.")
+                        return
+                await message.channel.send("Sorry, I ran into an issue answering that.")
+            except Exception:
+                logger.exception("Failed to send error message")
+            thread = self.get_channel(int(thread_id))
+            await thread.send("Sorry, I ran into an issue answering that."
+            )
+    
+    async def _handle_devrel_with_queue(self, message, triage_result, thread_id):
+        try:
+            from app.core.orchestration.queue_manager import QueuePriority
+            
+            user_id = str(message.author.id)
+            
             agent_message = {
                 "type": "devrel_request",
                 "id": f"discord_{message.id}",
@@ -98,13 +155,6 @@ class DiscordBot(commands.Bot):
             priority = priority_map.get(triage_result.get("priority"), QueuePriority.MEDIUM)
             await self.queue_manager.enqueue(agent_message, priority)
 
-            # --- "PROCESSING" MESSAGE RESTORED ---
-            if thread_id:
-                thread = self.get_channel(int(thread_id))
-                if thread:
-                    await thread.send("I'm processing your request, please hold on...")
-            # ------------------------------------
-
         except Exception as e:
             logger.error(f"Error handling DevRel message: {str(e)}")
 
@@ -128,7 +178,22 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             logger.error(f"Failed to create thread: {e}")
         return str(message.channel.id)
+    
+    async def _basic_discord_response(self, content: str) -> str:
+        """
+        Stateless Discord-only reply.
+        No memory, no queue, no agent.
+        """
+        from app.llm.chat import chat_completion
 
+        return await chat_completion(
+            content,
+            context={
+                "platform": "discord",
+                "mode": "discord_only",
+            },
+        )
+    
     async def _handle_agent_response(self, response_data: Dict[str, Any]):
         try:
             thread_id = response_data.get("thread_id")
