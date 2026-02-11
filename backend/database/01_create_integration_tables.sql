@@ -33,6 +33,81 @@ CREATE TRIGGER update_organization_integrations_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+
+
+
+-- Function to create users in the public.users table upon registration
+CREATE OR REPLACE FUNCTION create_users_at_db()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+    INSERT INTO public.users (
+        id,
+        email,
+        display_name,
+        avatar_url,
+        created_at,
+        updated_at,
+        is_verified,
+        verified_at
+    )
+    VALUES (
+        NEW.id,
+        NEW.email,
+        NEW.raw_user_meta_data->>'display_name',
+        NEW.raw_user_meta_data->>'avatar_url',
+        NEW.created_at,
+        NEW.created_at,
+        NEW.email_confirmed_at IS NOT NULL,
+        NEW.email_confirmed_at
+    );
+
+    RETURN NEW;
+END;
+$$;
+
+
+
+-- Create trigger to automatically add authenticated users to the table
+DROP TRIGGER IF EXISTS add_user_to_table ON auth.users;
+CREATE TRIGGER add_user_to_table
+    AFTER INSERT ON auth.users
+    FOR EACH ROW
+    EXECUTE FUNCTION create_users_at_db();
+
+
+CREATE OR REPLACE FUNCTION verify_users_at_db()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+    UPDATE public.users
+    SET
+        is_verified = TRUE,
+        verified_at = NEW.email_confirmed_at,
+        updated_at = NOW()
+    WHERE id = NEW.id;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS verify_user_on_registration ON auth.users;
+CREATE TRIGGER verify_user_on_registration
+AFTER UPDATE ON auth.users
+FOR EACH ROW
+WHEN (
+  OLD.email_confirmed_at IS NULL
+  AND NEW.email_confirmed_at IS NOT NULL
+)
+EXECUTE FUNCTION verify_users_at_db();
+
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE organization_integrations ENABLE ROW LEVEL SECURITY;
 
@@ -63,3 +138,52 @@ CREATE POLICY "Users can delete their own integrations"
 COMMENT ON TABLE organization_integrations IS 'Stores registered organizations (just metadata, no tokens)';
 COMMENT ON COLUMN organization_integrations.config IS 'Platform-specific data: organization_link, discord_guild_id, etc.';
 
+
+
+--Add Buckets for storing the avatar paths
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+-- 2. Public read access (anyone can view avatars)
+drop policy if exists "Public read access for avatars" on storage.objects;
+create policy "Public read access for avatars"
+on storage.objects
+for select
+using (
+  bucket_id = 'avatars'
+);
+
+
+-- 3. Authenticated users can upload avatars
+drop policy if exists "Authenticated upload avatars" on storage.objects;
+
+create policy "Authenticated upload avatars"
+on storage.objects
+for insert
+with check (
+  bucket_id = 'avatars'
+  and auth.role() = 'authenticated'
+);
+
+-- 4. Users can update ONLY their own avatars
+drop policy if exists "Users update own avatars" on storage.objects;
+
+create policy "Users update own avatars"
+on storage.objects
+for update
+using (
+  bucket_id = 'avatars'
+  and owner = auth.uid()
+);
+
+-- 5. Users can delete ONLY their own avatars
+drop policy if exists "Users delete own avatars" on storage.objects;
+
+create policy "Users delete own avatars"
+on storage.objects
+for delete
+using (
+  bucket_id = 'avatars'
+  and owner = auth.uid()
+);

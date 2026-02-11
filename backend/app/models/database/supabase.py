@@ -21,6 +21,7 @@ class User(BaseModel):
       slack_username (Optional[str]): Slack username, if linked.
       display_name (str): Display name of the user.
       avatar_url (Optional[str]): URL to the user's avatar image.
+      avatar_path (Optional[str]): Path to the user's avatar image on supabase.
       bio (Optional[str]): Short biography or description of the user.
       location (Optional[str]): User's location.
       is_verified (bool): Indicates if the user is verified.
@@ -50,6 +51,7 @@ class User(BaseModel):
 
     display_name: str
     avatar_url: Optional[str] = None
+    avatar_path: Optional[str] = None
     bio: Optional[str] = None
     location: Optional[str] = None
 
@@ -226,3 +228,30 @@ class IndexedRepository(BaseModel):
     last_error: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class SkillsModel(BaseModel):
+    languages: List[str] = []
+    frameworks: List[str] = []
+
+class UserProfileEdit(BaseModel):
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    avatar_path: Optional[str] = None
+    discord: Optional[str] = None
+    github: Optional[str] = None
+    slack: Optional[str] = None
+    skills: Optional[SkillsModel] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "display_name": "Dev Guru",
+                "bio": "Full stack developer interested in AI",
+                "skills": {
+                    "languages": ["python"],
+                    "frameworks": ["fastapi", "react"]
+                },
+                "github": "devguru_code"
+            }
+        }
