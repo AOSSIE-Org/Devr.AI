@@ -1,61 +1,379 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 
+   CSS CUSTOM PROPERTIES (Design Tokens)
+*/
+:root {
+  /* Colors - Primary */
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  
+  /* Colors - Neutrals */
+  --color-gray-950: #09090b;
+  --color-gray-900: #18181b;
+  --color-gray-800: #27272a;
+  --color-gray-700: #3f3f46;
+  --color-gray-600: #52525b;
+  --color-gray-500: #71717a;
+  --color-gray-400: #a1a1aa;
+  --color-gray-300: #d4d4d8;
+  
+  /* Spacing */
+  --spacing-section-y: 5rem;
+  --spacing-section-x: 1.5rem;
+  
+  /* Shadows - Elevation */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-glow: 0 0 20px rgba(34, 197, 94, 0.25);
+  --shadow-glow-strong: 0 0 30px rgba(34, 197, 94, 0.4);
+  
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --spacing-section-y: 8rem;
+    --spacing-section-x: 2rem;
+  }
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   @apply bg-dark text-white antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+  font-variation-settings: 'opsz' 32;
 }
 
+/* ============================================
+   TYPOGRAPHY SCALE
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+h1 {
+  @apply text-5xl md:text-6xl lg:text-7xl xl:text-8xl;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  @apply text-3xl md:text-4xl lg:text-5xl;
+  font-weight: 700;
+}
+
+h3 {
+  @apply text-2xl md:text-3xl;
+  font-weight: 600;
+}
+
+h4 {
+  @apply text-xl md:text-2xl;
+  font-weight: 600;
+}
+
+h5 {
+  @apply text-lg md:text-xl;
+  font-weight: 600;
+}
+
+h6 {
+  @apply text-base md:text-lg;
+  font-weight: 600;
+}
+
+p {
+  @apply text-base md:text-lg leading-relaxed;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Gradient Text */
 .gradient-text {
-  @apply bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-green-400 via-cyan-400 to-emerald-500 bg-clip-text text-transparent;
 }
 
+/* Cards */
 .card {
-  @apply bg-dark-card border border-gray-700 rounded-xl p-6 transition-all hover:border-green-500;
+  @apply bg-dark-card border border-gray-700 rounded-xl p-6 transition-all duration-300;
+  box-shadow: var(--shadow-sm);
 }
 
+.card:hover {
+  @apply border-green-500/50;
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+/* Buttons */
 .btn-primary {
-  @apply px-6 py-3 rounded-lg bg-primary hover:bg-primary-hover transition-all text-white font-medium;
+  @apply px-8 py-4 rounded-xl text-white font-semibold text-lg relative overflow-hidden;
+  background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
+  box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.3), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--color-primary-400) 0%, var(--color-primary-500) 100%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+/* Shimmer effect for primary button */
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 12px 32px 0 rgba(34, 197, 94, 0.45), 0 6px 16px 0 rgba(34, 197, 94, 0.3);
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.btn-primary:hover::before {
+  opacity: 1;
+}
+
+.btn-primary:hover::after {
+  left: 100%;
+}
+
+.btn-primary:active {
+  transform: translateY(-1px) scale(1);
+  box-shadow: 0 4px 12px 0 rgba(34, 197, 94, 0.3);
+}
+
+/* Ensure button content stays on top */
+.btn-primary > *,
+.btn-primary svg,
+.btn-primary span {
+  position: relative;
+  z-index: 10;
 }
 
 .btn-secondary {
-  @apply px-6 py-3 rounded-lg bg-dark-lighter hover:bg-gray-800 transition-all text-white font-medium border border-gray-700;
+  @apply px-8 py-4 rounded-xl text-white font-semibold text-lg relative overflow-hidden;
+  background: linear-gradient(135deg, var(--color-gray-800) 0%, var(--color-gray-900) 100%);
+  border: 1px solid var(--color-gray-700);
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.btn-secondary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--color-gray-700) 0%, var(--color-gray-800) 100%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+/* Shimmer effect for secondary button */
+.btn-secondary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-gray-600);
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-3px) scale(1.02);
+}
+
+.btn-secondary:hover::before {
+  opacity: 1;
+}
+
+.btn-secondary:hover::after {
+  left: 100%;
+}
+
+.btn-secondary:active {
+  transform: translateY(-1px) scale(1);
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.15);
+}
+
+/* Ensure button content stays on top */
+.btn-secondary > *,
+.btn-secondary svg,
+.btn-secondary span {
+  position: relative;
+  z-index: 10;
+}
+
+
+/* Sections */
 .section {
-  @apply py-12 md:py-20;
+  padding-top: var(--spacing-section-y);
+  padding-bottom: var(--spacing-section-y);
 }
 
-.hover-lift {
-  @apply transition-transform duration-300;
+/* ============================================
+   ELEVATION UTILITIES
+   ============================================ */
+.elevation-sm {
+  box-shadow: var(--shadow-sm);
 }
 
-.hover-lift:hover {
-  transform: translateY(-5px);
+.elevation-md {
+  box-shadow: var(--shadow-md);
 }
 
-.radial-gradient-bg {
-  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.15), transparent 50%);
+.elevation-lg {
+  box-shadow: var(--shadow-lg);
 }
-/* Webkit Scrollbar Styling */
+
+.elevation-xl {
+  box-shadow: var(--shadow-xl);
+}
+
+/* ============================================
+   INTERACTION UTILITIES (CSS-only)
+   ============================================ */
+.interactive-lift {
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.interactive-lift:hover {
+  transform: translateY(-4px);
+}
+
+.interactive-glow {
+  transition: box-shadow var(--transition-slow);
+}
+
+.interactive-glow:hover {
+  box-shadow: var(--shadow-glow);
+}
+
+.interactive-scale {
+  transition: transform var(--transition-base);
+}
+
+.interactive-scale:hover {
+  transform: scale(1.05);
+}
+
+.interactive-border {
+  transition: border-color var(--transition-base);
+}
+
+.interactive-border:hover {
+  @apply border-primary;
+}
+
+/* ============================================
+   FOCUS STATES (Accessibility)
+   ============================================ */
+a:focus-visible,
+button:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-dark;
+  border-radius: var(--radius-md);
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #000; /* Optional: light background */
+  background: var(--color-gray-950);
   border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #167a16, #171787); /* Green to blue */
+  background: linear-gradient(to bottom, var(--color-primary-600), var(--color-primary-700));
   border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #167a16, #171787);
+  background: linear-gradient(to bottom, var(--color-primary-500), var(--color-primary-600));
+}
+
+/* ============================================
+   BACKGROUND PATTERNS
+   ============================================ */
+.bg-radial-gradient {
+  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.1), transparent 70%);
+}
+
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes gradient-xy {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-xy {
+  background-size: 200% auto;
+  animation: gradient-xy 3s ease infinite;
 }

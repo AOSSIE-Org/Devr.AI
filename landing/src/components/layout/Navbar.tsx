@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Github } from 'lucide-react';
+import { Menu, X} from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
     const isHomePage = location.pathname === '/';
 
     useEffect(() => {
@@ -19,6 +20,44 @@ const Navbar: React.FC = () => {
             window.removeEventListener('scroll', handleScroll);
         };
     }, []);
+
+    // Handle smooth scroll on page load with hash (consolidated and cleaned up)
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | null = null;
+
+        if (isHomePage && location.hash) {
+            const hash = location.hash.substring(1); // Remove the # symbol
+            timer = setTimeout(() => {
+                const element = document.getElementById(hash);
+                if (element) {
+                    const offset = 80; // Account for fixed navbar height
+                    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                    const offsetPosition = elementPosition - offset;
+
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 100);
+        }
+
+        return () => {
+            if (timer) {
+                clearTimeout(timer);
+            }
+        };
+    }, [location.hash, isHomePage]);
+
+    // Smooth scroll handler - let routing update the hash and useEffect handle scrolling
+    const handleSmoothScroll = (e:React.MouseEvent<HTMLAnchorElement>, href: string) => {
+        e.preventDefault();
+        // Do not prevent default navigation; close mobile menu then navigate so location.hash updates
+        setIsOpen(false);
+
+        // Navigate to the link (includes hash when present). The useEffect above will handle scrolling.
+        navigate(href);
+    };
 
     const navLinks = [
         { name: 'Features', href: isHomePage ? '#features' : '/#features' },
@@ -39,7 +78,17 @@ const Navbar: React.FC = () => {
                         className="flex items-center"
                     >
                         <Link to="/" className="flex items-center">
-                            <span className="text-2xl font-bold gradient-text">Devr.AI</span>
+                            <span 
+                                className="text-2xl font-bold gradient-text"
+                                style={{
+                                    background: 'linear-gradient(to right, #4ade80, #3b82f6, #22d3ee, #2563eb, #10b981)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                }}
+                            >
+                                Devr.AI
+                            </span>
                         </Link>
                     </motion.div>
 
@@ -52,6 +101,7 @@ const Navbar: React.FC = () => {
                             <a
                                 key={link.name}
                                 href={link.href}
+                                onClick={(e) => handleSmoothScroll(e, link.href)}
                                 className="text-sm font-medium text-gray-300 transition-colors hover:text-white"
                             >
                                 {link.name}
@@ -59,6 +109,7 @@ const Navbar: React.FC = () => {
                         ))}
                         <a
                             href={isHomePage ? "#waitlist" : "/#waitlist"}
+                            onClick={(e) => handleSmoothScroll(e, isHomePage ? "#waitlist" : "/#waitlist")}
                             className="text-sm font-medium px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white transition-colors"
                         >
                             Join Waitlist
@@ -87,7 +138,7 @@ const Navbar: React.FC = () => {
                         <a
                             key={link.name}
                             href={link.href}
-                            onClick={() => setIsOpen(false)}
+                            onClick={(e) => handleSmoothScroll(e, link.href)}
                             className="block py-3 text-gray-300 hover:text-white"
                         >
                             {link.name}
@@ -95,7 +146,7 @@ const Navbar: React.FC = () => {
                     ))}
                     <a
                         href={isHomePage ? "#waitlist" : "/#waitlist"}
-                        onClick={() => setIsOpen(false)}
+                        onClick={(e) => handleSmoothScroll(e, isHomePage ? "#waitlist" : "/#waitlist")}
                         className="block py-3 text-primary hover:text-primary-hover font-medium"
                     >
                         Join Waitlist

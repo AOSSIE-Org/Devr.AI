@@ -1,13 +1,33 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { Send, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
+import {
+    Box,
+    Container,
+    Typography,
+    TextField,
+    Select,
+    SelectChangeEvent,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Button,
+    Alert,
+    CircularProgress,
+    Stack,
+    Paper
+} from '@mui/material';
+import {
+    Send as SendIcon,
+    CheckCircle as CheckCircleIcon,
+    AutoAwesome as SparklesIcon
+} from '@mui/icons-material';
 
 const Waitlist: React.FC = () => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [organization, setOrganization] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState<string>('');
   const [suggestions, setSuggestions] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,13 +87,13 @@ const Waitlist: React.FC = () => {
 
       setSubmitted(true);
       toast.success('You have been added to the waitlist!');
-      
+
       setEmail('');
       setName('');
       setOrganization('');
       setRole('');
       setSuggestions('');
-      
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
@@ -84,222 +104,634 @@ const Waitlist: React.FC = () => {
   };
 
   return (
-    <section id="waitlist" className="section relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-full blur-3xl" />
-      
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="max-w-4xl mx-auto">
+    <Box
+      component="section"
+      id="waitlist"
+      className="section relative overflow-hidden"
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        py: { xs: 8, md: 12 },
+      }}
+    >
+      {/* Background decoration with blue */}
+      <Box
+        className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 blur-3xl"
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to bottom right, rgba(34, 197, 94, 0.05), rgba(59, 130, 246, 0.03), transparent, rgba(6, 182, 212, 0.05))',
+          filter: 'blur(64px)',
+        }}
+      />
+      <Box
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-full blur-3xl"
+        sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '24rem',
+          height: '24rem',
+          background: 'linear-gradient(to right, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.08), rgba(6, 182, 212, 0.1))',
+          borderRadius: '50%',
+          filter: 'blur(64px)',
+        }}
+      />
+      {/* Additional blue accent */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '20%',
+          right: '15%',
+          width: '20rem',
+          height: '20rem',
+          borderRadius: '50%',
+          background: 'linear-gradient(to right, rgba(37, 99, 235, 0.06), rgba(59, 130, 246, 0.04))',
+          filter: 'blur(60px)',
+        }}
+      />
+
+      <Container maxWidth="md" className="relative z-10" sx={{ position: 'relative', zIndex: 10 }}>
+        <Box className="max-w-4xl mx-auto">
           {/* Gradient border container */}
-          <div className="relative p-[1px] bg-gradient-to-r from-primary via-secondary to-primary rounded-2xl">
-            <div className="bg-dark/95 backdrop-blur-xl rounded-2xl p-8 md:p-12">
+          <Box
+            className="relative p-[1px] bg-gradient-to-r from-primary via-secondary to-primary rounded-2xl"
+            sx={{
+              position: 'relative',
+              padding: '1px',
+              background: 'linear-gradient(to right, #22c55e, #3b82f6, #06b6d4, #2563eb, #22c55e)',
+              borderRadius: '16px',
+            }}
+          >
+            <Paper
+              className="bg-dark/95 backdrop-blur-xl rounded-2xl p-8 md:p-12"
+              sx={{
+                backgroundColor: 'rgba(9, 9, 11, 0.95)',
+                backdropFilter: 'blur(24px)',
+                borderRadius: '15px',
+                padding: { xs: 4, md: 6 },
+              }}
+            >
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="text-center mb-8"
               >
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <Sparkles className="text-primary" size={24} />
-                  <h2 className="text-3xl md:text-4xl font-bold">
-                    Join the <span className="gradient-text">Waitlist</span>
-                  </h2>
-                  <Sparkles className="text-secondary" size={24} />
-                </div>
-                <p className="text-gray-400 text-lg">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{ mb: 2 }}
+                >
+                  <SparklesIcon sx={{ color: '#06b6d4', fontSize: 24 }} />
+                  <Typography
+                    variant="h3"
+                    component="h2"
+                    className="font-bold"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: { xs: '2rem', md: '2.5rem' },
+                      textAlign: 'center',
+                      color: '#06b6d4',
+                    }}
+                  >
+                    Join the{' '}
+                    <Box
+                      component="span"
+                      className="gradient-text"
+                      sx={{
+                        background: 'linear-gradient(to right, #06b6d4, #3b82f6, #22d3ee, #2563eb, #4ade80)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                      }}
+                    >
+                      Waitlist
+                    </Box>
+                  </Typography>
+                  <SparklesIcon sx={{ color: '#06b6d4', fontSize: 24 }} />
+                </Stack>
+                <Typography
+                  variant="body1"
+                  className="text-gray-400 text-lg text-center"
+                  sx={{
+                    color: 'rgba(161, 161, 170, 1)',
+                    fontSize: '1.125rem',
+                    textAlign: 'center',
+                    mb: 4,
+                  }}
+                >
                   Be among the first to experience Devr.AI and revolutionize your open-source community management.
-                </p>
+                </Typography>
               </motion.div>
 
               {submitted ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="relative"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl blur-xl" />
-                  <div className="relative bg-gradient-to-r from-green-900/40 to-emerald-900/40 border border-green-500/50 rounded-xl p-8 text-center backdrop-blur-sm">
-                    <div className="flex items-center justify-center mb-4">
-                      <CheckCircle className="text-green-400" size={48} />
-                    </div>
-                    <h3 className="text-2xl font-bold text-green-300 mb-3">Welcome to the future!</h3>
-                    <p className="text-gray-300 text-lg">
-                      You're now on our exclusive waitlist. We'll notify you the moment early access becomes available.
-                    </p>
-                    <div className="mt-6 p-4 bg-green-900/20 rounded-lg border border-green-500/30">
-                      <p className="text-green-400 font-medium">
-                        🎉 Keep an eye on your inbox for exciting updates!
-                      </p>
-                    </div>
-                  </div>
+                  <Paper
+                    sx={{
+                      background: 'linear-gradient(to right, rgba(5, 150, 105, 0.4), rgba(16, 185, 129, 0.4))',
+                      border: '1px solid rgba(34, 197, 94, 0.5)',
+                      borderRadius: '12px',
+                      padding: 4,
+                      textAlign: 'center',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <Stack spacing={2} alignItems="center">
+                      <CheckCircleIcon sx={{ color: '#4ade80', fontSize: 48 }} />
+                      <Typography
+                        variant="h5"
+                        sx={{
+                          fontWeight: 700,
+                          color: '#86efac',
+                        }}
+                      >
+                        Welcome to the future!
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          color: 'rgba(209, 213, 219, 1)',
+                          fontSize: '1.125rem',
+                        }}
+                      >
+                        You're now on our exclusive waitlist. We'll notify you the moment early access becomes available.
+                      </Typography>
+                      <Box
+                        sx={{
+                          mt: 3,
+                          p: 2,
+                          backgroundColor: 'rgba(5, 150, 105, 0.2)',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(34, 197, 94, 0.3)',
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            color: '#4ade80',
+                            fontWeight: 500,
+                          }}
+                        >
+                          🎉 Keep an eye on your inbox for exciting updates!
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Paper>
                 </motion.div>
               ) : (
-                <motion.form
+                <Box
+                  component={motion.form}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.2 }}
                   onSubmit={handleSubmit}
-                  className="space-y-6"
+                  sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}
                 >
                   {error && (
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="relative"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-orange-500/20 rounded-lg blur-sm" />
-                      <div className="relative bg-red-900/40 border border-red-500/50 rounded-lg p-4 flex items-start gap-3 backdrop-blur-sm">
-                        <AlertCircle className="shrink-0 mt-0.5 text-red-400" size={20} />
-                        <p className="text-red-300 font-medium">{error}</p>
-                      </div>
+                      <Alert
+                        severity="error"
+                        sx={{
+                          backgroundColor: 'rgba(127, 29, 29, 0.4)',
+                          border: '1px solid rgba(239, 68, 68, 0.5)',
+                          borderRadius: '8px',
+                          backdropFilter: 'blur(8px)',
+                          '& .MuiAlert-icon': {
+                            color: '#f87171',
+                          },
+                          '& .MuiAlert-message': {
+                            color: '#fca5a5',
+                            fontWeight: 500,
+                          },
+                        }}
+                      >
+                        {error}
+                      </Alert>
                     </motion.div>
                   )}
 
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label htmlFor="name" className="block text-sm font-semibold text-gray-300 mb-2">
-                        Full Name
-                      </label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <input
-                          id="name"
-                          name="name"
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          required
-                          placeholder="Enter your full name"
-                          className="relative w-full px-4 py-4 bg-dark-card/80 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-white placeholder-gray-500 backdrop-blur-sm transition-all duration-300 hover:border-gray-600"
-                        />
-                      </div>
-                    </div>
+                  <Box className="grid md:grid-cols-2 gap-6" sx={{ display: 'grid', gridTemplateColumns: { md: '1fr 1fr' }, gap: 3 }}>
+                    <TextField
+                      id="name"
+                      name="name"
+                      label="Full Name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      placeholder="Enter your full name"
+                      fullWidth
+                      className="relative group"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'rgba(39, 39, 42, 0.8)',
+                          backdropFilter: 'blur(8px)',
+                          color: 'white',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(63, 63, 70, 1)',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            borderColor: 'rgba(82, 82, 91, 1)',
+                          },
+                          '&.Mui-focused': {
+                            borderColor: 'rgba(34, 197, 94, 0.5)',
+                            boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.1)',
+                          },
+                          '& fieldset': {
+                            border: 'none',
+                          },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: 'rgba(209, 213, 219, 1)',
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          '&.Mui-focused': {
+                            color: 'rgba(34, 197, 94, 1)',
+                          },
+                        },
+                        '& .MuiInputBase-input': {
+                          color: 'white',
+                          '&::placeholder': {
+                            color: 'rgba(113, 113, 122, 1)',
+                            opacity: 1,
+                          },
+                        },
+                      }}
+                    />
 
-                    <div className="space-y-2">
-                      <label htmlFor="email" className="block text-sm font-semibold text-gray-300 mb-2">
-                        Email Address
-                      </label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <input
-                          id="email"
-                          name="email"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          placeholder="your@email.com"
-                          className="relative w-full px-4 py-4 bg-dark-card/80 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-white placeholder-gray-500 backdrop-blur-sm transition-all duration-300 hover:border-gray-600"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                    <TextField
+                      id="email"
+                      name="email"
+                      label="Email Address"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      placeholder="your@email.com"
+                      fullWidth
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'rgba(39, 39, 42, 0.8)',
+                          backdropFilter: 'blur(8px)',
+                          color: 'white',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(63, 63, 70, 1)',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            borderColor: 'rgba(82, 82, 91, 1)',
+                          },
+                          '&.Mui-focused': {
+                            borderColor: 'rgba(34, 197, 94, 0.5)',
+                            boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.1)',
+                          },
+                          '& fieldset': {
+                            border: 'none',
+                          },
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: 'rgba(209, 213, 219, 1)',
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          '&.Mui-focused': {
+                            color: 'rgba(34, 197, 94, 1)',
+                          },
+                        },
+                        '& .MuiInputBase-input': {
+                          color: 'white',
+                          '&::placeholder': {
+                            color: 'rgba(113, 113, 122, 1)',
+                            opacity: 1,
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
 
-                  <div className="space-y-2">
-                    <label htmlFor="organization" className="block text-sm font-semibold text-gray-300 mb-2">
-                      Organization
-                    </label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <input
-                        id="organization"
-                        name="organization"
-                        type="text"
-                        value={organization}
-                        onChange={(e) => setOrganization(e.target.value)}
-                        required
-                        placeholder="Your company, university, or organization"
-                        className="relative w-full px-4 py-4 bg-dark-card/80 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-white placeholder-gray-500 backdrop-blur-sm transition-all duration-300 hover:border-gray-600"
+                  <TextField
+                    id="organization"
+                    name="organization"
+                    label="Organization"
+                    type="text"
+                    value={organization}
+                    onChange={(e) => setOrganization(e.target.value)}
+                    required
+                    placeholder="Your company, university, or organization"
+                    fullWidth
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(39, 39, 42, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(63, 63, 70, 1)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: 'rgba(82, 82, 91, 1)',
+                        },
+                        '&.Mui-focused': {
+                          borderColor: 'rgba(59, 130, 246, 0.5)',
+                          boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.15), 0 0 0 4px rgba(34, 197, 94, 0.1)',
+                        },
+                        '& fieldset': {
+                          border: 'none',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(209, 213, 219, 1)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        '&.Mui-focused': {
+                          color: 'rgba(59, 130, 246, 1)',
+                        },
+                      },
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                        '&::placeholder': {
+                          color: 'rgba(113, 113, 122, 1)',
+                          opacity: 1,
+                        },
+                      },
+                    }}
+                  />
+
+                  <FormControl
+                    fullWidth
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(39, 39, 42, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(63, 63, 70, 1)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: 'rgba(82, 82, 91, 1)',
+                        },
+                        '&.Mui-focused': {
+                          borderColor: 'rgba(59, 130, 246, 0.5)',
+                          boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.15), 0 0 0 4px rgba(34, 197, 94, 0.1)',
+                        },
+                        '& fieldset': {
+                          border: 'none',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(209, 213, 219, 1)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        '&.Mui-focused': {
+                          color: 'rgba(59, 130, 246, 1)',
+                        },
+                      },
+                      '& .MuiSelect-select': {
+                        color: 'white',
+                        padding: '16px 14px',
+                      },
+                      '& .MuiSelect-icon': {
+                        color: 'rgba(161, 161, 170, 1)',
+                      },
+                    }}
+                  >
+                    <InputLabel id="role-label">Your Role</InputLabel>
+                    <Select
+                      id="role"
+                      name="role"
+                      labelId="role-label"
+                      value={role}
+                      onChange={(e: SelectChangeEvent<string>) => setRole(e.target.value)}
+                      required
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            backgroundColor: 'rgba(39, 39, 42, 1)',
+                            border: '1px solid rgba(63, 63, 70, 1)',
+                            borderRadius: '12px',
+                            mt: 1,
+                            '& .MuiMenuItem-root': {
+                              color: 'white',
+                              '&:hover': {
+                                backgroundColor: 'rgba(63, 63, 70, 1)',
+                              },
+                              '&.Mui-selected': {
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(34, 197, 94, 0.3)',
+                                },
+                              },
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>Select your role</em>
+                      </MenuItem>
+                      {roleOptions.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    id="suggestions"
+                    name="suggestions"
+                    label={
+                      <>
+                        Suggestions & Comments{' '}
+                        <Box component="span" sx={{ color: 'rgba(113, 113, 122, 1)', fontWeight: 400 }}>
+                          (optional)
+                        </Box>
+                      </>
+                    }
+                    multiline
+                    rows={4}
+                    value={suggestions}
+                    onChange={(e) => setSuggestions(e.target.value)}
+                    placeholder="Share your thoughts, feature requests, or any feedback..."
+                    fullWidth
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(39, 39, 42, 0.8)',
+                        backdropFilter: 'blur(8px)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(63, 63, 70, 1)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: 'rgba(82, 82, 91, 1)',
+                        },
+                        '&.Mui-focused': {
+                          borderColor: 'rgba(59, 130, 246, 0.5)',
+                          boxShadow: '0 0 0 2px rgba(59, 130, 246, 0.15), 0 0 0 4px rgba(34, 197, 94, 0.1)',
+                        },
+                        '& fieldset': {
+                          border: 'none',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(209, 213, 219, 1)',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        '&.Mui-focused': {
+                          color: 'rgba(59, 130, 246, 1)',
+                        },
+                      },
+                      '& .MuiInputBase-input': {
+                        color: 'white',
+                        '&::placeholder': {
+                          color: 'rgba(113, 113, 122, 1)',
+                          opacity: 1,
+                        },
+                      },
+                    }}
+                  />
+
+                  <Stack
+                    direction="column"
+                    spacing={2}
+                    alignItems="center"
+                    sx={{ pt: 2 }}
+                  >
+                    {/* Enhanced Button with Premium Design */}
+                    <motion.div
+                      className="relative group w-full md:w-auto"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {/* Animated gradient border */}
+                      <Box
+                        className="absolute -inset-0.5 bg-gradient-to-r from-primary via-secondary to-primary rounded-xl blur opacity-75 group-hover:opacity-100 transition duration-300 group-hover:duration-200 animate-gradient-xy"
+                        sx={{
+                          position: 'absolute',
+                          inset: '-2px',
+                          background: 'linear-gradient(to right, #22c55e, #3b82f6, #06b6d4, #2563eb, #22c55e)',
+                          borderRadius: '12px',
+                          filter: 'blur(4px)',
+                          opacity: 0.75,
+                          transition: 'opacity 0.3s ease',
+                          '&:hover': {
+                            opacity: 1,
+                          },
+                        }}
                       />
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="role" className="block text-sm font-semibold text-gray-300 mb-2">
-                      Your Role
-                    </label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <select
-                        id="role"
-                        name="role"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        required
-                        className="relative w-full px-4 py-4 bg-dark-card/80 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-white backdrop-blur-sm transition-all duration-300 hover:border-gray-600"
-                      >
-                        <option value="" className="bg-dark-card">Select your role</option>
-                        {roleOptions.map((option) => (
-                          <option key={option} value={option} className="bg-dark-card">
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="suggestions" className="block text-sm font-semibold text-gray-300 mb-2">
-                      Suggestions & Comments <span className="text-gray-500 font-normal">(optional)</span>
-                    </label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <textarea
-                        id="suggestions"
-                        name="suggestions"
-                        value={suggestions}
-                        onChange={(e) => setSuggestions(e.target.value)}
-                        placeholder="Share your thoughts, feature requests, or any feedback..."
-                        className="relative w-full px-4 py-4 bg-dark-card/80 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-white placeholder-gray-500 backdrop-blur-sm transition-all duration-300 hover:border-gray-600 resize-none"
-                        rows={4}
+                      {/* Glow effect on hover */}
+                      <Box
+                        className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl blur-xl opacity-0 group-hover:opacity-70 transition-opacity duration-500"
+                        sx={{
+                          position: 'absolute',
+                          inset: '-4px',
+                          background: 'linear-gradient(to right, rgba(34, 197, 94, 0.5), rgba(59, 130, 246, 0.4), rgba(6, 182, 212, 0.5))',
+                          borderRadius: '12px',
+                          filter: 'blur(24px)',
+                          opacity: 0,
+                          transition: 'opacity 0.5s ease',
+                          '&:hover': {
+                            opacity: 0.7,
+                          },
+                        }}
                       />
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col items-center space-y-4 pt-4">
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity duration-300" />
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        className="relative w-full md:w-auto bg-gradient-to-r from-black via-green-500 to-black hover:from-black hover:via-green-400 hover:to-black text-white font-bold py-4 px-8 rounded-xl flex items-center justify-center gap-3 min-w-[250px] transition-all duration-500 ease-in-out transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg active:scale-95"
+                      {/* Button container with glassmorphism */}
+                      <Box sx={{ position: 'relative' }}>
+                        <Button
+                          type="submit"
+                          disabled={submitting}
+                          variant="contained"
+                          startIcon={
+                            submitting ? (
+                              <CircularProgress size={20} sx={{ color: 'white' }} />
+                            ) : (
+                              <SendIcon />
+                            )
+                          }
+                          endIcon={!submitting && <SparklesIcon sx={{ fontSize: 16, opacity: 0.8 }} />}
+                          className="relative w-full md:w-auto bg-gradient-to-r from-primary via-secondary to-primary text-white font-bold py-4 px-10 rounded-xl min-w-[280px] shadow-2xl shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale overflow-hidden group/btn"
+                          sx={{
+                            background: 'linear-gradient(to right, #22c55e, #3b82f6, #06b6d4, #2563eb, #22c55e)',
+                            backgroundSize: '200% auto',
+                            color: 'white',
+                            fontWeight: 700,
+                            padding: '16px 40px',
+                            borderRadius: '12px',
+                            minWidth: '280px',
+                            boxShadow: '0 25px 50px -12px rgba(34, 197, 94, 0.25), 0 0 30px rgba(59, 130, 246, 0.15)',
+                            textTransform: 'none',
+                            fontSize: '1rem',
+                            letterSpacing: '0.025em',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            '&:hover': {
+                              backgroundPosition: 'right center',
+                              boxShadow: '0 25px 50px -12px rgba(59, 130, 246, 0.4), 0 0 40px rgba(34, 197, 94, 0.3)',
+                            },
+                            '&:disabled': {
+                              opacity: 0.5,
+                              cursor: 'not-allowed',
+                              filter: 'grayscale(100%)',
+                            },
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              inset: 0,
+                              background: 'linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent)',
+                              transform: 'translateX(-100%)',
+                              transition: 'transform 1s ease',
+                            },
+                            '&:hover::before': {
+                              transform: 'translateX(100%)',
+                            },
+                          }}
+                        >
+                          {submitting ? 'Joining Waitlist...' : 'Join Waitlist'}
+                        </Button>
+                      </Box>
+                    </motion.div>
+
+                    <Stack spacing={1} alignItems="center" sx={{ textAlign: 'center' }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'rgba(161, 161, 170, 1)',
+                          fontSize: '0.875rem',
+                        }}
                       >
-                        {submitting ? (
-                          <>
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                            />
-                            <span>Joining Waitlist...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Send size={20} />
-                            <span>Join Waitlist</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    
-                    <div className="text-center space-y-2">
-                      <p className="text-sm text-gray-400">
                         🚀 We'll notify you when early access becomes available
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Join <span className="text-primary font-semibold">1000+</span> developers already on the list
-                      </p>
-                    </div>
-                  </div>
-                </motion.form>
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'rgba(113, 113, 122, 1)',
+                          fontSize: '0.75rem',
+                        }}
+                      >
+                        Join{' '}
+                        <Box component="span" sx={{ color: '#22c55e', fontWeight: 600 }}>
+                          1000+
+                        </Box>{' '}
+                        developers already on the list
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                </Box>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+            </Paper>
+          </Box>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 
