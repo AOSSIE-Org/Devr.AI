@@ -1,10 +1,6 @@
 
 import React from 'react';
 import {
-    BarChart3,
-    TrendingUp,
-    Users,
-    Clock,
     ArrowUpRight,
     ArrowDownRight,
 } from 'lucide-react';
@@ -18,8 +14,6 @@ import {
 import {
     Area,
     AreaChart,
-    Bar,
-    BarChart,
     CartesianGrid,
     Cell,
     Label,
@@ -37,6 +31,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { RepositoryData } from '../../types';
 
 const analyticsCards = [
     {
@@ -115,15 +110,16 @@ const pieData = [
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
 interface Props {
-  repoData: any;
+    repoData: RepositoryData | null;
 }
 
 const AnalyticsPage: React.FC<Props> = ({ repoData }) => {
-  if (!repoData || !repoData.pull_requests) {
-    return <div>No data available. Please analyze a repository first.</div>;
-  }
     const [selectedRange, setSelectedRange] = React.useState('Last Week');
     const [activeIndex, setActiveIndex] = React.useState(0);
+
+    if (!repoData || !repoData.pull_requests) {
+        return <div>No data available. Please analyze a repository first.</div>;
+    }
 
     const onPieEnter = (_: any, index: number) => {
         setActiveIndex(index);
@@ -167,11 +163,10 @@ const AnalyticsPage: React.FC<Props> = ({ repoData }) => {
                                 {card.value}
                             </span>
                             <span
-                                className={`text-sm ${
-                                    card.isPositive
-                                        ? 'text-green-400'
-                                        : 'text-red-400'
-                                }`}
+                                className={`text-sm ${card.isPositive
+                                    ? 'text-green-400'
+                                    : 'text-red-400'
+                                    }`}
                             >
                                 {card.trend}
                             </span>
@@ -335,7 +330,7 @@ const AnalyticsPage: React.FC<Props> = ({ repoData }) => {
                                     dataKey="value"
                                     onMouseEnter={onPieEnter}
                                 >
-                                    {pieData.map((entry, index) => (
+                                    {pieData.map((_, index) => (
                                         <Cell
                                             key={`cell-${index}`}
                                             fill={COLORS[index % COLORS.length]}
@@ -355,11 +350,6 @@ const renderActiveShape = (props: any) => {
     const {
         cx,
         cy,
-        innerRadius,
-        outerRadius,
-        startAngle,
-        endAngle,
-        fill,
         payload,
         percent,
         value,
@@ -376,7 +366,6 @@ const renderActiveShape = (props: any) => {
             <text x={cx} y={cy + 35} textAnchor="middle" fill="#9CA3AF">
                 {`(${value})`}
             </text>
-            <path d={`M${cx},${cy}L${cx},${cy}`} fill="none" stroke={fill} />
         </g>
     );
 };

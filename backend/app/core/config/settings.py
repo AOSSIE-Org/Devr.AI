@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     # Platforms
     github_token: str = ""
+    github_webhook_secret: str = ""
     discord_bot_token: str = ""
 
     # DB configuration
@@ -38,6 +39,14 @@ class Settings(BaseSettings):
 
     # Backend URL
     backend_url: str = ""
+
+    # CORS configuration
+    allow_origins: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
 
     # Onboarding UX toggles
     onboarding_show_oauth_button: bool = True

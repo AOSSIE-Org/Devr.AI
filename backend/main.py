@@ -107,16 +107,22 @@ api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan)
 # Configure CORS
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite default dev server
-        "http://localhost:3000",  # Alternative dev server
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=settings.allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@api.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Log all unhandled exceptions and return a JSON error response."""
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return Response(
+        content='{"detail": "Internal Server Error"}',
+        status_code=500,
+        media_type="application/json"
+    )
 
 @api.get("/favicon.ico")
 async def favicon():

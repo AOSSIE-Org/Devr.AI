@@ -1,22 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ContributorCard from './ContributorCard';
+import { RepositoryData } from '../../types';
 
 interface Props {
-  repoData: any; // Fetched repository stats
+  repoData: RepositoryData | null;
 }
 
 const ContributorsPage: React.FC<Props> = ({ repoData }) => {
-  const [contributors, setContributors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (repoData?.contributors) {
-      setContributors(repoData.contributors);
-    }
-  }, [repoData]);
+  const contributors = repoData?.contributors || [];
 
   const handleExportReport = () => {
     toast.success('Generating contributor report...');
@@ -28,14 +21,6 @@ const ContributorsPage: React.FC<Props> = ({ repoData }) => {
 
   if (!repoData) {
     return <div>No data available. Please analyze a repository first.</div>;
-  }
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
   }
 
   return (
@@ -50,7 +35,7 @@ const ContributorsPage: React.FC<Props> = ({ repoData }) => {
           <p className="text-gray-400 mt-2">Manage and track contributor activity</p>
         </div>
         <div className="flex space-x-4">
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleExportReport}
@@ -58,7 +43,7 @@ const ContributorsPage: React.FC<Props> = ({ repoData }) => {
           >
             Export Report
           </motion.button>
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleInviteContributor}
@@ -72,7 +57,7 @@ const ContributorsPage: React.FC<Props> = ({ repoData }) => {
       {/* Contributors Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {contributors.map((contributor) => (
-          <ContributorCard 
+          <ContributorCard
             key={contributor.login}
             name={contributor.login}
             avatar={contributor.avatar_url}

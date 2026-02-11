@@ -18,9 +18,6 @@ interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon: React.ElementType;
 }
 
-interface LoginPageProps {
-  onLogin: () => void;
-}
 
 const AuthLayout = ({ children }: AuthLayoutProps) => (
   <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
@@ -47,7 +44,7 @@ const InputField = ({ icon: Icon, ...props }: InputFieldProps) => (
   </div>
 );
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
+export default function LoginPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -57,19 +54,17 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     setIsLoading(true);
-    const {data,error} = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     });
     setIsLoading(false);
-    if(data && !error){
+    if (data && !error) {
       toast.success('Successfully logged in!');
-      onLogin(); 
       navigate('/');
     }
-    else
-    {
-        toast.error(error?.message ||"An Unknown error occured!");
+    else {
+      toast.error(error?.message || "An Unknown error occurred!");
     }
   };
 
