@@ -4,6 +4,18 @@
 import axios, { AxiosInstance } from 'axios';
 import { supabase } from './supabaseClient';
 
+// Prevents multiple simultaneous 401 handlers from racing and triggering
+// sign-out/redirect more than once.
+let isHandlingUnauthorized = false;
+
+// Public routes where we should NOT force a redirect to login
+const PUBLIC_PATHS = [
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+];
+
 // Backend API base URL
 const API_BASE_URL =
     import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
@@ -83,10 +95,40 @@ class ApiClient {
         // Add response interceptor for error handling
         this.client.interceptors.response.use(
             (response) => response,
-            (error) => {
+            async (error) => {
                 if (error.response?.status === 401) {
-                    // Handle unauthorized - could redirect to login
-                    console.error('Unauthorized request');
+                    const pathname = window.location.pathname || '/';
+
+                    // If we're already on a public/auth page (login, signup, reset, etc.)
+                    // don't yank the user away mid-flow.
+                    if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+                        return Promise.reject(error);
+                    }
+
+                    // Deduplicate concurrent 401 handlers to avoid multiple sign-outs / redirects
+                    if (!isHandlingUnauthorized) {
+                        isHandlingUnauthorized = true;
+                        try {
+                            await supabase.auth.signOut();
+                        } catch (e) {
+                            // Log but continue to redirect; signing out isn't critical here
+                            console.error(
+                                'Error signing out on 401 handler',
+                                e
+                            );
+                        }
+
+                        const returnUrl = encodeURIComponent(
+                            pathname + window.location.search
+                        );
+                        window.location.href = `/login?returnUrl=${returnUrl}`;
+
+                        // Reset the flag after a short delay to prevent immediate re-triggering
+                        // but allow future 401 handling
+                        setTimeout(() => {
+                            isHandlingUnauthorized = false;
+                        }, 1000);
+                    }
                 }
                 return Promise.reject(error);
             }
@@ -166,7 +208,10 @@ class ApiClient {
             const response = await this.client.get('/v1/health');
             return response.status === 200;
         } catch (error) {
-            console.error('Backend health check failed:', error);
+            // Log in development for debugging
+            if (import.meta.env.DEV) {
+                console.error('Health check failed:', error);
+            }
             return false;
         }
     }

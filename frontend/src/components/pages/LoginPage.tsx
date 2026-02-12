@@ -1,6 +1,6 @@
 import { useState, ReactNode, FormEvent } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from "react-hot-toast";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -49,6 +49,7 @@ const InputField = ({ icon: Icon, ...props }: InputFieldProps) => (
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -64,8 +65,27 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(false);
     if(data && !error){
       toast.success('Successfully logged in!');
-      onLogin(); 
-      navigate('/');
+      onLogin();
+      const rawReturn = searchParams.get('returnUrl');
+      try {
+        const decoded = rawReturn ? decodeURIComponent(rawReturn) : null;
+        // Protect against open redirects by only allowing internal paths
+        // More strict validation to prevent protocol-relative URLs and other bypasses
+        if (decoded && 
+            decoded.startsWith('/') && 
+            !decoded.startsWith('//') && 
+            !decoded.includes('\\') &&
+            !decoded.includes('..') &&
+            !decoded.includes('%') &&
+            /^[\/a-zA-Z0-9\-_?=&]+$/.test(decoded)) {
+          navigate(decoded, { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
+      } catch (e) {
+        // If decoding fails, fallback to home
+        navigate('/', { replace: true });
+      }
     }
     else
     {

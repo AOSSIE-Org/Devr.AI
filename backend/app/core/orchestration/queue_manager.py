@@ -41,7 +41,7 @@ class AsyncQueueManager:
                 await self.channel.declare_queue(queue_name, durable=True)
             logger.info("Successfully connected to RabbitMQ")
         except Exception as e:
-            logger.error(f"Failed to connect to RabbitMQ: {e}")
+            logger.error(f"Failed to connect to RabbitMQ: {e}", exc_info=True)
             raise
 
     async def start(self, num_workers: int = 3):
@@ -79,14 +79,22 @@ class AsyncQueueManager:
         if delay > 0:
             await asyncio.sleep(delay)
 
+        # Guard against publishing while disconnected
+        if not self.channel or self.channel.is_closed:
+            raise RuntimeError("Queue channel is not connected. Call start() before enqueue().")
+
         queue_item = {
             "id": message.get("id", f"msg_{datetime.now().timestamp()}"),
-            "priority": priority,
+            "priority": priority.value,  # Serialize enum to string
             "data": message
         }
         json_message = json.dumps(queue_item).encode()
         await self.channel.default_exchange.publish(
-            aio_pika.Message(body=json_message),
+            aio_pika.Message(
+                body=json_message,
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                content_type="application/json"
+            ),
             routing_key=self.queues[priority]
         )
         logger.info(f"Enqueued message {queue_item['id']} with priority {priority}")
@@ -114,13 +122,13 @@ class AsyncQueueManager:
                             await self._process_item(item, worker_name)
                             await message.ack()
                         except Exception as e:
-                            logger.error(f"Error processing message: {e}")
+                            logger.error("Error processing message: %s", e, exc_info=True)
                             await message.nack(requeue=False)
                 except asyncio.CancelledError:
                     logger.info(f"Worker {worker_name} cancelled")
                     return
                 except Exception as e:
-                    logger.error(f"Worker {worker_name} error: {e}")
+                    logger.error("Worker %s error: %s", worker_name, e, exc_info=True)
             await asyncio.sleep(0.1)
 
     async def _process_item(self, item: Dict[str, Any], worker_name: str):
