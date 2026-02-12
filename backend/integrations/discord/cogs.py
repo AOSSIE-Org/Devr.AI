@@ -3,6 +3,7 @@ import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
+from datetime import datetime, timezone
 
 from app.agents.devrel.onboarding.messages import (
     build_encourage_verification_message,
@@ -129,18 +130,36 @@ class DevRelCommands(commands.Cog):
                 return
 
             if user_profile.verification_token:
-                embed = discord.Embed(
-                    title="⏳ Verification Pending",
-                    description="You already have a verification in progress.",
-                    color=discord.Color.orange()
-                )
-                embed.add_field(
-                    name="What to do",
-                    value="Please complete the existing verification or wait for it to expire (5 minutes).",
-                    inline=False
-                )
-                await interaction.followup.send(embed=embed, ephemeral=True)
-                return
+                expires_at = user_profile.verification_token_expires_at
+                is_expired = False
+
+                if expires_at:
+                    if isinstance(expires_at, str):
+                        expires_at_dt = datetime.fromisoformat(expires_at)
+                    else:
+                        expires_at_dt = expires_at  
+
+                    if expires_at_dt.tzinfo is None:
+                        expires_at_dt = expires_at_dt.replace(tzinfo=timezone.utc)
+                    
+                    now_utc = datetime.now(timezone.utc)
+
+                    if expires_at_dt < now_utc:
+                        is_expired = True
+
+                if not is_expired:
+                    embed = discord.Embed(
+                        title="⏳ Verification Pending",
+                        description="You already have a verification in progress.",
+                        color=discord.Color.orange()
+                    )
+                    embed.add_field(
+                        name="What to do",
+                        value="Please complete the existing verification or wait for it to expire (5 minutes).",
+                        inline=False
+                    )
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                    return
 
             session_id = await create_verification_session(str(interaction.user.id))
             if not session_id:
