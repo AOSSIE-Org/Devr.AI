@@ -58,7 +58,6 @@ function App() {
         switch (event) {
           case "SIGNED_IN":
             setIsAuthenticated(true);
-            toast.success("Signed in!");
             break;
 
           case "SIGNED_OUT":
