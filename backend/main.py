@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
+from app.database.weaviate.client import close_weaviate_client
 
 import uvicorn
 from fastapi import FastAPI, Response
@@ -100,6 +101,7 @@ async def lifespan(app: FastAPI):
     await app_instance.start_background_tasks()
     yield
     await app_instance.stop_background_tasks()
+    await close_weaviate_client()
 
 
 api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan)
