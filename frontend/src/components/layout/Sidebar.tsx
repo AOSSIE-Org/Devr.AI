@@ -10,7 +10,8 @@ import {
   Menu,
   Settings,
   User,
-  LogOut
+  LogOut, 
+  FolderSearch
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,6 +21,7 @@ interface SidebarProps {
 }
 
 const navItems = [
+  { icon: <FolderSearch size={20} />, label: 'Analyze Repo', path: '/' },
   { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/dashboard' },
   { icon: <Bot size={20} />, label: 'Bot Integration', path: '/integration' },
   { icon: <Users size={20} />, label: 'Contributors', path: '/contributors' },
