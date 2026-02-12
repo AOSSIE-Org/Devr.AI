@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import config
 from typing import List, Dict, Any, Optional
@@ -66,6 +67,10 @@ class EmbeddingService:
                 raise
         return self._llm
 
+
+    def _encode_sync(self, *args, **kwargs):
+        return self.model.encode(*args, **kwargs)
+
     async def get_embedding(self, text: str) -> List[float]:
         """Generate embedding for a single text input"""
         try:
@@ -74,11 +79,13 @@ class EmbeddingService:
                 text = [text]
 
             # Generate embeddings
-            embeddings = self.model.encode(
+            embeddings = await asyncio.to_thread(
+                self._encode_sync,
                 text,
                 convert_to_tensor=True,
                 show_progress_bar=False
             )
+
 
             # Convert to standard Python list and return
             embedding_list = embeddings[0].cpu().tolist()
@@ -92,12 +99,14 @@ class EmbeddingService:
         """Generate embeddings for multiple text inputs in batches"""
         try:
             # Generate embeddings
-            embeddings = self.model.encode(
+            embeddings = await asyncio.to_thread(
+                self._encode_sync,
                 texts,
                 convert_to_tensor=True,
                 batch_size=MAX_BATCH_SIZE,
                 show_progress_bar=len(texts) > 10
             )
+
 
             # Convert to standard Python list
             embedding_list = embeddings.cpu().tolist()
