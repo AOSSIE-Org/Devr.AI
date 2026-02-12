@@ -64,13 +64,20 @@ class RepoService:
                 status = repo_data['indexing_status']
 
                 if status == 'completed':
+                    # Return existing data as success instead of error
                     return {
-                        "status": "error",
-                        "message": f"Repository already indexed. Graph: `{repo_data['graph_name']}`"
+                        "status": "success",
+                        "repo": repo_info['full_name'],
+                        "graph_name": repo_data['graph_name'],
+                        "nodes": repo_data.get('node_count', 0),
+                        "edges": repo_data.get('edge_count', 0),
+                        "message": "Repository already indexed."
                     }
                 elif status == 'pending':
                     return {
-                        "status": "error",
+                        "status": "pending",
+                        "repo": repo_info['full_name'],
+                        "graph_name": repo_data['graph_name'],
                         "message": "Repository indexing in progress. Please wait."
                     }
                 # If failed, we'll allow re-indexing by updating the existing record

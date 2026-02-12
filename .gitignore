@@ -175,3 +175,4 @@ cython_debug/
 
 # Local Netlify folder
 .netlify
+backend/app/database/falkor/code-graph-backend/repositories/

@@ -47,12 +47,21 @@ Invoke-Expression (poetry env activate)
 ```
 
 5. **Set up environment variables**
+   You need to set up environment variables in three locations: **Project Root**, **Backend**, and **Frontend**.
+
 ```sh
-# Copy the example environment file
+# 1. Project Root
 cp env.example .env
 
-# Edit .env with your API keys and configuration
-nano .env  # or use your preferred editor
+# 2. Backend
+cp backend/.env.example backend/.env
+
+# 3. Frontend
+# Create a .env file in frontend/ directory
+cp frontend/.env.example frontend/.env
+
+
+# Edit the .env files with your API keys and configuration
 ```
 
 6. **Set up Docker container**
@@ -71,7 +80,12 @@ Go to docker dekstop and start the containers
 cd backend
 poetry run python main.py # Terminal 1
 poetry run python start_github_mcp_server.py # Terminal 2 (Start MCP server)
-flask --app api/index.py run --debug --port 5000 # Terminal 3 (Start graphDB)
+
+# Terminal 3 (Start graphDB) - Requires Python 3.11+
+cd app/database/falkor/code-graph-backend
+poetry env use python3.11  # First time setup only
+poetry install             # First time setup only
+poetry run flask --app api.index:app run --debug --port 5000
 ```
 
 9. **Start the frontend** (in a new terminal)
@@ -165,6 +179,19 @@ The database will be available at `http://localhost:8080`
 
 ### Supabase Database
 Supabase provides the PostgreSQL database for user data and authentication. The connection is configured via environment variables.
+
+### Supabase Migrations
+You must run the SQL migrations to set up the required database tables.
+
+1.  Go to your [Supabase Dashboard](https://supabase.com/dashboard) -> Select your project -> **SQL Editor**.
+2.  **Run Integration Tables Migration**:
+    -   Open `backend/database/01_create_integration_tables.sql`.
+    -   Copy the content and paste it into the SQL Editor.
+    -   Click **Run**.
+3.  **Run Indexed Repositories Migration**:
+    -   Open `backend/database/02_create_indexed_repositories.sql`.
+    -   Copy the content and paste it into the SQL Editor.
+    -   Click **Run**.
 
 ## Current Features
 

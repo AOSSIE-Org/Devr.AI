@@ -42,3 +42,4 @@ pytest_cache/
 .env
 *.sqlite3
 .vercel
+repositories/
