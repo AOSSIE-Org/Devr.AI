@@ -30,24 +30,17 @@ const ProfilePage = () => {
     >
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Profile</h1>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsEditing(!isEditing)}
-          className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors flex items-center"
-        >
-          {isEditing ? (
-            <>
-              <Save size={18} className="mr-2" />
-              Save Changes
-            </>
-          ) : (
-            <>
-              <Edit size={18} className="mr-2" />
-              Edit Profile
-            </>
-          )}
-        </motion.button>
+        {!isEditing && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsEditing(true)}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors flex items-center"
+          >
+            <Edit size={18} className="mr-2" />
+            Edit Profile
+          </motion.button>
+        )}
       </div>
 
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
@@ -90,7 +83,7 @@ const ProfilePage = () => {
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                     disabled={!isEditing}
-                    className="bg-transparent text-white focus:outline-none disabled:opacity-50"
+                    className="bg-gray-800 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -104,7 +97,7 @@ const ProfilePage = () => {
                     value={profile.email}
                     onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                     disabled={!isEditing}
-                    className="bg-transparent text-white focus:outline-none disabled:opacity-50"
+                    className="bg-gray-800 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -118,7 +111,7 @@ const ProfilePage = () => {
                     value={profile.company}
                     onChange={(e) => setProfile({ ...profile, company: e.target.value })}
                     disabled={!isEditing}
-                    className="bg-transparent text-white focus:outline-none disabled:opacity-50"
+                    className="bg-gray-800 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -134,7 +127,7 @@ const ProfilePage = () => {
                     value={profile.website}
                     onChange={(e) => setProfile({ ...profile, website: e.target.value })}
                     disabled={!isEditing}
-                    className="bg-transparent text-white focus:outline-none disabled:opacity-50"
+                    className="bg-gray-800 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -148,7 +141,7 @@ const ProfilePage = () => {
                     value={profile.github}
                     onChange={(e) => setProfile({ ...profile, github: e.target.value })}
                     disabled={!isEditing}
-                    className="bg-transparent text-white focus:outline-none disabled:opacity-50"
+                    className="bg-gray-800 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -162,7 +155,7 @@ const ProfilePage = () => {
                     value={profile.twitter}
                     onChange={(e) => setProfile({ ...profile, twitter: e.target.value })}
                     disabled={!isEditing}
-                    className="bg-transparent text-white focus:outline-none disabled:opacity-50"
+                    className="bg-gray-800 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   />
                 </div>
               </div>
