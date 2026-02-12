@@ -1,3 +1,4 @@
+from app.services.auth.supabase import validate_oauth_state
 from fastapi import APIRouter, Request, HTTPException, Query, Depends
 from fastapi.responses import HTMLResponse
 from app.database.supabase.client import get_supabase_client
@@ -16,18 +17,23 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 @router.get("/callback", response_class=HTMLResponse)
 async def auth_callback(
     request: Request,
     code: Optional[str] = Query(None),
     session: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),  # NEW: Accept state parameter
     app_instance: "DevRAIApplication" = Depends(get_app_instance),
 ):
     """
     Handles the OAuth callback from Supabase after a user authorizes on GitHub.
     """
     logger.info(
-        f"OAuth callback received with code: {'[PRESENT]' if code else '[MISSING]'}, session: {'[PRESENT]' if session else '[MISSING]'}")
+        f"OAuth callback received with code: {'[PRESENT]' if code else '[MISSING]'}, "
+        f"session: {'[PRESENT]' if session else '[MISSING]'}, "
+        f"state: {'[PRESENT]' if state else '[MISSING]'}"
+    )
 
     if not code:
         logger.error("Missing authorization code in callback")
@@ -36,6 +42,26 @@ async def auth_callback(
     if not session:
         logger.error("Missing session ID in callback")
         return _error_response("Missing session ID. Please try the /verify_github command again.")
+
+    # NEW SECURITY CHECK: Validate OAuth state parameter (RFC 6749)
+    if not state:
+        logger.error("Missing OAuth state parameter in callback - potential CSRF attack")
+        return _error_response(
+            "Missing security validation. This may indicate a CSRF attack. "
+            "Please try the /verify_github command again."
+        )
+
+    # Validate state matches stored value in Redis
+    state_valid = await validate_oauth_state(state, session)
+    if not state_valid:
+        logger.warning(
+            f"OAuth state validation failed for session: {session[:8]}... - "
+            f"Possible CSRF attempt or expired state"
+        )
+        return _error_response(
+            "Security validation failed. Your verification session has expired or is invalid. "
+            "Please run the /verify_github command again."
+        )
 
     # Check if session is valid and not expired
     session_info = await get_verification_session_info(session)
@@ -77,8 +103,12 @@ async def auth_callback(
         )
 
         if not verified_user:
-            logger.error("User verification failed - no pending verification found")
-            return _error_response("No pending verification found or verification has expired. Please try the /verify_github command again.")
+            logger.error(
+                "User verification failed - no pending verification found"
+            )
+            return _error_response(
+                "No pending verification found or verification has expired. Please try the /verify_github command again."
+            )
 
         logger.info(f"Successfully verified user: {verified_user.id}!")
 
