@@ -57,15 +57,19 @@ function App() {
       (event, session) => {
         switch (event) {
           case "SIGNED_IN":
-            setIsAuthenticated(true);
-            toast.success("Signed in!");
-            break;
+            if (!isAuthenticated) {
+              setIsAuthenticated(true);
+              toast.success("Signed in!");
+            }
+              break;
 
           case "SIGNED_OUT":
-            setIsAuthenticated(false);
-            setRepoData(null);
-            toast.success("Signed out!");
-            break;
+            if (isAuthenticated) {
+              setIsAuthenticated(false);
+              setRepoData(null);
+              toast.success("Signed out!");
+            }
+              break;
 
           case "PASSWORD_RECOVERY":
             toast("Check your email to reset your password.");
