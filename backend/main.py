@@ -14,12 +14,13 @@ from app.core.orchestration.queue_manager import AsyncQueueManager
 from app.database.weaviate.client import get_weaviate_client
 from integrations.discord.bot import DiscordBot
 from discord.ext import commands
+
 # DevRel commands are now loaded dynamically (commented out below)
 # from integrations.discord.cogs import DevRelCommands
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class DevRAIApplication:
         self.queue_manager = AsyncQueueManager()
         self.agent_coordinator = AgentCoordinator(self.queue_manager)
         self.discord_bot = DiscordBot(self.queue_manager)
+        self.discord_task = None
 
     async def start_background_tasks(self):
         """Starts the Discord bot and queue workers in the background."""
@@ -51,9 +53,10 @@ class DevRAIApplication:
             except (ImportError, commands.ExtensionError) as e:
                 logger.error("Failed to load Discord cog extension: %s", e)
 
-            # Start the bot as a background task.
-            asyncio.create_task(
-                self.discord_bot.start(settings.discord_bot_token)
+            # Start the bot as a background task and store the reference
+            self.discord_task = asyncio.create_task(
+                self.discord_bot.start(settings.discord_bot_token),
+                name="discord_bot"
             )
             logger.info("Background tasks started successfully!")
         except Exception as e:
