@@ -1,50 +1,184 @@
-name: "✨ Feature Request"
-description: "Suggest a new feature or enhancement"
-title: "FEATURE REQUEST:"
-labels: ["Feature Request"]
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement for Devr.AI
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
 body:
-  - type: checkboxes
-    attributes:
-      label: "Is your feature request related to a problem?"
-      description: "Please check if your feature request is related to an existing problem."
-      options:
-        - label: "Yes, it is related to a problem"
-          required: true
   - type: markdown
     attributes:
       value: |
-        > [!IMPORTANT]
-        > Before submitting, please ensure your feature request aligns with the project's goals and scope.
-  - type: textarea
+        Thanks for suggesting a new feature! 🚀
+        
+        Please search existing issues and discussions before creating a new request.
+
+  - type: checkboxes
+    id: terms
     attributes:
-      label: "Describe the feature you'd like"
-      description: "Provide a clear and concise description of the feature or enhancement you'd like to see."
-      value: |
-        ## 🌟 Feature Description  
-        <!-- What is the feature or enhancement you are suggesting? -->
+      label: Pre-flight Checklist
+      description: Please confirm the following before proceeding
+      options:
+        - label: I have searched for existing feature requests
+          required: true
+        - label: I have checked the roadmap and project discussions
+          required: true
+        - label: This feature aligns with Devr.AI's goals
+          required: true
 
-        ## 🔍 Problem Statement  
-        <!-- If applicable, explain the problem your feature request will solve. -->
-
-        ## 🎯 Expected Outcome  
-        <!-- Describe what you want to achieve with this feature. -->
-
-        ## 📷 Screenshots and Design Ideas
-        <!-- Attach any relevant screenshots or mockups. Describe your design ideas that could solve this. -->
-
-        ## 📋 Additional Context  
-        <!-- Add any other context about the feature request here. -->
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What type of feature is this?
+      options:
+        - AI/LLM Enhancement
+        - Discord Integration
+        - GitHub Integration
+        - Slack Integration
+        - User Interface
+        - Backend API
+        - Database/Storage
+        - Performance
+        - Security
+        - Documentation
+        - Developer Experience
+        - Other
     validations:
       required: true
-  - type: checkboxes
+
+  - type: dropdown
+    id: priority
     attributes:
-      label: "Record"
+      label: Priority
+      description: How important is this feature to you?
       options:
-        - label: "I agree to follow this project's Code of Conduct"
-          required: true
-        - label: "I want to work on implementing this feature"
-          required: false
-  - type: markdown
+        - Critical (Blocking my use case)
+        - High (Would significantly improve my workflow)
+        - Medium (Nice to have improvement)
+        - Low (Minor enhancement)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
     attributes:
-      value: |
-        Thanks for suggesting a new feature! 🚀 We appreciate your input and will review it soon.
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: |
+        Describe the problem you're trying to solve...
+        
+        "I'm frustrated when..."
+        "It's difficult to..."
+        "Users need to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you'd like to see
+      placeholder: |
+        A clear and concise description of what you want to happen...
+        
+        "I would like to be able to..."
+        "The system should..."
+        "Add a feature that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches?
+      placeholder: |
+        Describe alternatives you've considered...
+        
+        "Another approach could be..."
+        "We could also..."
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Who would benefit from this feature and how?
+      placeholder: |
+        Describe specific use cases...
+        
+        1. As a [user type], I want to [action] so that [benefit]
+        2. When [scenario], users could [action]
+        3. This would help [audience] by [benefit]
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Examples
+      description: If applicable, add mockups, wireframes, or examples
+      placeholder: |
+        Add links to mockups, screenshots, or examples of similar features...
+        
+        You can drag and drop images here or use markdown:
+        ![Description](URL)
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What defines "done" for this feature?
+      placeholder: |
+        Define clear acceptance criteria...
+        
+        - [ ] User can perform [action]
+        - [ ] System responds with [behavior]
+        - [ ] Feature works on [platforms]
+        - [ ] Performance meets [requirements]
+
+  - type: dropdown
+    id: breaking-changes
+    attributes:
+      label: Breaking Changes
+      description: Would this feature require breaking changes?
+      options:
+        - "No breaking changes"
+        - "Minor breaking changes (with migration path)"
+        - "Major breaking changes"
+        - "Unknown/Need analysis"
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-considerations
+    attributes:
+      label: Technical Considerations
+      description: Any technical aspects to consider?
+      placeholder: |
+        Consider technical implications...
+        
+        - Database changes needed
+        - API modifications required
+        - Performance impact
+        - Security implications
+        - Third-party integrations
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Are you willing to contribute to implementing this feature?
+      options:
+        - label: I would like to work on implementing this feature
+          required: false
+        - label: I can help with design/specification
+          required: false
+        - label: I can help with testing
+          required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context or information about the feature request
+      placeholder: Any additional information that might be helpful...

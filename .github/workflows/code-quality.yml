@@ -1,0 +1,90 @@
+name: 🔍 Code Quality & Formatting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  pre-commit-checks:
+    name: 🔧 Pre-commit Hooks & Formatting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: 📦 Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: 📥 Install Dependencies
+        run: |
+          cd backend && poetry install --with dev
+          cd ../frontend && npm ci
+
+      # Python Code Quality
+      - name: 🐍 Check Python Formatting (Black)
+        working-directory: backend
+        run: |
+          poetry run black --check --diff . || {
+            echo "❌ Python code formatting issues found!"
+            echo "Run: cd backend && poetry run black ."
+            exit 1
+          }
+
+      - name: 📊 Check Import Sorting (isort)
+        working-directory: backend  
+        run: |
+          poetry run isort --check-only --diff . || {
+            echo "❌ Import sorting issues found!"
+            echo "Run: cd backend && poetry run isort ."
+            exit 1
+          }
+
+      - name: 🔍 Python Linting (flake8)
+        working-directory: backend
+        run: |
+          poetry run flake8 --statistics --tee --output-file=flake8-report.txt . || {
+            echo "❌ Python linting issues found!"
+            echo "Check: backend/flake8-report.txt"
+            exit 1
+          }
+
+      # Frontend Code Quality  
+      - name: ⚛️ Frontend Linting (ESLint)
+        working-directory: frontend
+        run: |
+          npx eslint . --ext .ts,.tsx,.js,.jsx --format=unix --max-warnings 0 || {
+            echo "❌ Frontend linting issues found!"
+            echo "Run: cd frontend && npx eslint . --ext .ts,.tsx,.js,.jsx --fix"
+            exit 1
+          }
+
+      - name: 💅 Frontend Formatting (Prettier)
+        working-directory: frontend
+        run: |
+          npx prettier --check . || {
+            echo "❌ Frontend formatting issues found!"
+            echo "Run: cd frontend && npx prettier --write ."
+            exit 1
+          }
+
+      - name: 📋 Upload Reports
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: code-quality-reports
+          path: |
+            backend/flake8-report.txt
+            frontend/eslint-report.json

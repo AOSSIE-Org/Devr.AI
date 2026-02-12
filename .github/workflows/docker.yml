@@ -1,0 +1,370 @@
+name: 🐳 Docker Build & Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**' 
+      - '**/Dockerfile*'
+      - 'docker-compose*.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # BUILD MATRIX FOR MULTI-COMPONENT DOCKER IMAGES  
+  # ============================================================================
+  docker-build:
+    name: 🏗️ Build Docker Images
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        component: [backend, frontend]
+      fail-fast: false
+    
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      backend-digest: ${{ steps.backend-build.outputs.digest }}
+      frontend-digest: ${{ steps.frontend-build.outputs.digest }}
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Backend Docker Build
+      - name: 🐍 Build Backend Dockerfile
+        if: matrix.component == 'backend'
+        working-directory: backend
+        run: |
+          cat > Dockerfile << 'EOF'
+          # Multi-stage build for Python backend
+          FROM python:3.13-slim as builder
+          
+          # Install system dependencies
+          RUN apt-get update && apt-get install -y \
+              build-essential \
+              curl \
+              && rm -rf /var/lib/apt/lists/*
+          
+          # Install Poetry
+          RUN pip install poetry==2.2.1
+          RUN poetry config virtualenvs.create false
+          
+          # Copy dependency files
+          WORKDIR /app
+          COPY pyproject.toml poetry.lock ./
+          
+          # Install dependencies
+          RUN poetry install --only=main --no-dev
+          
+          # Production stage
+          FROM python:3.13-slim as production
+          
+          # Create app user
+          RUN groupadd -r appuser && useradd -r -g appuser appuser
+          
+          # Install runtime dependencies
+          RUN apt-get update && apt-get install -y \
+              curl \
+              && rm -rf /var/lib/apt/lists/*
+          
+          # Copy installed packages from builder
+          COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+          COPY --from=builder /usr/local/bin /usr/local/bin
+          
+          # Set working directory
+          WORKDIR /app
+          
+          # Copy application code
+          COPY --chown=appuser:appuser . .
+          
+          # Switch to non-root user
+          USER appuser
+          
+          # Health check
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+            CMD curl -f http://localhost:8000/api/v1/health || exit 1
+          
+          # Expose port
+          EXPOSE 8000
+          
+          # Start application
+          CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "8000"]
+          EOF
+
+      # Frontend Docker Build  
+      - name: ⚛️ Build Frontend Dockerfile
+        if: matrix.component == 'frontend'
+        working-directory: frontend
+        run: |
+          cat > Dockerfile << 'EOF'
+          # Multi-stage build for React frontend
+          FROM node:22-alpine as builder
+          
+          # Set working directory
+          WORKDIR /app
+          
+          # Copy package files
+          COPY package*.json ./
+          
+          # Install dependencies
+          RUN npm ci --only=production
+          
+          # Copy source code
+          COPY . .
+          
+          # Build application
+          RUN npm run build
+          
+          # Production stage with nginx
+          FROM nginx:alpine as production
+          
+          # Copy custom nginx config
+          COPY --from=builder /app/dist /usr/share/nginx/html
+          
+          # Copy nginx configuration
+          RUN echo 'server {
+              listen 80;
+              server_name localhost;
+              
+              location / {
+                  root /usr/share/nginx/html;
+                  index index.html index.htm;
+                  try_files $uri $uri/ /index.html;
+              }
+              
+              location /api {
+                  proxy_pass http://backend:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+              
+              # Security headers
+              add_header X-Frame-Options "SAMEORIGIN" always;
+              add_header X-XSS-Protection "1; mode=block" always;
+              add_header X-Content-Type-Options "nosniff" always;
+              add_header Referrer-Policy "no-referrer-when-downgrade" always;
+              add_header Content-Security-Policy "default-src '\''self'\'' http: https: data: blob: '\''unsafe-inline'\''" always;
+          }' > /etc/nginx/conf.d/default.conf
+          
+          # Health check
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+            CMD curl -f http://localhost/ || exit 1
+          
+          # Expose port
+          EXPOSE 80
+          
+          # Start nginx
+          CMD ["nginx", "-g", "daemon off;"]
+          EOF
+
+      - name: 🏷️ Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🏗️ Build and Push Docker Image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.component }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Store build outputs
+      - name: 📋 Output Build Info  
+        id: backend-build
+        if: matrix.component == 'backend'
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+      - name: 📋 Output Build Info
+        id: frontend-build  
+        if: matrix.component == 'frontend'
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # DOCKER COMPOSE INTEGRATION TEST
+  # ============================================================================
+  integration-test:
+    name: 🧪 Integration Test with Docker Compose
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Create Integration Docker Compose
+        working-directory: backend
+        run: |
+          # Create integration test compose file
+          cat > docker-compose.integration.yml << 'EOF'
+          version: '3.8'
+          
+          services:
+            weaviate:
+              image: cr.weaviate.io/semitechnologies/weaviate:1.31.0
+              ports:
+                - "8080:8080"
+              environment:
+                QUERY_DEFAULTS_LIMIT: 25
+                AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+                PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+                ENABLE_API_BASED_MODULES: 'true'
+              healthcheck:
+                test: ["CMD", "wget", "--no-verbose", "--tries=3", "--spider", "http://localhost:8080/v1/meta"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+            
+            rabbitmq:
+              image: rabbitmq:3-management
+              ports:
+                - "5672:5672"
+                - "15672:15672"
+              environment:
+                RABBITMQ_DEFAULT_USER: guest
+                RABBITMQ_DEFAULT_PASS: guest
+              healthcheck:
+                test: ["CMD", "rabbitmq-diagnostics", "status"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+            
+            falkordb:
+              image: falkordb/falkordb:latest
+              ports:
+                - "6379:6379"
+                - "3000:3000"
+              healthcheck:
+                test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+          
+          networks:
+            default:
+              name: devr-ai-integration
+          EOF
+
+      - name: 🚀 Start Integration Environment
+        working-directory: backend
+        run: |
+          docker-compose -f docker-compose.integration.yml up -d
+          
+          # Wait for services to be healthy
+          echo "Waiting for services to be ready..."
+          sleep 60
+          
+          # Health check all services
+          docker-compose -f docker-compose.integration.yml ps
+
+      - name: 🧪 Run Integration Tests
+        run: |
+          echo "Testing service endpoints..."
+          
+          # Test Weaviate
+          curl -f http://localhost:8080/v1/meta || exit 1
+          echo "✅ Weaviate is healthy"
+          
+          # Test RabbitMQ Management
+          curl -f http://localhost:15672 || exit 1  
+          echo "✅ RabbitMQ is healthy"
+          
+          # Test FalkorDB
+          curl -f http://localhost:3000 || exit 1
+          echo "✅ FalkorDB is healthy"
+
+      - name: 🧹 Cleanup Integration Environment
+        if: always()
+        working-directory: backend
+        run: |
+          docker-compose -f docker-compose.integration.yml down -v
+          docker system prune -f
+
+  # ============================================================================
+  # VULNERABILITY SCANNING FOR BUILT IMAGES
+  # ============================================================================
+  image-security-scan:
+    name: 🔍 Scan Built Images for Vulnerabilities
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name != 'pull_request'
+
+    strategy:
+      matrix:
+        component: [backend, frontend]
+
+    steps:
+      - name: 🔍 Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}:${{ github.ref_name }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.component }}.sarif'
+
+      - name: 📋 Upload Trivy Scan Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results-${{ matrix.component }}.sarif'
+
+  # ============================================================================
+  # SUCCESS SUMMARY
+  # ============================================================================
+  docker-success:
+    name: ✅ Docker Build Success
+    runs-on: ubuntu-latest
+    needs: [docker-build, integration-test]
+    if: always()
+
+    steps:
+      - name: 🎉 Build Summary
+        run: |
+          echo "### 🐳 Docker Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker Build**: ${{ needs.docker-build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Integration Test**: ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.docker-build.result }}" = "success" ] && [ "${{ needs.integration-test.result }}" = "success" ]; then
+            echo "🎉 All Docker workflows completed successfully!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some Docker workflows failed. Check the logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
