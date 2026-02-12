@@ -8,7 +8,7 @@ from ..analyzer import AbstractAnalyzer
 from multilspy import SyncLanguageServer
 
 import tree_sitter_java as tsjava
-from tree_sitter import Language, Node
+from tree_sitter import Language, QueryCursor, Node
 
 from xml.etree import ElementTree
 
@@ -19,23 +19,35 @@ class JavaAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
         super().__init__(Language(tsjava.language()))
 
-    def add_dependencies(self, path: Path, files: list[Path]):
-        # if not Path("java-decompiler-engine-243.23654.153.jar").is_file():
-        #     subprocess.run(["wget", "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/java/java-decompiler-engine/243.23654.153/java-decompiler-engine-243.23654.153.jar"])
-        subprocess.run(["rm", "-rf", f"{path}/temp_deps"])
-        pom = ElementTree.parse(str(path) + '/pom.xml')
-        for dependency in pom.findall('.//{http://maven.apache.org/POM/4.0.0}dependency'):
-            groupId = dependency.find('{http://maven.apache.org/POM/4.0.0}groupId').text.replace('.', '/')
-            artifactId = dependency.find('{http://maven.apache.org/POM/4.0.0}artifactId').text
-            version = dependency.find('{http://maven.apache.org/POM/4.0.0}version').text
-            # jar_path = f"{Path.home()}/.m2/repository/{groupId}/{artifactId}/{version}/{artifactId}-{version}.jar"
-            jar_path = f"{Path.home()}/.m2/repository/{groupId}/{artifactId}/{version}/{artifactId}-{version}-sources.jar"
+    def _run_query(self, query, node):
+        cursor = QueryCursor(query)
+        captures = {}
 
-            os.makedirs(f"{path}/temp_deps/{artifactId}-{version}", exist_ok=True)
-            # subprocess.run(["java", "-jar", "java-decompiler-engine-243.23654.153.jar", "-hdc=0 -iib=1 -rsy=1 -rbr=1 -dgs=1 -din=1 -den=1 -asc=1 -bsm=1", jar_path, f"{path}/temp_deps/{artifactId}-{version}"])
-            subprocess.run(["cp", jar_path, f"{artifactId}-{version}.jar"], cwd=f"{path}/temp_deps/{artifactId}-{version}")
-            subprocess.run(["unzip", f"{artifactId}-{version}.jar"], cwd=f"{path}/temp_deps/{artifactId}-{version}")
-        files.extend(Path(f"{path}/temp_deps").rglob("*.java"))
+        for _, match_captures in cursor.matches(node):
+            for name, nodes in match_captures.items():
+                captures.setdefault(name, []).extend(nodes)
+
+        return captures
+    
+    def add_dependencies(self, path: Path, files: list[Path]):
+        # ----- Keeping read-only ----
+        # # if not Path("java-decompiler-engine-243.23654.153.jar").is_file():
+        # #     subprocess.run(["wget", "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/java/java-decompiler-engine/243.23654.153/java-decompiler-engine-243.23654.153.jar"])
+        # subprocess.run(["rm", "-rf", f"{path}/temp_deps"])
+        # pom = ElementTree.parse(str(path) + '/pom.xml')
+        # for dependency in pom.findall('.//{http://maven.apache.org/POM/4.0.0}dependency'):
+        #     groupId = dependency.find('{http://maven.apache.org/POM/4.0.0}groupId').text.replace('.', '/')
+        #     artifactId = dependency.find('{http://maven.apache.org/POM/4.0.0}artifactId').text
+        #     version = dependency.find('{http://maven.apache.org/POM/4.0.0}version').text
+        #     # jar_path = f"{Path.home()}/.m2/repository/{groupId}/{artifactId}/{version}/{artifactId}-{version}.jar"
+        #     jar_path = f"{Path.home()}/.m2/repository/{groupId}/{artifactId}/{version}/{artifactId}-{version}-sources.jar"
+
+        #     os.makedirs(f"{path}/temp_deps/{artifactId}-{version}", exist_ok=True)
+        #     # subprocess.run(["java", "-jar", "java-decompiler-engine-243.23654.153.jar", "-hdc=0 -iib=1 -rsy=1 -rbr=1 -dgs=1 -din=1 -den=1 -asc=1 -bsm=1", jar_path, f"{path}/temp_deps/{artifactId}-{version}"])
+        #     subprocess.run(["cp", jar_path, f"{artifactId}-{version}.jar"], cwd=f"{path}/temp_deps/{artifactId}-{version}")
+        #     subprocess.run(["unzip", f"{artifactId}-{version}.jar"], cwd=f"{path}/temp_deps/{artifactId}-{version}")
+        # files.extend(Path(f"{path}/temp_deps").rglob("*.java"))
+        return
 
     def get_entity_label(self, node: Node) -> str:
         if node.type == 'class_declaration':
@@ -68,34 +80,39 @@ class JavaAnalyzer(AbstractAnalyzer):
     def add_symbols(self, entity: Entity) -> None:
         if entity.node.type == 'class_declaration':
             interfaces_query = self.language.query("(super_interfaces (type_list (type_identifier) @interface))")
-            interfaces_captures = interfaces_query.captures(entity.node)
+            
+            interfaces_captures = self._run_query(interfaces_query, entity.node)
+            
             if 'interface' in interfaces_captures:
                 for interface in interfaces_captures['interface']:
                     entity.add_symbol("implement_interface", interface)
             base_class_query = self.language.query("(superclass (type_identifier) @base_class)")
-            base_class_captures = base_class_query.captures(entity.node)
+            base_class_captures = self._run_query(base_class_query, entity.node)
+            
             if 'base_class' in base_class_captures:
                 base_class = base_class_captures['base_class'][0]
                 entity.add_symbol("base_class", base_class)
         elif entity.node.type == 'interface_declaration':
-            query = self.language.query("(extends_interfaces (type_list (type_identifier) @type))?")
-            extends_captures = query.captures(entity.node)
+            extends_query = self.language.query("(extends_interfaces (type_list (type_identifier) @type))")
+            extends_captures = self._run_query(extends_query, entity.node)
+            
             if 'type' in extends_captures:
                 for interface in extends_captures['type']:
                     entity.add_symbol("extend_interface", interface)
         elif entity.node.type in ['method_declaration', 'constructor_declaration']:
-            query = self.language.query("(method_invocation) @reference.call")
-            captures = query.captures(entity.node)
+            call_query = self.language.query("(method_invocation) @reference.call")
+            captures = self._run_query(call_query, entity.node)
+
             if 'reference.call' in captures:
                 for caller in captures['reference.call']:
                     entity.add_symbol("call", caller)
             if entity.node.type == 'method_declaration':
-                query = self.language.query("(formal_parameters (formal_parameter type: (_) @parameter))")
-                captures = query.captures(entity.node)
+                param_query = self.language.query("(formal_parameters (formal_parameter type: (_) @parameter))")
+                captures = self._run_query(param_query, entity.node)
+
                 if 'parameter' in captures:
                     for parameter in captures['parameter']:
                         entity.add_symbol("parameters", parameter)
-                entity.add_symbol("return_type", entity.node.child_by_field_name('type'))
 
     def is_dependency(self, file_path: str) -> bool:
         return ".jar" in file_path

@@ -9,7 +9,7 @@ from typing import Optional
 from ..analyzer import AbstractAnalyzer
 
 import tree_sitter_python as tspython
-from tree_sitter import Language, Node
+from tree_sitter import Language, QueryCursor, Node
 
 import logging
 logger = logging.getLogger('code_graph')
@@ -18,30 +18,42 @@ class PythonAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
         super().__init__(Language(tspython.language()))
 
+    def _run_query(self, query, node):
+        cursor = QueryCursor(query)
+        captures = {}
+
+        for _, match_captures in cursor.matches(node):
+            for name, nodes in match_captures.items():
+                captures.setdefault(name, []).extend(nodes)
+
+        return captures
+
     def add_dependencies(self, path: Path, files: list[Path]):
-        if Path(f"{path}/venv").is_dir():
-            return
-        subprocess.run(["python3", "-m", "venv", "venv"], cwd=str(path))
-        if Path(f"{path}/pyproject.toml").is_file():
-            subprocess.run(["pip", "install", "poetry"], cwd=str(path), env={
-                           "VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
-            subprocess.run(["poetry", "install"], cwd=str(path), env={
-                           "VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
-            with open(f"{path}/pyproject.toml", 'r') as file:
-                pyproject_data = toml.load(file)
-                try:
-                    for requirement in pyproject_data.get("tool").get("poetry").get("dependencies"):
-                        files.extend(Path(f"{path}/venv/lib").rglob(f"**/site-packages/{requirement}/*.py"))
-                except Exception as e:
-                    logger.error(f"Error adding dependencies: {e}")
-                    pass
-        elif Path(f"{path}/requirements.txt").is_file():
-            subprocess.run(["pip", "install", "-r", "requirements.txt"], cwd=str(path),
-                           env={"VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
-            with open(f"{path}/requirements.txt", 'r') as file:
-                requirements = [line.strip().split("==") for line in file if line.strip()]
-                for requirement in requirements:
-                    files.extend(Path(f"{path}/venv/lib/").rglob(f"**/site-packages/{requirement}/*.py"))
+        ## ------- Read only-----
+        # if Path(f"{path}/venv").is_dir():
+        #     return
+        # subprocess.run(["python3", "-m", "venv", "venv"], cwd=str(path))
+        # if Path(f"{path}/pyproject.toml").is_file():
+        #     subprocess.run(["pip", "install", "poetry"], cwd=str(path), env={
+        #                    "VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
+        #     subprocess.run(["poetry", "install"], cwd=str(path), env={
+        #                    "VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
+        #     with open(f"{path}/pyproject.toml", 'r') as file:
+        #         pyproject_data = toml.load(file)
+        #         try:
+        #             for requirement in pyproject_data.get("tool").get("poetry").get("dependencies"):
+        #                 files.extend(Path(f"{path}/venv/lib").rglob(f"**/site-packages/{requirement}/*.py"))
+        #         except Exception as e:
+        #             logger.error(f"Error adding dependencies: {e}")
+        #             pass
+        # elif Path(f"{path}/requirements.txt").is_file():
+        #     subprocess.run(["pip", "install", "-r", "requirements.txt"], cwd=str(path),
+        #                    env={"VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
+        #     with open(f"{path}/requirements.txt", 'r') as file:
+        #         requirements = [line.strip().split("==") for line in file if line.strip()]
+        #         for requirement in requirements:
+        #             files.extend(Path(f"{path}/venv/lib/").rglob(f"**/site-packages/{requirement}/*.py"))
+        return
 
     def get_entity_label(self, node: Node) -> str:
         if node.type == 'class_definition':
@@ -72,18 +84,23 @@ class PythonAnalyzer(AbstractAnalyzer):
             superclasses = entity.node.child_by_field_name("superclasses")
             if superclasses:
                 base_classes_query = self.language.query("(argument_list (_) @base_class)")
-                base_classes_captures = base_classes_query.captures(superclasses)
-                if 'base_class' in base_classes_captures:
-                    for base_class in base_classes_captures['base_class']:
+                captures = self._run_query(base_classes_query, superclasses)
+
+                if 'base_class' in captures:
+                    for base_class in captures['base_class']:
                         entity.add_symbol("base_class", base_class)
+
         elif entity.node.type == 'function_definition':
-            query = self.language.query("(call) @reference.call")
-            captures = query.captures(entity.node)
+            call_query = self.language.query("(call) @reference.call")
+            captures = self._run_query(call_query, entity.node)
+
             if 'reference.call' in captures:
                 for caller in captures['reference.call']:
                     entity.add_symbol("call", caller)
-            query = self.language.query("(typed_parameter type: (_) @parameter)")
-            captures = query.captures(entity.node)
+
+            param_query = self.language.query("(typed_parameter type: (_) @parameter)")
+            captures = self._run_query(param_query, entity.node)
+
             if 'parameter' in captures:
                 for parameter in captures['parameter']:
                     entity.add_symbol("parameters", parameter)

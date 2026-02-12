@@ -31,8 +31,9 @@ class NullLanguageServer:
         return nullcontext()
 
 class SourceAnalyzer():
-    def __init__(self) -> None:
+    def __init__(self, static_only: bool = True) -> None:
         self.files: dict[Path, File] = {}
+        self.static_only = static_only
 
     def supported_types(self) -> list[str]:
         """
@@ -82,8 +83,9 @@ class SourceAnalyzer():
         """
 
         supoorted_types = self.supported_types()
-        for ext in set([file.suffix for file in files if file.suffix in supoorted_types]):
-            analyzers[ext].add_dependencies(path, files)
+        if not self.static_only:
+            for ext in set([file.suffix for file in files if file.suffix in supoorted_types]):
+                analyzers[ext].add_dependencies(path, files)
         
         files_len = len(files)
         for i, file_path in enumerate(files):
@@ -166,9 +168,10 @@ class SourceAnalyzer():
         files = list(path.rglob("*.java")) + list(path.rglob("*.py"))
         # First pass analysis of the source code
         self.first_pass(path, files, ignore, graph)
-
-        # Second pass analysis of the source code
-        self.second_pass(graph, files, path)
+        
+        if not self.static_only:
+            # Second pass analysis of the source code
+            self.second_pass(graph, files, path)
 
     def analyze_local_folder(self, path: str, g: Graph, ignore: Optional[list[str]] = []) -> None:
         """

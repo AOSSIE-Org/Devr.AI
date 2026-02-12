@@ -405,20 +405,27 @@ def analyze_repo():
     logger.debug('Received repo_url: %s', url)
 
     ignore = data.get('ignore', [])
+    
+    try:
+        proj = Project.from_git_repository(url)
+        proj.analyze_sources(ignore)
+        proj.process_git_history(ignore)
 
-    proj = Project.from_git_repository(url)
-    proj.analyze_sources(ignore)
-    proj.process_git_history(ignore)
+        stats = proj.graph.stats()
 
-    stats = proj.graph.stats()
+        response = {
+            'status': 'success',
+            'node_count': stats.get('node_count', 0),
+            'edge_count': stats.get('edge_count', 0)
+        }
 
-    response = {
-        'status': 'success',
-        'node_count': stats.get('node_count', 0),
-        'edge_count': stats.get('edge_count', 0)
-    }
-
-    return jsonify(response), 200
+        return jsonify(response), 200
+    except Exception as e:
+        logger.exception("Repository analysis failed")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
 
 @app.route('/switch_commit', methods=['POST'])
 @public_access  # Apply public access decorator
