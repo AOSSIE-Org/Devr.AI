@@ -1,3 +1,4 @@
+import logging
 import discord
 
 from app.agents.devrel.onboarding.messages import (
@@ -6,6 +7,8 @@ from app.agents.devrel.onboarding.messages import (
     CAPABILITY_SECTIONS,
 )
 from app.services.auth.management import get_or_create_user_by_discord
+
+logger = logging.getLogger(__name__)
 
 
 def build_final_handoff_embed() -> discord.Embed:
@@ -29,9 +32,11 @@ async def send_final_handoff_dm(user: discord.abc.User):
     try:
         embed = build_final_handoff_embed()
         await user.send(embed=embed)
+        logger.info(f"Successfully sent handoff DM to user {user.id}")
+    except discord.Forbidden:
+        logger.debug(f"Cannot send DM to user {user.id} - DMs are disabled or bot is blocked")
     except Exception:
-        # Fail silently to avoid crashing flows if DMs are closed or similar
-        pass
+        logger.exception(f"Unexpected error sending DM to user {user.id}")
 
 class OAuthView(discord.ui.View):
     """View with OAuth button."""
@@ -99,8 +104,10 @@ class OnboardingView(discord.ui.View):
             await send_final_handoff_dm(interaction.user)
             try:
                 await interaction.message.edit(view=self)
+            except discord.NotFound:
+                logger.debug(f"Message not found when editing onboarding view for user {interaction.user.id}")
             except Exception:
-                pass
+                logger.exception("Unexpected error editing onboarding view")
         else:
             await interaction.followup.send(
                 "I still don't see a linked GitHub account. Run `/verify_github` and try again in a moment.",
@@ -115,6 +122,7 @@ class OnboardingView(discord.ui.View):
             item.disabled = True
         try:
             await interaction.response.edit_message(view=self)
+        except discord.NotFound:
+            logger.debug(f"Message not found when editing skip view for user {interaction.user.id}")
         except Exception:
-            # If edit fails (e.g., message deleted), ignore
-            pass
+            logger.exception("Unexpected error editing skip view")

@@ -20,21 +20,36 @@ class EventBus:
         if isinstance(event_type, list):
             for et in event_type:
                 self._add_handler(et, handler_func)
+            logger.info(f"Registered handler '{handler_func.__name__}' for event types: {[et.value for et in event_type]}")
         else:
             self._add_handler(event_type, handler_func)
-        pass
+            logger.info(f"Registered handler '{handler_func.__name__}' for event type: {event_type.value}")
+        
+        if platform:
+            logger.debug(f"Handler registered with platform filter: {platform.value}")
 
     def _add_handler(self, event_type: EventType, handler_func: callable):
         if event_type not in self.handlers:
             self.handlers[event_type] = []
+            logger.debug(f"Created new handler list for event type: {event_type.value}")
 
+        # Check for duplicate handler registration
+        if handler_func in self.handlers[event_type]:
+            logger.warning(f"Handler '{handler_func.__name__}' already registered for {event_type.value}. Skipping duplicate.")
+            return
+        
         self.handlers[event_type].append(handler_func)
-        pass
+        logger.debug(f"Added handler '{handler_func.__name__}' to {event_type.value} (total: {len(self.handlers[event_type])})")
 
     def register_global_handler(self, handler_func):
         """Register a handler that will receive all events"""
+        # Check for duplicate global handler registration
+        if handler_func in self.global_handlers:
+            logger.warning(f"Global handler '{handler_func.__name__}' already registered. Skipping duplicate.")
+            return
+        
         self.global_handlers.append(handler_func)
-        pass
+        logger.info(f"Registered global handler: {handler_func.__name__} (total global handlers: {len(self.global_handlers)})")
 
     async def dispatch(self, event: BaseEvent):
         """Dispatch an event to all registered handlers"""
@@ -50,5 +65,4 @@ class EventBus:
                 logger.info(f"Calling handler: {handler.__name__} for event type: {event.event_type}")
                 asyncio.create_task(handler(event))
         else:
-            logger.info(f"No handlers registered for event type {event.event_type}")
-            pass
+            logger.debug(f"No handlers registered for event type {event.event_type}")
