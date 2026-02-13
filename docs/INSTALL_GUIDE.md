@@ -68,10 +68,17 @@ Go to docker dekstop and start the containers
 
 8. **Start the backend server**
 ```sh
+# Terminal 1
 cd backend
-poetry run python main.py # Terminal 1
-poetry run python start_github_mcp_server.py # Terminal 2 (Start MCP server)
-flask --app api/index.py run --debug --port 5000 # Terminal 3 (Start graphDB)
+poetry run python main.py
+
+# Terminal 2 (Start MCP server)
+cd backend
+poetry run python start_github_mcp_server.py
+
+# Terminal 3 (Start graphDB / Code Graph Backend)
+cd backend/app/database/falkor/code-graph-backend
+flask --app api.index run --debug --port 5000
 ```
 
 9. **Start the frontend** (in a new terminal)
