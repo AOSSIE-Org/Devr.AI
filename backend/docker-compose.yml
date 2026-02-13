@@ -41,12 +41,27 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --requirepass ${REDIS_PASSWORD:-your_secure_password} --appendonly yes
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 3
+
   falkordb:
     image: falkordb/falkordb:latest
     container_name: falkordb
     ports:
-      - '6379:6379'  # Redis protocol
-      - '3000:3000'  # Web UI
+      - '6380:6379'  # Redis protocol
+      - '3001:3000'  # Web UI
     volumes:
       - falkordb_data:/data
     restart: unless-stopped
@@ -61,3 +76,4 @@ volumes:
   weaviate_data:
   rabbitmq_data:
   falkordb_data:
+  redis_data:

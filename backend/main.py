@@ -4,8 +4,9 @@ import sys
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.rate_limiter import setup_rate_limiter
 
 from app.api.router import api_router
 from app.core.config import settings
@@ -102,7 +103,10 @@ async def lifespan(app: FastAPI):
     await app_instance.stop_background_tasks()
 
 
-api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan)
+api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan, docs_url="/docs", redoc_url="/redoc")
+
+# Setup rate limiting
+setup_rate_limiter(api)
 
 # Configure CORS
 api.add_middleware(
