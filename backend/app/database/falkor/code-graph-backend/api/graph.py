@@ -8,6 +8,7 @@ from falkordb import FalkorDB, Path, Node, QueryResult
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def graph_exists(name: str):
     db = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
@@ -53,13 +54,19 @@ class Graph():
         try:
             self.g.create_node_range_index("File", "name", "ext")
         except Exception:
-            pass
+            logger.exception(
+                "Failed to create node range index for File(name, ext)"
+            )
+
 
         # index Function using full-text search
         try:
             self.g.create_node_fulltext_index("Searchable", "name")
         except Exception:
-            pass
+            logger.exception(
+                "Failed to create fulltext index for Searchable(name)"
+            )
+
 
     def clone(self, clone: str) -> "Graph":
         """
