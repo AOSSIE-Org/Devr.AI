@@ -1,48 +1,77 @@
 import uuid
+import json
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Any
 from app.database.supabase.client import get_supabase_client
 from app.models.database.supabase import User
+from app.core.redis import get_redis_client
 import logging
 
 logger = logging.getLogger(__name__)
 
-# session_id -> (discord_id, expiry_time)
-_verification_sessions: Dict[str, Tuple[str, datetime]] = {}
+SESSION_EXPIRY_SECONDS = 300  # 5 minutes
 
-SESSION_EXPIRY_MINUTES = 5
-
-def _cleanup_expired_sessions():
+class VerificationSessionStore:
     """
-    Remove expired verification sessions.
+    Redis-backed store for verification sessions.
+    Handles serialization of session data including datetimes.
     """
-    current_time = datetime.now()
-    expired_sessions = [
-        session_id for session_id, (discord_id, expiry_time) in _verification_sessions.items()
-        if current_time > expiry_time
-    ]
+    PREFIX = "devr:auth:verification:"
 
-    for session_id in expired_sessions:
-        discord_id, _ = _verification_sessions[session_id]
-        del _verification_sessions[session_id]
-        logger.info(f"Cleaned up expired verification session {session_id} for Discord user {discord_id}")
+    def __init__(self, redis_client: Any):
+        self.redis = redis_client
 
-    if expired_sessions:
-        logger.info(f"Cleaned up {len(expired_sessions)} expired verification sessions")
+    def _get_key(self, session_id: str) -> str:
+        return f"{self.PREFIX}{session_id}"
+
+    async def save(self, session_id: str, discord_id: str, expiry_time: datetime):
+        """Save session to Redis with TTL."""
+        key = self._get_key(session_id)
+        data = {
+            "discord_id": discord_id,
+            "expiry_time": expiry_time.isoformat()
+        }
+        # Redis expects seconds for ex
+        await self.redis.set(
+            key,
+            json.dumps(data),
+            ex=SESSION_EXPIRY_SECONDS
+        )
+
+    async def get(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve session data from Redis."""
+        key = self._get_key(session_id)
+        data_str = await self.redis.get(key)
+
+        if not data_str:
+            return None
+
+        try:
+            return json.loads(data_str)
+        except json.JSONDecodeError:
+            logger.exception(f"Failed to decode session data for {session_id}")
+            await self.redis.delete(key)
+            return None
+
+    async def delete(self, session_id: str):
+        """Delete session from Redis."""
+        key = self._get_key(session_id)
+        await self.redis.delete(key)
+
 
 async def create_verification_session(discord_id: str) -> Optional[str]:
     """
     Create a verification session with expiry and return session ID.
     """
-    supabase = get_supabase_client()
-
-    _cleanup_expired_sessions()
-
-    token = str(uuid.uuid4())
-    session_id = str(uuid.uuid4())
-    expiry_time = datetime.now() + timedelta(minutes=SESSION_EXPIRY_MINUTES)
-
     try:
+        token = str(uuid.uuid4())
+        session_id = str(uuid.uuid4())
+        expiry_time = datetime.now() + timedelta(seconds=SESSION_EXPIRY_SECONDS)
+
+        supabase = get_supabase_client()
+        redis_client = await get_redis_client()
+        store = VerificationSessionStore(redis_client)
+
         update_res = await supabase.table("users").update({
             "verification_token": token,
             "verification_token_expires_at": expiry_time.isoformat(),
@@ -50,7 +79,7 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
         }).eq("discord_id", discord_id).execute()
 
         if update_res.data:
-            _verification_sessions[session_id] = (discord_id, expiry_time)
+            await store.save(session_id, discord_id, expiry_time)
             logger.info(
                 f"Created verification session {session_id} for Discord user {discord_id}, expires at {expiry_time}")
             return session_id
@@ -60,6 +89,7 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
         logger.error(f"Error creating verification session for Discord ID {discord_id}: {str(e)}")
         return None
 
+
 async def find_user_by_session_and_verify(
     session_id: str, github_id: str, github_username: str, email: Optional[str]
 ) -> Optional[User]:
@@ -67,17 +97,16 @@ async def find_user_by_session_and_verify(
     Find and verify user using session ID with expiry validation.
     Links GitHub account to Discord user.
     """
-    supabase = get_supabase_client()
-
-    _cleanup_expired_sessions()
-
     try:
-        session_data = _verification_sessions.get(session_id)
+        supabase = get_supabase_client()
+        redis_client = await get_redis_client()
+        store = VerificationSessionStore(redis_client)
+        session_data = await store.get(session_id)
         if not session_data:
             logger.warning(f"No verification session found for session ID: {session_id}")
             return None
 
-        discord_id, expiry_time = session_data
+        discord_id = session_data["discord_id"]
 
         current_time = datetime.now().isoformat()
         user_res = await supabase.table("users").select("*").eq(
@@ -90,17 +119,19 @@ async def find_user_by_session_and_verify(
 
         if not user_res.data:
             logger.warning(f"No valid pending verification found for Discord ID: {discord_id} (token may have expired)")
-            del _verification_sessions[session_id]
+            # Clean up Redis just in case
+            await store.delete(session_id)
             return None
 
-        # Delete the session after successful validation
-        del _verification_sessions[session_id]
+        # Atomic consumption: Removed early delete here to prevent race condition.
+        # We delete AFTER successful database update now.
 
         user_to_verify = user_res.data[0]
 
         existing_github_user = await supabase.table("users").select("*").eq(
             "github_id", github_id
         ).neq("id", user_to_verify['id']).limit(1).execute()
+
         if existing_github_user.data:
             logger.warning(f"GitHub account {github_username} is already linked to another user")
             await supabase.table("users").update({
@@ -108,6 +139,7 @@ async def find_user_by_session_and_verify(
                 "verification_token_expires_at": None,
                 "updated_at": datetime.now().isoformat()
             }).eq("id", user_to_verify['id']).execute()
+            await store.delete(session_id)
             raise Exception(f"GitHub account {github_username} is already linked to another Discord user")
 
         update_data = {
@@ -129,14 +161,19 @@ async def find_user_by_session_and_verify(
             raise Exception(f"Failed to fetch updated user with ID: {user_to_verify['id']}")
 
         logger.info(f"Successfully verified user {user_to_verify['id']} and linked GitHub account {github_username}.")
+
+        # Verify complete: NOW delete the session to prevent replay
+        await store.delete(session_id)
+
         return User(**updated_user_res.data[0])
-    except Exception as e:
-        logger.error(f"Database error in find_user_by_session_and_verify: {e}", exc_info=True)
+    except Exception:
+        logger.exception("Database error in find_user_by_session_and_verify")
         raise
 
 async def cleanup_expired_tokens():
     """
     Clean up expired verification tokens from database.
+    Note: Redis sessions expire automatically via TTL.
     """
     supabase = get_supabase_client()
     current_time = datetime.now().isoformat()
@@ -157,20 +194,31 @@ async def get_verification_session_info(session_id: str) -> Optional[Dict[str, s
     """
     Get information about a verification session.
     """
-    _cleanup_expired_sessions()
+    try:
+        redis_client = await get_redis_client()
+        store = VerificationSessionStore(redis_client)
 
-    session_data = _verification_sessions.get(session_id)
-    if not session_data:
+        session_data = await store.get(session_id)
+        if not session_data:
+            return None
+
+        discord_id = session_data.get("discord_id")
+        expiry_time_str = session_data.get("expiry_time")
+        if not discord_id or not expiry_time_str:
+            logger.warning(f"Malformed session data for {session_id}")
+            await store.delete(session_id)
+            return None
+
+        expiry_time = datetime.fromisoformat(expiry_time_str)
+
+        # Calculate remaining time
+        now = datetime.now()
+
+        return {
+            "discord_id": discord_id,
+            "expiry_time": expiry_time_str,
+            "time_remaining": str(expiry_time - now)
+        }
+    except Exception:
+        logger.exception("Error getting verification session info")
         return None
-
-    discord_id, expiry_time = session_data
-
-    if datetime.now() > expiry_time:
-        del _verification_sessions[session_id]
-        return None
-
-    return {
-        "discord_id": discord_id,
-        "expiry_time": expiry_time.isoformat(),
-        "time_remaining": str(expiry_time - datetime.now())
-    }

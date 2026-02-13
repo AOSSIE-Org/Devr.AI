@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # RabbitMQ configuration
     rabbitmq_url: Optional[str] = None
 
+    # Redis configuration
+    # Default is for Docker network (redis:6379). Override with localhost for local dev.
+    redis_url: str = "redis://redis:6379/0"
+
     # Backend URL
     backend_url: str = ""
 
