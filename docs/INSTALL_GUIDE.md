@@ -54,27 +54,44 @@ cp env.example .env
 # Edit .env with your API keys and configuration
 nano .env  # or use your preferred editor
 ```
-
-6. **Set up Docker container**
+6. **Create the required Supabase Tables**
 ```sh
-cd backend
-docker-compose up -d # Start weaviate, falkordb, rabbitmq
+# This can be done using the Supabase CLI or by pasting the SQL scripts directly into the SQL editor in Supabase.
+# If you skip this step, you'll likely get a 'Table Not Found' error.
+
+# Step 1: Create integration tables (from repo root)
+cd backend/database
+# Open the file 01_create_integration_tables.sql, copy all its contents, 
+# and paste it into the SQL editor of your Supabase project.
+
+# Step 2: Create additional tables
+cd ../../backend/app/database/supabase/scripts
+# Copy and paste the SQL scripts in this folder into the SQL editor as well.
 ```
 
 7. **Start Docker containers**
 ```sh
-Go to docker dekstop and start the containers
+#from repo root
+cd backend
+docker-compose up -d # Start weaviate, falkordb, rabbitmq
 ```
 
-8. **Start the backend server**
+
+8. **Optional: Start Docker containers via Desktop**
+```sh
+Alternatively, open Docker Desktop and start the containers manually.
+```
+9. **Start the backend server**
 ```sh
 cd backend
 poetry run python main.py # Terminal 1
 poetry run python start_github_mcp_server.py # Terminal 2 (Start MCP server)
-flask --app api/index.py run --debug --port 5000 # Terminal 3 (Start graphDB)
+# Terminal 3 (Start graphDB)
+cd backend/app/database/falkor/code-graph-backend/api
+flask --app index.py run --debug --port 5000 
 ```
 
-9. **Start the frontend** (in a new terminal)
+10. **Start the frontend** (in a new terminal)
 ```sh
 cd frontend
 npm install
@@ -160,8 +177,10 @@ Weaviate is used for semantic search and embeddings storage. It runs in Docker:
 cd backend
 docker-compose up -d weaviate
 ```
-
 The database will be available at `http://localhost:8080`
+
+### FalkorDB CodeGraph Database
+FalkorDB is used to store and query the code graph of repositories, representing files, functions, and their relationships for code analysis.
 
 ### Supabase Database
 Supabase provides the PostgreSQL database for user data and authentication. The connection is configured via environment variables.
