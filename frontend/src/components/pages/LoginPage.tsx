@@ -64,7 +64,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(false);
     if(data && !error){
       toast.success('Successfully logged in!');
-      onLogin(); 
+      onLogin();
       navigate('/');
     }
     else
