@@ -15,7 +15,12 @@ class RepoService:
     def __init__(self):
         self.supabase = get_supabase_client()
         self.backend_url = os.getenv("CODEGRAPH_BACKEND_URL", "http://localhost:5000")
-        self.secret_token = os.getenv("SECRET_TOKEN", "DevRAI_CodeGraph_Secret")
+        self.secret_token = os.getenv("SECRET_TOKEN")
+        if not self.secret_token:
+            raise ValueError(
+                "SECRET_TOKEN environment variable must be set for CodeGraph backend authentication. "
+                "Please configure this in your .env file."
+            )
         self.indexing_timeout = aiohttp.ClientTimeout(total=3600, connect=60)
         self.query_timeout = aiohttp.ClientTimeout(total=300, connect=30)
         logger.info(f"RepoService initialized with backend: {self.backend_url}")

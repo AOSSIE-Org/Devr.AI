@@ -70,10 +70,15 @@ def graph_entities():
     if not repo:
         logging.error("Missing 'repo' parameter in request.")
         return jsonify({"status": "Missing 'repo' parameter"}), 400
+    
+    # Validate repo format - prevent path traversal
+    import re
+    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', str(repo)):
+        return jsonify({'status': 'Invalid repository name format'}), 400
 
     if not graph_exists(repo):
         logging.error("Missing project %s", repo)
-        return jsonify({"status": f"Missing project {repo}"}), 400
+        return jsonify({"status": "Project not found"}), 400
 
     try:
         # Initialize the graph with the provided repo and credentials
@@ -161,6 +166,11 @@ def auto_complete():
     repo = data.get('repo')
     if repo is None:
         return jsonify({'status': 'Missing mandatory parameter "repo"'}), 400
+    
+    # Validate repo format - prevent path traversal
+    import re
+    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', str(repo)):
+        return jsonify({'status': 'Invalid repository name format'}), 400
 
     # Validate that 'prefix' is provided
     prefix = data.get('prefix')
@@ -169,7 +179,7 @@ def auto_complete():
 
     # Validate repo exists
     if not graph_exists(repo):
-        return jsonify({'status': f'Missing project {repo}'}), 400
+        return jsonify({'status': 'Project not found'}), 400
 
     # Fetch auto-completion results
     completions = prefix_search(repo, prefix)
@@ -273,6 +283,11 @@ def find_paths():
     repo = data.get('repo')
     if repo is None:
         return jsonify({'status': 'Missing mandatory parameter "repo"'}), 400
+    
+    # Validate repo format - prevent path traversal
+    import re
+    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', str(repo)):
+        return jsonify({'status': 'Invalid repository name format'}), 400
 
     # Validate 'src' parameter
     src = data.get('src')

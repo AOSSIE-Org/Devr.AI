@@ -108,5 +108,5 @@ async def handle_github_supp(query: str, org: Optional[str] = None):
         }
 
     except Exception as e:
-        logger.exception("GitHub support error: %s", e)
-        return {"status": "error", "message": str(e)}
+        logger.error(f"Error type: {type(e).__name__}")
+        return {"status": "error", "message": "An error occurred while fetching GitHub data"}

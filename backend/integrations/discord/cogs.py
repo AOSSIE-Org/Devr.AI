@@ -29,10 +29,15 @@ class DevRelCommands(commands.Cog):
 
     def cog_load(self):
         """Called when the cog is loaded"""
+        # Start the cleanup task - it will wait for the bot to be ready via before_loop
         self.cleanup_expired_tokens.start()
 
     def cog_unload(self):
-        self.cleanup_expired_tokens.cancel()
+        try:
+            if self.cleanup_expired_tokens.is_running():
+                self.cleanup_expired_tokens.cancel()
+        except Exception as e:
+            logger.warning(f"Error cancelling cleanup task: {type(e).__name__}")
 
     @tasks.loop(minutes=5)
     async def cleanup_expired_tokens(self):
@@ -47,7 +52,9 @@ class DevRelCommands(commands.Cog):
     @cleanup_expired_tokens.before_loop
     async def before_cleanup(self):
         """Wait until the bot is ready before starting cleanup"""
+        print("--> Waiting for bot to be ready before starting cleanup task...")
         await self.bot.wait_until_ready()
+        print("--> Bot is ready, starting cleanup task...")
 
     @app_commands.command(name="reset", description="Reset your DevRel thread and memory.")
     async def reset_thread(self, interaction: discord.Interaction):

@@ -6,14 +6,19 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.exceptions import RateLimitExceeded as RateLimitException
 
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.orchestration.agent_coordinator import AgentCoordinator
 from app.core.orchestration.queue_manager import AsyncQueueManager
+from app.core.rate_limiter import get_limiter
 from app.database.weaviate.client import get_weaviate_client
 from integrations.discord.bot import DiscordBot
 from discord.ext import commands
+from routes import router as legacy_router
 # DevRel commands are now loaded dynamically (commented out below)
 # from integrations.discord.cogs import DevRelCommands
 
@@ -104,6 +109,24 @@ async def lifespan(app: FastAPI):
 
 api = FastAPI(title="Devr.AI API", version="1.0", lifespan=lifespan)
 
+# Setup rate limiting with proper error handler
+limiter = get_limiter()
+api.state.limiter = limiter
+
+
+def rate_limit_exception_handler(request, exc):
+    """Handle rate limit exceptions with proper HTTP 429 response."""
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Rate limit exceeded. Maximum 10 requests per minute per IP.",
+            "retry_after": 60
+        }
+    )
+
+
+api.add_exception_handler(RateLimitExceeded, rate_limit_exception_handler)
+
 # Configure CORS
 api.add_middleware(
     CORSMiddleware,
@@ -114,8 +137,8 @@ api.add_middleware(
         "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 @api.get("/favicon.ico")
@@ -124,6 +147,7 @@ async def favicon():
     return Response(status_code=204)
 
 api.include_router(api_router)
+api.include_router(legacy_router, prefix="/api", tags=["Legacy"])
 
 
 if __name__ == "__main__":

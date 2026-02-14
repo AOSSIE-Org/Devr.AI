@@ -60,8 +60,8 @@ async def list_org_repos(request: OrgInfoRequest):
         return {"status": "success", "data": result}
 
     except Exception as e:
-        logger.exception("Error listing org repos")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error type: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Failed to list organization repositories")
 
 @app.post("/github_support")
 async def get_github_supp(request: RepoInfoRequest):
@@ -78,8 +78,8 @@ async def get_github_supp(request: RepoInfoRequest):
             return RepoInfoResponse(status="error", data={}, error=result["error"])
         return RepoInfoResponse(status="success", data=result)
     except Exception as e:
-        logger.exception("Error getting repo info")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error type: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Failed to get repository information")
 
 if __name__ == "__main__":
     import uvicorn

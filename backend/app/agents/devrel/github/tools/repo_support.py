@@ -29,7 +29,7 @@ async def handle_repo_support(query: str) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.exception("Repository support error")
+        logger.error(f"Error type: {type(e).__name__}")
         return {
             "status": "error",
             "sub_function": "repo_support",

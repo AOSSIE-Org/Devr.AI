@@ -1,8 +1,11 @@
 import os
 import requests
 import asyncio
+import logging
 from typing import Optional
 import config
+
+logger = logging.getLogger(__name__)
 
 class GitHubMCPService:
     def __init__(self, token: str = None):
@@ -18,7 +21,8 @@ class GitHubMCPService:
             resp = requests.get(url, headers=headers, timeout=15)
             resp.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return {"error": "Request failed", "message": str(e)}
+            logger.error(f"Error type: GitHubRequestError owner={owner} repo={repo}")
+            return {"error": "Request failed", "message": "GitHub API request failed"}
 
         data = resp.json()
         license_info = data.get("license")
@@ -51,7 +55,8 @@ class GitHubMCPService:
             resp = requests.get(url, headers=headers, timeout=15)
             resp.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return {"error": "Request failed", "message": str(e)}
+            logger.error(f"Error type: GitHubIssuesRequestError owner={owner} repo={repo}")
+            return {"error": "Request failed", "message": "Failed to fetch issues"}
 
         issues = resp.json()
         return [
@@ -76,7 +81,8 @@ class GitHubMCPService:
             resp = requests.get(url, headers=headers, timeout=15)
             resp.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return {"error": "Request failed", "message": str(e)}
+            logger.error(f"Error type: GitHubOrgReposRequestError org={org}")
+            return {"error": "Request failed", "message": "Failed to fetch repositories"}
 
         repos = resp.json()
         return [
