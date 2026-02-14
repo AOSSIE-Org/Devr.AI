@@ -58,7 +58,7 @@ nano .env  # or use your preferred editor
 6. **Set up Docker container**
 ```sh
 cd backend
-docker-compose up -d # Start weaviate, falkordb, rabbitmq
+docker compose up -d # Start weaviate, falkordb, rabbitmq
 ```
 
 7. **Start Docker containers**
@@ -83,7 +83,7 @@ npm run dev
 
 ## Environment Variables
 
-Create a `.env` file in the project root with the following variables:
+1. Create a `.env` file in the project root with the following variables:
 
 ### Required Variables
 ```env
@@ -101,6 +101,12 @@ SUPABASE_KEY=your_supabase_anon_key_here
 
 # Backend Configuration
 BACKEND_URL=http://localhost:8000
+```
+2. Create an .env file in the frontend folder with the following variables: 
+
+```env
+VITE_SUPABASE_URL=your_supabase_url_here
+VITE_SUPABASE_KEY=your_supabase_anon_key_here
 ```
 
 ### Optional Variables
@@ -158,7 +164,7 @@ Weaviate is used for semantic search and embeddings storage. It runs in Docker:
 
 ```sh
 cd backend
-docker-compose up -d weaviate
+docker compose up -d weaviate
 ```
 
 The database will be available at `http://localhost:8080`
@@ -235,8 +241,8 @@ npm run lint  # Run ESLint
    docker ps
    
    # Restart Weaviate
-   docker-compose down
-   docker-compose up -d weaviate
+   docker compose down
+   docker compose up -d weaviate
    ```
 
 3. **Missing environment variables**
@@ -250,7 +256,7 @@ npm run lint  # Run ESLint
 
 ### Logs
 - Backend logs are displayed in the terminal where you run `python main.py`
-- Check Docker logs for Weaviate: `docker-compose logs weaviate`
+- Check Docker logs for Weaviate: `docker compose logs weaviate`
 
 ## Project Structure
 
