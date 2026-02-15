@@ -29,25 +29,71 @@ class EmbeddingService:
     """Service for generating embeddings and profile summarization for Weaviate integration"""
 
     def __init__(self, model_name: str = MODEL_NAME, device: str = EMBEDDING_DEVICE):
-        """Initialize the embedding service with specified model and LLM"""
+        """
+        Initialize EmbeddingService with the embedding model name and target device.
+        
+        Parameters:
+            model_name (str): Identifier of the embedding model to use (defaults to configured MODEL_NAME).
+            device (str): Device for model execution (e.g., "cpu" or "cuda"; defaults to configured EMBEDDING_DEVICE).
+        """
         self.model_name = model_name
         self.device = device
         self._model = None
         self._llm = None
+        self._model_loading = False
+        self._model_access_count = 0
         logger.info(f"Initializing EmbeddingService with model: {model_name} on device: {device}")
 
     @property
     def model(self) -> SentenceTransformer:
+        ## track how often model is accessed
+        """
+        Provide the SentenceTransformer instance, loading it on first access if necessary.
+        
+        Returns:
+            model (SentenceTransformer): The embedding model instance used for generating embeddings.
+        """
+        self._model_access_count+=1
+        logger.debug(
+            f"EmbeddingService.model accessed "    
+            f"(access count={self._model_access_count}, "
+            f"model_loaded={self._model is not None})"
+        )
+        
         """Lazy-load embedding model to avoid loading during import"""
         if self._model is None:
+            # Detect concurrent initialization attempts (observability only)
+            if self._model_loading:
+                logger.warning(
+                    "Concurrent access detected while embedding model is initializing. "
+                    "This may indicate a race condition."
+                )
+
+            self._model_loading = True
             try:
-                logger.info(f"Loading embedding model: {self.model_name}")
-                self._model = SentenceTransformer(self.model_name, device=self.device)
                 logger.info(
-                    f"Model loaded successfully. Embedding dimension: {self._model.get_sentence_embedding_dimension()}")
+                    f"No cached embedding model found. "
+                    f"Initializing model '{self.model_name}' on device '{self.device}'."
+                )
+                self._model = SentenceTransformer(self.model_name, device=self.device)
+                
+                logger.info(
+                    f"Embedding model initialized successfully. "
+                    f"Embedding dimension: {self._model.get_sentence_embedding_dimension()}"
+                )
             except Exception as e:
-                logger.error(f"Error loading model {self.model_name}: {str(e)}")
+                logger.error(f"Error loading model {self.model_name}: {str(e)}",
+                exc_info=True
+                )
                 raise
+            finally:
+                self._model_loading = False
+        else:
+            # Explicit reuse log (this was missing earlier)
+            logger.debug(
+                "Reusing existing embedding model instance from cache."
+            )
+                
         return self._model
 
     @property
