@@ -153,7 +153,6 @@ proto-plus==1.26.1
 protobuf>=3.20.2,<4.0
 ptyprocess==0.7.0
 pure_eval==0.2.3
-py-cord==2.6.2  # Latest version to minimize deprecation warnings
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
 pycodestyle==2.13.0
