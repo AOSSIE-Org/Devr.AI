@@ -11,7 +11,7 @@ USER PROFILE:
 
 Instructions:
 1. Create a NEW summary combining existing and recent conversation
-2. Focus on user's technical interests, problems, and experience level
+2. Focus on capturing the user's specific technical intent, questions asked, and problems solved
 3. Keep under 300 words
 4. Include relevant context for future interactions
 
