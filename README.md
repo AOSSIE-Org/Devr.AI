@@ -4,7 +4,7 @@
  </span>
 
 # 🤖 Devr.AI - AI-Powered Developer Relations Assistant
-  
+
 [![License:MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![GitHub Org's stars](https://img.shields.io/github/stars/AOSSIE-Org/Devr.AI?style=social)
 [![Discord](https://img.shields.io/discord/1022871757289422898?color=7289da&logo=discord&logoColor=white)](https://discord.gg/BjaG8DJx2G)
@@ -18,24 +18,28 @@ Devr.AI is revolutionizing open-source community management with advanced AI-pow
 ## 🚀 Features
 
 ### 🧠 LangGraph Agent-Based Intelligence
+
 - **ReAct Reasoning Pattern** - Think → Act → Observe workflow for intelligent decision making
 - **Conversational Memory** - Persistent context across Discord sessions with automatic summarization
 - **Multi-Tool Orchestration** - Dynamic tool selection including web search, FAQ, and GitHub operations
 - **Self-Correcting Capabilities** - Iterative problem-solving with intelligent context awareness
 
 ### 💬 Discord Community Integration
+
 - **Intelligent Message Processing** - Real-time classification and context-aware responses
 - **GitHub Account Verification** - OAuth-based account linking for enhanced personalization
 - **Command Interface** - Comprehensive bot commands for verification and management
 - **Thread Management** - Organized conversation flows with persistent memory
 
 ### 🔗 GitHub Integration
+
 - **OAuth Authentication** - Secure GitHub account linking and verification
 - **User Profiling** - Automatic repository and contribution analysis
 - **Repository Operations** - Read access and basic GitHub toolkit functionality
 - **Cross-Platform Identity** - Unified profiles across Discord and GitHub
 
 ### 🏗️ Advanced Architecture
+
 - **Asynchronous Processing** - RabbitMQ message queue with priority-based processing
 - **Multi-Database System** - Supabase (PostgreSQL) + Weaviate (Vector DB) integration
 - **Real-Time AI Responses** - Google Gemini LLM with Tavily web search capabilities
@@ -44,28 +48,33 @@ Devr.AI is revolutionizing open-source community management with advanced AI-pow
 ## 💻 Technologies Used
 
 ### Backend Services
+
 - **LangGraph** - Multi-agent orchestration and workflow management
 - **FastAPI** - High-performance async web framework
 - **RabbitMQ** - Message queuing and asynchronous processing
 - **Google Gemini** - Advanced LLM for reasoning and response generation
 
 ### AI & LLM Services
+
 - **Gemini 2.5 Flash** - Primary reasoning and conversation model
 - **Tavily Search API** - Real-time web information retrieval
 - **Text Embeddings** - Semantic search and knowledge retrieval
 - **ReAct Pattern** - Reasoning and Acting workflow implementation
 
 ### Data Storage
+
 - **Supabase** - PostgreSQL database with authentication
 - **Weaviate** - Vector database for semantic search
 - **Agent Memory** - Persistent conversation context and state management
 
 ### Platform Integrations
+
 - **Discord.py (py-cord)** - Modern Discord bot framework
 - **PyGithub** - GitHub API integration and repository access
 - **OAuth Integration** - Secure account linking and verification
 
 ### Frontend Dashboard
+
 - **React + Vite** - Modern web interface with TypeScript
 - **Tailwind CSS** - Responsive design system
 - **Framer Motion** - Interactive UI animations
@@ -81,6 +90,7 @@ Devr.AI is revolutionizing open-source community management with advanced AI-pow
 Devr.AI utilizes a complex multi-service architecture with AI agents, message queues, and multiple databases. Setting up can be challenging, but we've streamlined the process.
 
 **Quick Start:**
+
 1. Clone the repository
 2. Follow our comprehensive [Installation Guide](./docs/INSTALL_GUIDE.md)
 3. Configure your environment variables (Discord bot, GitHub OAuth, API keys)
@@ -106,7 +116,7 @@ For detailed setup instructions, troubleshooting, and deployment guides, please 
 ## 📱 Screenshots
 
 <div align="center">
- 
+
 | Discord Integration                                                                                                      | GitHub Verification                                                                                                     | Agent Dashboard                                                                                                         |
 | :----------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
 | <img src="[TO BE FILLED - DISCORD SCREENSHOT]" width="260" height="auto" />                                            | <img src="[TO BE FILLED - GITHUB SCREENSHOT]" width="250" height="auto" />                                            | <img src="[TO BE FILLED - DASHBOARD SCREENSHOT]" width="250" height="auto" />                                         |
@@ -124,6 +134,7 @@ For detailed setup instructions, troubleshooting, and deployment guides, please 
 Thank you for considering contributing to Devr.AI! Contributions are highly appreciated and welcomed. To ensure a smooth collaboration, please refer to our [Contribution Guidelines](./CONTRIBUTING.md).
 
 ### Development Setup
+
 1. Fork the repository
 2. Create a feature branch
 3. Follow our coding standards and testing guidelines
@@ -161,3 +172,50 @@ Thanks a lot for spending your time helping Devr.AI grow. Keep rocking 🥂
 <div align="center">
 Built with ❤️ for the open-source developer community
 </div>
+
+## 🐳 Docker Compose Setup
+
+Devr.AI includes a Docker setup for the GitHub MCP server to streamline local development.
+
+### Running the GitHub MCP Server
+
+1. **Configure Environment**: Ensure your `.env` file in the root directory has the required variables:
+
+    ```bash
+    GITHUB_TOKEN=your_token
+    GITHUB_ORG=your_org
+    SUPABASE_URL=your_supabase_url
+    SUPABASE_KEY=your_supabase_key
+    ```
+
+2. **Start the Service**:
+   Run the following command from the **root** directory:
+
+    ```bash
+    docker-compose up --build
+    ```
+
+    The service will be available at `http://localhost:5001`.
+
+3. **Verify Health**:
+    ```bash
+    curl http://localhost:5001/health
+    # Expected: {"status": "healthy", "service": "github-mcp"}
+    ```
+
+### Running Backend Infrastructure
+
+The database logic and message queues (Weaviate, RabbitMQ, FalkorDB) are managed by a separate Docker Compose file in the `backend` directory.
+
+To start infrastructure services:
+
+```bash
+cd backend
+docker-compose up -d
+```
+
+### Troubleshooting
+
+- **Port Conflicts**: The MCP server maps internal port `8001` to external port `5001`. If `5001` is in use, modify `docker-compose.yml`.
+- **Environment Variables**: If the container fails to start, check `docker-compose logs github-mcp` to see if tokens are missing.
+- **Hot Reloading**: The `backend` directory is mounted to `/app` in the container, so code changes will reload the server automatically.
