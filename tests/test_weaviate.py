@@ -1,10 +1,18 @@
-from app.db.weaviate.weaviate_client import get_client
-from datetime import datetime
+import sys
+from pathlib import Path
+
 from uuid import uuid4
-from app.model.weaviate.models import (
+from datetime import datetime
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "backend"))
+
+from app.database.weaviate.client import get_client
+from app.models.database.weaviate import (
     WeaviateUserProfile,
     WeaviateCodeChunk,
-    WeaviateInteraction
+    WeaviateInteraction,
 )
 
 

@@ -29,6 +29,32 @@ class WeaviatePullRequest(BaseModel):
     labels: List[str] = Field(default_factory=list, description="Labels associated with the pull request.")
     url: str = Field(..., description="The URL of the pull request.")
 
+
+class WeaviateCodeChunk(BaseModel):
+    """Represents a code chunk stored in Weaviate for semantic code search."""
+    supabase_chunk_id: str = Field(..., description="The unique identifier linking to Supabase code chunk record.")
+    code_content: str = Field(..., description="Raw code content for the chunk.")
+    language: str = Field(..., description="Programming language of the code chunk.")
+    function_names: List[str] = Field(default_factory=list, description="Function names detected in the code chunk.")
+    embedding: List[float] = Field(..., description="Vector embedding representation for semantic search.")
+    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp for the chunk record.")
+    last_updated: datetime = Field(default_factory=datetime.now, description="Last update timestamp for the chunk record.")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WeaviateInteraction(BaseModel):
+    """Represents an interaction summary stored in Weaviate for semantic retrieval."""
+    supabase_interaction_id: str = Field(..., description="The unique identifier linking to Supabase interaction record.")
+    conversation_summary: str = Field(..., description="Summarized interaction content.")
+    platform: str = Field(..., description="Origin platform of the interaction (e.g., Discord, Web).")
+    topics: List[str] = Field(default_factory=list, description="Topics extracted from the interaction.")
+    embedding: List[float] = Field(..., description="Vector embedding representation for semantic search.")
+    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp for the interaction record.")
+    last_updated: datetime = Field(default_factory=datetime.now, description="Last update timestamp for the interaction record.")
+
+    model_config = ConfigDict(from_attributes=True)
+
 class WeaviateUserProfile(BaseModel):
     """
     Represents a user's profile data to be stored and indexed in Weaviate.
@@ -126,3 +152,12 @@ class WeaviateUserProfile(BaseModel):
     }
 
     )
+
+
+__all__ = [
+    "WeaviateRepository",
+    "WeaviatePullRequest",
+    "WeaviateCodeChunk",
+    "WeaviateInteraction",
+    "WeaviateUserProfile",
+]

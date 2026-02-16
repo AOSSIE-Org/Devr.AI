@@ -49,6 +49,35 @@ class OAuthView(discord.ui.View):
         self.add_item(button)
 
 
+class ConfirmActionView(discord.ui.View):
+    def __init__(self, timeout: float = 30.0):
+        super().__init__(timeout=timeout)
+        self.confirmed = False
+        self.interaction = None
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.confirmed = True
+        self.interaction = interaction
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(view=self)
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.confirmed = False
+        self.interaction = interaction
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(view=self)
+        self.stop()
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+
 class OnboardingView(discord.ui.View):
     """View shown in onboarding DM with optional GitHub connect link and Skip button."""
 

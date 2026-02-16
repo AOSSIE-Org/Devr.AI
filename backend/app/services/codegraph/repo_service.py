@@ -2,7 +2,7 @@ import logging
 import aiohttp
 import re
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database.supabase.client import get_supabase_client
 import os
 
@@ -80,7 +80,7 @@ class RepoService:
                 await self.supabase.table("indexed_repositories").update({
                     "indexing_status": "pending",
                     "last_error": None,
-                    "updated_at": datetime.now().isoformat()
+                    "updated_at": datetime.now(timezone.utc).isoformat()
                 }).eq("id", repo_data['id']).execute()
             else:
                 # Insert new record
@@ -118,7 +118,7 @@ class RepoService:
 
                         await self.supabase.table("indexed_repositories").update({
                             "indexing_status": "completed",
-                            "indexed_at": datetime.now().isoformat(),
+                            "indexed_at": datetime.now(timezone.utc).isoformat(),
                             "node_count": data.get("node_count", 0),
                             "edge_count": data.get("edge_count", 0),
                             "last_error": None
@@ -269,7 +269,7 @@ class RepoService:
 
             await self.supabase.table("indexed_repositories").update({
                 "is_deleted": True,
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("repository_full_name", repo_full_name).eq("is_deleted", False).execute()
 
             return {"status": "success", "repo": repo_full_name, "graph_name": graph_name}

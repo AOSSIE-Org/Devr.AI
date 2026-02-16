@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Platforms
     github_token: str = ""
     discord_bot_token: str = ""
+    bot_owner_id: Optional[int] = None
 
     # DB configuration
     supabase_url: str

@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.database.supabase.client import get_supabase_client
 
@@ -43,7 +43,7 @@ async def ensure_user_exists(
             # Update last_active timestamp
             last_active_column = f"last_active_{platform}"
             await supabase.table("users").update({
-                last_active_column: datetime.now().isoformat()
+                last_active_column: datetime.now(timezone.utc).isoformat()
             }).eq("id", user_uuid).execute()
 
             return user_uuid
@@ -64,7 +64,7 @@ async def ensure_user_exists(
 
         # Set last_active timestamp
         last_active_column = f"last_active_{platform}"
-        new_user[last_active_column] = datetime.now().isoformat()
+        new_user[last_active_column] = datetime.now(timezone.utc).isoformat()
 
         insert_response = await supabase.table("users").insert(new_user).execute()
 

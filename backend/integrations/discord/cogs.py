@@ -38,9 +38,9 @@ class DevRelCommands(commands.Cog):
     async def cleanup_expired_tokens(self):
         """Periodic cleanup of expired verification tokens"""
         try:
-            print("--> Running token cleanup task...")
+            logger.debug("Running token cleanup task")
             await cleanup_expired_tokens()
-            print("--> Token cleanup task finished.")
+            logger.debug("Token cleanup task finished")
         except Exception as e:
             logger.error(f"Error during token cleanup: {e}")
 

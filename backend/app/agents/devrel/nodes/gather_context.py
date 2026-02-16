@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from app.agents.state import AgentState
@@ -27,7 +27,7 @@ async def gather_context_node(state: AgentState) -> Dict[str, Any]:
     new_message = {
         "role": "user",
         "content": original_message,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     profile_data: Dict[str, Any] = dict(state.user_profile or {})

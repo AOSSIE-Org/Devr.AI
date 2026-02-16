@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from app.database.supabase.client import get_supabase_client
 from app.models.database.supabase import User
@@ -29,8 +29,8 @@ async def get_or_create_user_by_discord(
         "discord_username": discord_username,
         "avatar_url": avatar_url,
         "preferred_languages": [],
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
 
     insert_res = await supabase.table("users").insert(new_user_data).execute()
@@ -80,7 +80,7 @@ async def update_user_profile(user_id: str, **updates) -> Optional[User]:
 
     try:
         # Add updated_at timestamp
-        updates["updated_at"] = datetime.now().isoformat()
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         update_res = await supabase.table("users").update(updates).eq("id", user_id).execute()
 

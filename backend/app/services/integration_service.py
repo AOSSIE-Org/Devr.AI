@@ -1,6 +1,6 @@
 import logging
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from app.database.supabase.client import get_supabase_client
 from app.models.integration import (
@@ -49,8 +49,8 @@ class IntegrationService:
                 "organization_name": request.organization_name,
                 "is_active": True,
                 "config": request.config or {},
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }
 
             # Store organization link if provided
@@ -134,7 +134,7 @@ class IntegrationService:
     ) -> IntegrationResponse:
         """Update an existing integration."""
         try:
-            update_data = {"updated_at": datetime.now().isoformat()}
+            update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
 
             if request.organization_name is not None:
                 update_data["organization_name"] = request.organization_name

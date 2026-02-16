@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Tuple
 from app.database.supabase.client import get_supabase_client
 from app.models.database.supabase import User
@@ -16,7 +16,7 @@ def _cleanup_expired_sessions():
     """
     Remove expired verification sessions.
     """
-    current_time = datetime.now()
+    current_time = datetime.now(timezone.utc)
     expired_sessions = [
         session_id for session_id, (discord_id, expiry_time) in _verification_sessions.items()
         if current_time > expiry_time
@@ -40,13 +40,13 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
 
     token = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
-    expiry_time = datetime.now() + timedelta(minutes=SESSION_EXPIRY_MINUTES)
+    expiry_time = datetime.now(timezone.utc) + timedelta(minutes=SESSION_EXPIRY_MINUTES)
 
     try:
         update_res = await supabase.table("users").update({
             "verification_token": token,
             "verification_token_expires_at": expiry_time.isoformat(),
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }).eq("discord_id", discord_id).execute()
 
         if update_res.data:
@@ -79,7 +79,7 @@ async def find_user_by_session_and_verify(
 
         discord_id, expiry_time = session_data
 
-        current_time = datetime.now().isoformat()
+        current_time = datetime.now(timezone.utc).isoformat()
         user_res = await supabase.table("users").select("*").eq(
             "discord_id", discord_id
         ).neq(
@@ -106,7 +106,7 @@ async def find_user_by_session_and_verify(
             await supabase.table("users").update({
                 "verification_token": None,
                 "verification_token_expires_at": None,
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }).eq("id", user_to_verify['id']).execute()
             raise Exception(f"GitHub account {github_username} is already linked to another Discord user")
 
@@ -115,10 +115,10 @@ async def find_user_by_session_and_verify(
             "github_username": github_username,
             "email": user_to_verify.get('email') or email,
             "is_verified": True,
-            "verified_at": datetime.now().isoformat(),
+            "verified_at": datetime.now(timezone.utc).isoformat(),
             "verification_token": None,
             "verification_token_expires_at": None,
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
 
         await supabase.table("users").update(update_data).eq("id", user_to_verify['id']).execute()
@@ -139,7 +139,7 @@ async def cleanup_expired_tokens():
     Clean up expired verification tokens from database.
     """
     supabase = get_supabase_client()
-    current_time = datetime.now().isoformat()
+    current_time = datetime.now(timezone.utc).isoformat()
 
     try:
         cleanup_res = await supabase.table("users").update({
@@ -165,12 +165,12 @@ async def get_verification_session_info(session_id: str) -> Optional[Dict[str, s
 
     discord_id, expiry_time = session_data
 
-    if datetime.now() > expiry_time:
+    if datetime.now(timezone.utc) > expiry_time:
         del _verification_sessions[session_id]
         return None
 
     return {
         "discord_id": discord_id,
         "expiry_time": expiry_time.isoformat(),
-        "time_remaining": str(expiry_time - datetime.now())
+        "time_remaining": str(expiry_time - datetime.now(timezone.utc))
     }

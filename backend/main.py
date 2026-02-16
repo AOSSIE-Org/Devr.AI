@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.orchestration.agent_coordinator import AgentCoordinator
 from app.core.orchestration.queue_manager import AsyncQueueManager
 from app.database.weaviate.client import get_weaviate_client
+from app.utils.admin_logger import ensure_admin_logs_table
 from integrations.discord.bot import DiscordBot
 from discord.ext import commands
 # DevRel commands are now loaded dynamically (commented out below)
@@ -45,11 +46,22 @@ class DevRAIApplication:
 
             await self.queue_manager.start(num_workers=3)
 
+            if await ensure_admin_logs_table():
+                logger.info("Admin logs table check passed")
+            else:
+                logger.warning("Admin logs table check failed; admin action logs will be skipped")
+
             # --- Load commands inside the async startup function ---
             try:
                 await self.discord_bot.load_extension("integrations.discord.cogs")
             except (ImportError, commands.ExtensionError) as e:
                 logger.error("Failed to load Discord cog extension: %s", e)
+
+            try:
+                await self.discord_bot.load_extension("integrations.discord.admin_cog")
+                logger.info("Admin cog loaded successfully")
+            except Exception as e:
+                logger.error("Failed to load admin cog extension: %s", e, exc_info=True)
 
             # Start the bot as a background task.
             asyncio.create_task(

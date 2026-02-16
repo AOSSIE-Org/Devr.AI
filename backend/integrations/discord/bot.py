@@ -36,12 +36,23 @@ class DiscordBot(commands.Bot):
     async def on_ready(self):
         """Bot ready event"""
         logger.info(f'Enhanced Discord bot logged in as {self.user}')
-        print(f'Bot is ready! Logged in as {self.user}')
+        logger.info(f'Bot is ready! Logged in as {self.user}')
         try:
-            synced = await self.tree.sync()
-            print(f"Synced {len(synced)} slash command(s)")
+            # Sync globally
+            synced = await self.sync_commands()
+            synced_count = len(synced) if synced is not None else 0
+            logger.info(f"Synced {synced_count} global slash command(s)")
+
+            # Also sync to each guild for instant availability
+            for guild in self.guilds:
+                try:
+                    guild_synced = await self.sync_commands(guild_ids=[guild.id])
+                    guild_synced_count = len(guild_synced) if guild_synced is not None else 0
+                    logger.info(f"Synced {guild_synced_count} commands to guild {guild.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to sync to guild {guild.name}: {e}")
         except Exception as e:
-            print(f"Failed to sync slash commands: {e}")
+            logger.error(f"Failed to sync slash commands: {e}")
 
     async def on_message(self, message):
         """Handles regular chat messages, but ignores slash commands."""
