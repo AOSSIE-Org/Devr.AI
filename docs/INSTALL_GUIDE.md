@@ -5,7 +5,10 @@ For Setup guide video tutorial go to [Devr Setup Guide](https://drive.google.com
 
 ## Prerequisites
 
--   [Python](https://www.python.org/) 3.9+ (version 3.10 is recommended)
+-   [Python](https://www.python.org/) >= 3.10 and < 3.13 (Python 3.11 is recommended)
+
+⚠️ Python 3.13 is currently not supported and may cause dependency installation errors (e.g., crewai or CUDA-related packages failing to install).
+
 -   [Node.js](https://nodejs.org/en) (latest LTS version)
 -   [Git](https://git-scm.com/) (any recent version)
 -   [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) (for Weaviate database)
@@ -32,10 +35,34 @@ poetry --version  # Should show v2.0.0 or above
 
 3. **Install Python dependencies**
 ```sh
-poetry env use python3.10
+poetry env use python3.11
 poetry lock 
 poetry install --with dev
 ```
+### ⚠️ GPU / CUDA Dependency Notice
+
+The backend includes NVIDIA CUDA-related dependencies such as:
+
+- nvidia-cuda-runtime-cu12  
+- nvidia-cudnn-cu12  
+- nvidia-cufile-cu12  
+
+These may fail to install on systems without:
+
+- NVIDIA GPU  
+- Compatible CUDA drivers  
+
+If you encounter errors such as:
+
+```
+ERROR: No matching distribution found for nvidia-cufile-cu12
+```
+
+
+Consider:
+- Using a CUDA-enabled Linux environment  
+- Or running the project via Docker (recommended for consistent setup)
+
 
 4. **Activate the virtual environment**
 ```sh
