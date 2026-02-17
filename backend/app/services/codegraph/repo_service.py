@@ -1,13 +1,26 @@
 import logging
 import aiohttp
 import re
-from typing import Dict, Any
+from typing import Dict, Any, TypedDict
 from datetime import datetime
 from app.database.supabase.client import get_supabase_client
 import os
 
 logger = logging.getLogger(__name__)
 
+
+class ParsedRepo(TypedDict):
+    """
+    TypedDict for a parsed GitHub repository.
+
+    Attributes:
+        owner: The repository owner or organization
+        repo: The repository name
+        full_name: Combined 'owner/repo' identifier
+    """
+    owner: str
+    repo: str
+    full_name: str
 
 class RepoService:
     """Service for repository code graph operations using code-graph-backend"""
@@ -20,8 +33,28 @@ class RepoService:
         self.query_timeout = aiohttp.ClientTimeout(total=300, connect=30)
         logger.info(f"RepoService initialized with backend: {self.backend_url}")
 
-    def _parse_repo_url(self, repo_input: str) -> Dict[str, str]:
-        """Parse repository URL or owner/repo format"""
+    def _parse_repo_url(self, repo_input: str) -> ParsedRepo:
+        """
+        Parse a GitHub repository identifier into a normalized structure.
+
+        Accepted input formats:
+          - owner/repo
+          - https://github.com/owner/repo
+          - github.com/owner/repo
+          - URLs optionally ending with .git
+
+        Args:
+            repo_input (str): Repository identifier provided by the user or agent.
+
+        Returns:
+            ParsedRepo: A dictionary containing:
+              - owner: Repository owner or organization
+              - repo: Repository name
+              - full_name: Normalized 'owner/repo' string
+
+        Raises:
+            ValueError: If the input does not match supported GitHub repo formats.
+        """
         repo_input = repo_input.strip().rstrip('/').rstrip('.git')
 
         patterns = [
@@ -41,7 +74,8 @@ class RepoService:
 
         raise ValueError(
             f"Invalid repository format: '{repo_input}'. "
-            "Expected: 'owner/repo' or 'https://github.com/owner/repo'"
+            "Expected formats include 'owner/repo' or "
+            "'https://github.com/owner/repo'."
         )
 
     async def index_repo(self, repo_input: str, discord_id: str) -> Dict[str, Any]:
