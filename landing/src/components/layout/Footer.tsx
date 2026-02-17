@@ -8,10 +8,10 @@ const Footer: React.FC = () => {
     const isHomePage = location.pathname === '/';
 
     return (
-        <footer className="relative bg-gradient-to-br from-dark via-dark-lighter to-gray-900 py-12 overflow-hidden">
+        <footer className="relative bg-gradient-to-t from-dark via-dark-lighter to-dark py-12 overflow-hidden">
             {/* Background gradient overlays */}
             <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 left-0 w-96 h-96 rounded-full bg-green-500/5 blur-2xl -translate-x-1/2 -translate-y-1/2"></div>
+                
                 <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-blue-500/4 blur-3xl translate-x-1/2 translate-y-1/2"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-transparent via-green-500/5 to-transparent opacity-50"></div>
             </div>

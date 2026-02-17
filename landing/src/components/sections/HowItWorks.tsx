@@ -118,7 +118,7 @@ const HowItWorks: React.FC = () => {
     );
 
     return (
-        <section id="how-it-works" className="section bg-dark-lighter">
+        <section id="how-it-works" className="section bg-gradient-to-t from-dark via-gray-900 to-dark">
             <div className="container mx-auto px-3 md:px-6">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
