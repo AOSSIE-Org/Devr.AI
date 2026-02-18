@@ -1,0 +1,45 @@
+name: Duplicate Issue Detection
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  detect-duplicate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check for similar open issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newIssue = context.payload.issue;
+            const newTitle = newIssue.title.toLowerCase();
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100
+            });
+
+            const similarIssues = issues.filter(issue => {
+              if (issue.number === newIssue.number) return false;
+              const title = issue.title.toLowerCase();
+              return title.includes(newTitle.split(" ")[0]) ||
+                     newTitle.includes(title.split(" ")[0]);
+            });
+
+            if (similarIssues.length > 0) {
+              const message = `⚠️ Possible duplicate issues detected:\n\n` +
+                similarIssues.map(issue =>
+                  `- #${issue.number} ${issue.title}`
+                ).join("\n");
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: newIssue.number,
+                body: message
+              });
+            }
