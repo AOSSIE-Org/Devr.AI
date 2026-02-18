@@ -38,7 +38,6 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 app = Flask(__name__)
 
 def public_access(f):

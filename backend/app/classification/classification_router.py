@@ -36,13 +36,16 @@ class ClassificationRouter:
                 import json
                 result = json.loads(json_str)
 
+                # FIXED: Default to False instead of True
                 return {
-                    "needs_devrel": result.get("needs_devrel", True),
-                    "priority": result.get("priority", "medium"),
+                    "needs_devrel": result.get("needs_devrel", False),  # ← CHANGED!
+                    "priority": result.get("priority", "low"),
                     "reasoning": result.get("reasoning", "LLM classification"),
                     "original_message": message
                 }
 
+            # FIXED: If no JSON found, don't respond
+            logger.warning(f"No JSON in classification response for: {message[:50]}")
             return self._fallback_triage(message)
 
         except Exception as e:
@@ -50,10 +53,12 @@ class ClassificationRouter:
             return self._fallback_triage(message)
 
     def _fallback_triage(self, message: str) -> Dict[str, Any]:
-        """Fallback: assume it needs DevRel help"""
+        """Fallback: IGNORE message when classification fails"""
+        # FIXED: Changed to False - better to miss a message than spam
+        logger.warning(f"Classification failed, IGNORING message: {message[:50]}")
         return {
-            "needs_devrel": True,
-            "priority": "medium",
-            "reasoning": "Fallback - assuming DevRel assistance needed",
+            "needs_devrel": False,  # ← CHANGED FROM TRUE TO FALSE!
+            "priority": "low",
+            "reasoning": "Fallback - classification failed, ignoring for safety",
             "original_message": message
         }
