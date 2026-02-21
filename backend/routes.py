@@ -1,3 +1,7 @@
+
+from services.github.issue_suggestion_service import IssueSuggestionService
+from config import GITHUB_TOKEN, GITHUB_ORG
+
 import asyncio
 import uuid
 import logging
@@ -17,6 +21,7 @@ class RepoRequest(BaseModel):
 logging.basicConfig(level=logging.INFO)
 handler_registry = HandlerRegistry()
 event_bus = EventBus(handler_registry)
+issue_service = IssueSuggestionService(GITHUB_TOKEN)
 
 # Sample handler function to process events
 async def sample_handler(event: BaseEvent):
@@ -93,3 +98,32 @@ async def github_webhook(request: Request):
         logging.info(f"No matching event type for header: {event_header} with action: {payload.get('action')}")
 
     return {"status": "ok"}
+
+@router.get("/github/beginner-issues")
+async def get_beginner_issues(repo: str):
+    if not GITHUB_TOKEN:
+        raise HTTPException(
+            status_code=500,
+            detail="GitHub token not configured"
+        )
+
+    try:
+        issues = await issue_service.fetch_beginner_issues(
+            owner=GITHUB_ORG,
+            repo=repo
+        )
+
+        return {
+            "repo": repo,
+            "count": len(issues),
+            "issues": issues
+        }
+
+    except Exception as e:
+        logging.error(f"Error fetching beginner issues: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch beginner issues"
+        )
+
+

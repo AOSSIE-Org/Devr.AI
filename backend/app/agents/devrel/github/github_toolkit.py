@@ -1,12 +1,10 @@
+from .services.issue_suggestion_service import IssueSuggestionService
+
 import logging
-import json
-import re
 import config
 from typing import Dict, Any
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
 from app.core.config import settings
-from .prompts.intent_analysis import GITHUB_INTENT_ANALYSIS_PROMPT
+
 from .tools.search import handle_web_search
 from .tools.github_support import handle_github_supp
 from .tools.contributor_recommendation import handle_contributor_recommendation
@@ -19,7 +17,6 @@ DEFAULT_ORG = config.GITHUB_ORG
 
 
 def normalize_org(org_from_user: str = None) -> str:
-    """Fallback to env org if user does not specify one."""
     if org_from_user and org_from_user.strip():
         return org_from_user.strip()
     return DEFAULT_ORG
@@ -27,18 +24,11 @@ def normalize_org(org_from_user: str = None) -> str:
 
 class GitHubToolkit:
     """
-    GitHub Toolkit - Main entry point for GitHub operations
-
-    This class serves as both the intent classifier and execution coordinator.
-    It thinks (classifies intent) and acts (delegates to appropriate tools).
+    GitHub Toolkit - Rule-based intent classifier + executor
+    (Gemini removed to avoid quota issues)
     """
 
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
-            model=settings.github_agent_model,
-            temperature=0.1,
-            google_api_key=settings.gemini_api_key
-        )
         self.tools = [
             "web_search",
             "contributor_recommendation",
@@ -50,80 +40,117 @@ class GitHubToolkit:
             "general_github_help"
         ]
 
+    # --------------------------------------------------
+    # RULE-BASED CLASSIFIER
+    # --------------------------------------------------
+
     async def classify_intent(self, user_query: str) -> Dict[str, Any]:
-        """Classify intent and return classification with reasoning."""
-        logger.info(f"Classifying intent for query: {user_query[:100]}")
 
-        try:
-            prompt = GITHUB_INTENT_ANALYSIS_PROMPT.format(user_query=user_query)
-            response = await self.llm.ainvoke([HumanMessage(content=prompt)])
+        query_lower = user_query.lower()
 
-            content = response.content.strip()
+        if "beginner" in query_lower or "good first issue" in query_lower:
+            classification = "find_good_first_issues"
 
-            try:
-                result = json.loads(content)
-            except json.JSONDecodeError:
-                match = re.search(r"\{.*\}", content, re.DOTALL)
-                if match:
-                    result = json.loads(match.group())
-                else:
-                    logger.error(f"Invalid JSON in LLM response: {content}")
-                    return {
-                        "classification": "general_github_help",
-                        "reasoning": "Failed to parse LLM response as JSON",
-                        "confidence": "low",
-                        "query": user_query
-                    }
+        elif "contributor" in query_lower:
+            classification = "contributor_recommendation"
 
-            classification = result.get("classification")
-            if classification not in self.tools:
-                logger.warning(f"Returned invalid function: {classification}, defaulting to general_github_help")
-                classification = "general_github_help"
-                result["classification"] = classification
+        elif "repo" in query_lower:
+            classification = "repo_support"
 
-            result["query"] = user_query
+        elif "github support" in query_lower:
+            classification = "github_support"
 
-            logger.info(f"Classified intent for query: {user_query} -> {classification}")
-            logger.info(f"Reasoning: {result.get('reasoning', 'No reasoning provided')}")
-            logger.info(f"Confidence: {result.get('confidence', 'unknown')}")
+        elif "search" in query_lower:
+            classification = "web_search"
 
-            return result
+        else:
+            classification = "general_github_help"
 
-        except Exception as e:
-            logger.error(f"Error in intent classification: {str(e)}")
-            return {
-                "classification": "general_github_help",
-                "reasoning": f"Error occurred during classification: {str(e)}",
-                "confidence": "low",
-                "query": user_query
-            }
+        logger.info(f"Rule-based classification: {user_query} -> {classification}")
+
+        return {
+            "classification": classification,
+            "reasoning": "Rule-based classification",
+            "confidence": "high",
+            "query": user_query
+        }
+
+    # --------------------------------------------------
+    # EXECUTION
+    # --------------------------------------------------
 
     async def execute(self, query: str) -> Dict[str, Any]:
-        """Main execution method - classifies intent and delegates to appropriate tools"""
         logger.info(f"Executing GitHub toolkit for query: {query[:100]}")
 
         try:
             intent_result = await self.classify_intent(query)
             classification = intent_result["classification"]
 
-            logger.info(f"Executing {classification} for query")
+            logger.info(f"Executing action: {classification}")
+
+            # -----------------------------------------
+            # EXISTING HANDLERS
+            # -----------------------------------------
 
             if classification == "contributor_recommendation":
                 result = await handle_contributor_recommendation(query)
+
             elif classification == "github_support":
                 org = normalize_org()
                 result = await handle_github_supp(query, org=org)
                 result["org_used"] = org
+
             elif classification == "repo_support":
                 result = await handle_repo_support(query)
+
             elif classification == "issue_creation":
-                result = "Not implemented"
+                result = {
+                    "message": "Issue creation not implemented yet"
+                }
+
             elif classification == "documentation_generation":
-                result = "Not implemented"
+                result = {
+                    "message": "Documentation generation not implemented yet"
+                }
+
+            # -----------------------------------------
+            # BEGINNER ISSUE SEARCH (FIXED)
+            # -----------------------------------------
+
+            elif classification == "find_good_first_issues":
+
+                service = IssueSuggestionService(settings.github_token)
+
+                # ✅ FIXED — passing query argument
+                issues = await service.fetch_global_beginner_issues(query)
+
+                if not issues:
+                    result = {
+                        "status": "success",
+                        "message": "No beginner issues found globally right now.",
+                        "issues": []
+                    }
+                else:
+                    formatted = "\n\n".join(
+                        f"🔹 [{i['repo']}] #{i['number']} - {i['title']}\n{i['url']}"
+                        for i in issues
+                    )
+
+                    result = {
+                        "status": "success",
+                        "message": f"Here are beginner-friendly issues across GitHub:\n\n{formatted}",
+                        "issues": issues
+                    }
+
             elif classification == "web_search":
                 result = await handle_web_search(query)
+
+            # -----------------------------------------
+            # DEFAULT FALLBACK
+            # -----------------------------------------
+
             else:
-                result = await handle_general_github_help(query, self.llm)
+                result = await handle_general_github_help(query, None)
 
             result["intent_analysis"] = intent_result
             result["type"] = "github_toolkit"
@@ -131,7 +158,7 @@ class GitHubToolkit:
             return result
 
         except Exception as e:
-            logger.error(f"Error in GitHub toolkit execution: {str(e)}")
+            logger.error(f"GitHub toolkit execution error: {str(e)}")
             return {
                 "status": "error",
                 "type": "github_toolkit",

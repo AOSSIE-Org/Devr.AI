@@ -1,9 +1,17 @@
+from .v1.github import router as github_router
 from fastapi import APIRouter
 from .v1.auth import router as auth_router
 from .v1.health import router as health_router
 from .v1.integrations import router as integrations_router
 
 api_router = APIRouter()
+
+api_router.include_router(
+    github_router,
+    prefix="/v1/github",
+    tags=["GitHub"]
+)
+
 
 api_router.include_router(
     auth_router,
