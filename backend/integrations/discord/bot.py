@@ -1,16 +1,24 @@
 import discord
 from discord.ext import commands
 import logging
-from typing import Dict, Any, Optional
-from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
-from app.classification.classification_router import ClassificationRouter
+import os
+import asyncio
+from typing import Dict, Optional
+
+from backend.rate_limiter import DiscordRateLimiter
+from app.agents.devrel.github.github_toolkit import GitHubToolkit
 
 logger = logging.getLogger(__name__)
 
-class DiscordBot(commands.Bot):
-    """Discord bot with LangGraph agent integration"""
 
-    def __init__(self, queue_manager: AsyncQueueManager, **kwargs):
+class DiscordBot(commands.Bot):
+    """
+    DEV MODE Discord Bot
+    Direct GitHubToolkit execution
+    Per-channel rate limiting + simple queue (Lock-based)
+    """
+
+    def __init__(self, **kwargs):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.guilds = True
@@ -24,19 +32,24 @@ class DiscordBot(commands.Bot):
             **kwargs
         )
 
-        self.queue_manager = queue_manager
-        self.classifier = ClassificationRouter()
         self.active_threads: Dict[str, str] = {}
-        self._register_queue_handlers()
+        self.channel_locks: Dict[str, asyncio.Lock] = {}
 
-    def _register_queue_handlers(self):
-        """Register handlers for queue messages"""
-        self.queue_manager.register_handler("discord_response", self._handle_agent_response)
+        # Redis-enabled per-channel rate limiter
+        self.rate_limiter = DiscordRateLimiter(
+            redis_url=os.getenv("REDIS_URL"),
+            max_retries=3
+        )
+
+    def _get_channel_lock(self, channel_id: str) -> asyncio.Lock:
+        if channel_id not in self.channel_locks:
+            self.channel_locks[channel_id] = asyncio.Lock()
+        return self.channel_locks[channel_id]
 
     async def on_ready(self):
-        """Bot ready event"""
-        logger.info(f'Enhanced Discord bot logged in as {self.user}')
+        logger.info(f'Bot logged in as {self.user}')
         print(f'Bot is ready! Logged in as {self.user}')
+
         try:
             synced = await self.tree.sync()
             print(f"Synced {len(synced)} slash command(s)")
@@ -44,7 +57,6 @@ class DiscordBot(commands.Bot):
             print(f"Failed to sync slash commands: {e}")
 
     async def on_message(self, message):
-        """Handles regular chat messages, but ignores slash commands."""
         if message.author == self.user:
             return
 
@@ -52,61 +64,40 @@ class DiscordBot(commands.Bot):
             return
 
         try:
-            triage_result = await self.classifier.should_process_message(
-                message.content,
-                {
-                    "channel_id": str(message.channel.id),
-                    "user_id": str(message.author.id),
-                    "guild_id": str(message.guild.id) if message.guild else None
-                }
-            )
+            user_id = str(message.author.id)
+            thread_id = await self._get_or_create_thread(message, user_id)
+            thread = self.get_channel(int(thread_id))
 
-            if triage_result.get("needs_devrel", False):
-                await self._handle_devrel_message(message, triage_result)
+            if not thread:
+                return
+
+            channel_id = str(thread.id)
+            lock = self._get_channel_lock(channel_id)
+
+            async with lock:
+
+                # Send processing message
+                await self.rate_limiter.execute_with_retry(
+                    thread.send,
+                    channel_id,
+                    "Processing your request..."
+                )
+
+                # Execute toolkit
+                toolkit = GitHubToolkit()
+                result = await toolkit.execute(message.content)
+                response_text = result.get("message", "No response generated.")
+
+                # Send response in chunks
+                for i in range(0, len(response_text), 2000):
+                    await self.rate_limiter.execute_with_retry(
+                        thread.send,
+                        channel_id,
+                        response_text[i:i+2000]
+                    )
 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}")
-
-    async def _handle_devrel_message(self, message, triage_result: Dict[str, Any]):
-        """This now handles both new requests and follow-ups in threads."""
-        try:
-            user_id = str(message.author.id)
-            thread_id = await self._get_or_create_thread(message, user_id)
-
-            agent_message = {
-                "type": "devrel_request",
-                "id": f"discord_{message.id}",
-                "user_id": user_id,
-                "channel_id": str(message.channel.id),
-                "thread_id": thread_id,
-                "memory_thread_id": user_id,
-                "content": message.content,
-                "triage": triage_result,
-                "classification": triage_result,
-                "platform": "discord",
-                "timestamp": message.created_at.isoformat(),
-                "author": {
-                    "username": message.author.name,
-                    "display_name": message.author.display_name,
-                    "avatar_url": str(message.author.avatar.url) if message.author.avatar else None
-                }
-            }
-            priority_map = {"high": QueuePriority.HIGH,
-                            "medium": QueuePriority.MEDIUM,
-                            "low": QueuePriority.LOW
-                            }
-            priority = priority_map.get(triage_result.get("priority"), QueuePriority.MEDIUM)
-            await self.queue_manager.enqueue(agent_message, priority)
-
-            # --- "PROCESSING" MESSAGE RESTORED ---
-            if thread_id:
-                thread = self.get_channel(int(thread_id))
-                if thread:
-                    await thread.send("I'm processing your request, please hold on...")
-            # ------------------------------------
-
-        except Exception as e:
-            logger.error(f"Error handling DevRel message: {str(e)}")
 
     async def _get_or_create_thread(self, message, user_id: str) -> Optional[str]:
         try:
@@ -118,28 +109,29 @@ class DiscordBot(commands.Bot):
                 else:
                     del self.active_threads[user_id]
 
-            # This part only runs if it's not a follow-up message in an active thread.
             if isinstance(message.channel, discord.TextChannel):
                 thread_name = f"DevRel Chat - {message.author.display_name}"
-                thread = await message.create_thread(name=thread_name, auto_archive_duration=60)
+                thread = await message.create_thread(
+                    name=thread_name,
+                    auto_archive_duration=60
+                )
+
                 self.active_threads[user_id] = str(thread.id)
-                await thread.send(f"Hello {message.author.mention}! I've created this thread to help you. How can I assist?")
+
+                channel_id = str(thread.id)
+                lock = self._get_channel_lock(channel_id)
+
+                async with lock:
+                    await self.rate_limiter.execute_with_retry(
+                        thread.send,
+                        channel_id,
+                        f"Hello {message.author.mention}! "
+                        "I've created this thread to help you."
+                    )
+
                 return str(thread.id)
+
         except Exception as e:
             logger.error(f"Failed to create thread: {e}")
-        return str(message.channel.id)
 
-    async def _handle_agent_response(self, response_data: Dict[str, Any]):
-        try:
-            thread_id = response_data.get("thread_id")
-            response_text = response_data.get("response", "")
-            if not thread_id or not response_text:
-                return
-            thread = self.get_channel(int(thread_id))
-            if thread:
-                for i in range(0, len(response_text), 2000):
-                    await thread.send(response_text[i:i+2000])
-            else:
-                logger.error(f"Thread {thread_id} not found for agent response")
-        except Exception as e:
-            logger.error(f"Error handling agent response: {str(e)}")
+        return str(message.channel.id)
