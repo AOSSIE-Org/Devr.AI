@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en
+early_access: true
+
+chat:
+  auto_reply: true
+
+issue_enrichment:
+  labeling:
+    auto_apply_labels: true
+    labeling_instructions:
+      - label: bug
+        instructions: Issues reporting bugs, errors, or unexpected behavior.
+      - label: enhancement
+        instructions: Feature requests, performance optimizations, or refactoring.
+      - label: documentation
+        instructions: Documentation updates or clarifications.
+  planning:
+    enabled: true
+    auto_planning:
+      enabled: true
+      labels: ["plan-me", "feature", "!no-plan"]
+
+reviews:
+  profile: assertive
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+  
+  high_level_summary: true
+  sequence_diagrams: true
+  poem: true
+  review_status: true
+  collapse_walkthrough: false
+  changed_files_summary: true
+  
+  # Set to false to prevent the bot from blocking merges with a "Changes Requested" state
+  request_changes_workflow: false 
+
+  pre_merge_checks:
+    description:
+      mode: warning
+    docstrings:
+      mode: off
+
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/.venv/**"
+    - "!**/__pycache__/**"
+
+  tools:
+    shellcheck: { enabled: true }
+    ruff: { enabled: true }
+    markdownlint: { enabled: true }
+    github-checks: { enabled: true, timeout_ms: 90000 }
+    languagetool: { enabled: true }
+    biome: { enabled: true }
+    hadolint: { enabled: true }
+    yamllint: { enabled: true }
+    gitleaks: { enabled: true }
+    checkov: { enabled: true }
+    eslint: { enabled: true }
+
+  path_instructions:
+    # General instructions (Fixes Critical Schema Error)
+    - path: "**"
+      instructions: |
+        - Verify that documentation and comments are free of spelling mistakes
+        - Ensure that test code follows testing best practices
+        - Confirm that copyright years are up-to-date
+        - Point out redundant obvious comments
+        - Look for code duplication
+        - Suggest code completions for TODO or FIXME comments
+
+    # Frontend: React + Vite + TypeScript
+    - path: "frontend/**/*.{ts,tsx,js,jsx}"
+      instructions: |
+        - React/SPA: The project uses Vite + React 18. Ensure best practices for SPAs.
+        - TypeScript: Avoid 'any', use explicit types. Prefer 'import type'.
+        - Security: Check for XSS and sensitive data exposure.
+        - Performance: Verify efficient rendering and asset usage.
+
+    # Backend: Python + FastAPI
+    - path: "backend/**/*.py"
+      instructions: |
+        - FastAPI: Ensure correct use of Pydantic models for request/response validation.
+        - Security: Check for SQL injection (if applicable), insecure dependencies, and data exposure.
+        - Performance: Ensure efficient database queries and async/await usage where appropriate.
+        - Python: Adhere to PEP 8 standards and clean code principles.
+
+    # Assets
+    - path: "assets/**/*"
+      instructions: |
+        - Validate modern web formats (WebP/AVIF) and SVG optimization.
+        - Ensure image compression for web performance.
