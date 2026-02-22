@@ -12,7 +12,6 @@ const API_BASE_URL =
 export type Platform = 'github' | 'discord' | 'slack' | 'discourse';
 
 export interface IntegrationConfig {
-    // Platform-specific configuration
     [key: string]: any;
 }
 
@@ -30,7 +29,7 @@ export interface Integration {
 export interface IntegrationCreateRequest {
     platform: Platform;
     organization_name: string;
-    organization_link?: string; // GitHub URL or Discord Server ID
+    organization_link?: string;
     config?: IntegrationConfig;
 }
 
@@ -62,7 +61,10 @@ class ApiClient {
             },
         });
 
-        // Add request interceptor to add auth token
+        /**
+         * REQUEST INTERCEPTOR
+         * Adds Supabase access token to every request
+         */
         this.client.interceptors.request.use(
             async (config) => {
                 const {
@@ -75,27 +77,41 @@ class ApiClient {
 
                 return config;
             },
-            (error) => {
-                return Promise.reject(error);
-            }
+            (error) => Promise.reject(error)
         );
 
-        // Add response interceptor for error handling
+        /**
+         * RESPONSE INTERCEPTOR
+         * Handles global API errors
+         */
         this.client.interceptors.response.use(
             (response) => response,
-            (error) => {
-                if (error.response?.status === 401) {
-                    // Handle unauthorized - could redirect to login
-                    console.error('Unauthorized request');
+            async (error) => {
+                const status = error.response?.status;
+                const currentPath = window.location.pathname;
+
+                if (status === 401 && !currentPath.includes('/login')) {
+                    console.warn('🔒 Session expired. Logging out...');
+
+                    try {
+                        await supabase.auth.signOut();
+                    } catch (signOutError) {
+                        console.error('Error during signOut:', signOutError);
+                    }
+
+                    // Optional: Clear any remaining storage
+                    localStorage.clear();
+                    sessionStorage.clear();
+
+                    // Redirect to login page
+                    window.location.href = '/login';
                 }
+
                 return Promise.reject(error);
             }
         );
     }
 
-    /**
-     * Create a new integration
-     */
     async createIntegration(
         data: IntegrationCreateRequest
     ): Promise<Integration> {
@@ -106,9 +122,6 @@ class ApiClient {
         return response.data;
     }
 
-    /**
-     * Get all integrations for the current user
-     */
     async getIntegrations(): Promise<Integration[]> {
         const response = await this.client.get<{
             integrations: Integration[];
@@ -117,9 +130,6 @@ class ApiClient {
         return response.data.integrations;
     }
 
-    /**
-     * Get a specific integration by ID
-     */
     async getIntegration(integrationId: string): Promise<Integration> {
         const response = await this.client.get<Integration>(
             `/v1/integrations/${integrationId}`
@@ -127,9 +137,6 @@ class ApiClient {
         return response.data;
     }
 
-    /**
-     * Get integration status for a platform
-     */
     async getIntegrationStatus(platform: Platform): Promise<IntegrationStatus> {
         const response = await this.client.get<IntegrationStatus>(
             `/v1/integrations/status/${platform}`
@@ -137,9 +144,6 @@ class ApiClient {
         return response.data;
     }
 
-    /**
-     * Update an existing integration
-     */
     async updateIntegration(
         integrationId: string,
         data: IntegrationUpdateRequest
@@ -151,16 +155,10 @@ class ApiClient {
         return response.data;
     }
 
-    /**
-     * Delete an integration
-     */
     async deleteIntegration(integrationId: string): Promise<void> {
         await this.client.delete(`/v1/integrations/${integrationId}`);
     }
 
-    /**
-     * Test connection to backend
-     */
     async healthCheck(): Promise<boolean> {
         try {
             const response = await this.client.get('/v1/health');
@@ -172,5 +170,4 @@ class ApiClient {
     }
 }
 
-// Export singleton instance
 export const apiClient = new ApiClient();

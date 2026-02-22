@@ -8,35 +8,48 @@ from app.agents.devrel.github.prompts.general_github_help import GENERAL_GITHUB_
 logger = logging.getLogger(__name__)
 
 
-async def handle_general_github_help(query: str, llm) -> Dict[str, Any]:
-    """Execute general GitHub help with web search and LLM knowledge"""
-    logger.info("Providing general GitHub help")
+async def handle_general_github_help(query: str, llm=None) -> Dict[str, Any]:
+    """
+    Execute general GitHub help using web search only (LLM removed)
+    """
+
+    logger.info("Providing general GitHub help (LLM-free mode)")
 
     try:
-        query = await _extract_search_query(query, llm)
+        # Extract search query safely (without LLM)
         search_result = await handle_web_search(query)
 
         if search_result.get("status") == "success":
-            search_context = "SEARCH RESULTS:\n"
-            for result in search_result.get("results", []):
-                search_context += f"- {result.get('title', 'No title')}: {result.get('content', 'No content')}\n"
-        else:
-            search_context = "No search results available."
+            results = search_result.get("results", [])
 
-        help_prompt = GENERAL_GITHUB_HELP_PROMPT.format(
-            query=query,
-            search_context=search_context
-        )
+            if not results:
+                return {
+                    "status": "success",
+                    "sub_function": "general_github_help",
+                    "query": query,
+                    "response": "No relevant information found on GitHub.",
+                    "message": "Provided GitHub help using web search only"
+                }
 
-        response = await llm.ainvoke([HumanMessage(content=help_prompt)])
+            formatted = "\n\n".join(
+                f"{i+1}. {r.get('title', 'No title')}\n{r.get('content', 'No content')}"
+                for i, r in enumerate(results)
+            )
+
+            return {
+                "status": "success",
+                "sub_function": "general_github_help",
+                "query": query,
+                "response": f"Here are helpful GitHub resources:\n\n{formatted}",
+                "message": "Provided GitHub help using web search only"
+            }
 
         return {
             "status": "success",
             "sub_function": "general_github_help",
             "query": query,
-            "response": response.content.strip(),
-            "search_context": search_context,
-            "message": "Provided GitHub help using LLM expertise and web search"
+            "response": "No search results available.",
+            "message": "Provided GitHub help (no results found)"
         }
 
     except Exception as e:
@@ -46,5 +59,5 @@ async def handle_general_github_help(query: str, llm) -> Dict[str, Any]:
             "sub_function": "general_github_help",
             "query": query,
             "error": str(e),
-            "message": "Failed to provide general GitHub help"
+            "message": "Failed to provide GitHub help"
         }

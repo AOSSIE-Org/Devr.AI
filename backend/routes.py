@@ -1,6 +1,10 @@
-import asyncio
+from app.services.github.issue_suggestion_service import IssueSuggestionService
+from app.core.config import settings
+
 import uuid
 import logging
+import hmac
+import hashlib
 from fastapi import APIRouter, Request, HTTPException
 from app.core.events.event_bus import EventBus
 from app.core.events.enums import EventType, PlatformType
@@ -10,40 +14,81 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
+logger = logging.getLogger(__name__)
+
+handler_registry = HandlerRegistry()
+event_bus = EventBus(handler_registry)
+
+
 class RepoRequest(BaseModel):
     repo_url: str
 
 
-logging.basicConfig(level=logging.INFO)
-handler_registry = HandlerRegistry()
-event_bus = EventBus(handler_registry)
+# ---------------------------------------------------------
+# Sample Event Handler
+# ---------------------------------------------------------
 
-# Sample handler function to process events
 async def sample_handler(event: BaseEvent):
-    logging.info(f"Handler received event: {event.event_type} with data: {event.raw_data}")
+    logger.info(
+        f"Handler received event: {event.event_type} with data: {event.raw_data}"
+    )
 
-# Register all the event handlers for issues and pull requests
+
+# ---------------------------------------------------------
+# Register Event Handlers
+# ---------------------------------------------------------
+
 def register_event_handlers():
-    # Issue events
     event_bus.register_handler(EventType.ISSUE_CREATED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.ISSUE_CLOSED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.ISSUE_UPDATED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.ISSUE_COMMENTED, sample_handler, PlatformType.GITHUB)
-    # Pull request events
+
     event_bus.register_handler(EventType.PR_CREATED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.PR_UPDATED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.PR_COMMENTED, sample_handler, PlatformType.GITHUB)
     event_bus.register_handler(EventType.PR_MERGED, sample_handler, PlatformType.GITHUB)
 
+
+# ---------------------------------------------------------
+# GitHub Webhook Endpoint (SECURE VERSION)
+# ---------------------------------------------------------
+
 @router.post("/github/webhook")
 async def github_webhook(request: Request):
+
+    # 🔐 Signature Verification
+    webhook_secret = settings.github_token_resolved  # Replace with dedicated webhook secret if available
+    signature_header = request.headers.get("X-Hub-Signature-256")
+
+    body = await request.body()
+
+    if not signature_header:
+        raise HTTPException(status_code=400, detail="Missing signature")
+
+    sha_name, signature = signature_header.split("=")
+
+    if sha_name != "sha256":
+        raise HTTPException(status_code=400, detail="Invalid signature format")
+
+    mac = hmac.new(
+        webhook_secret.encode(),
+        msg=body,
+        digestmod=hashlib.sha256
+    )
+
+    expected_signature = mac.hexdigest()
+
+    if not hmac.compare_digest(expected_signature, signature):
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
     payload = await request.json()
     event_header = request.headers.get("X-GitHub-Event")
-    logging.info(f"Received GitHub event: {event_header}")
+
+    logger.info(f"Received GitHub event: {event_header}")
 
     event_type = None
 
-    # Handle issue events
     if event_header == "issues":
         action = payload.get("action")
         if action == "opened":
@@ -53,33 +98,24 @@ async def github_webhook(request: Request):
         elif action == "edited":
             event_type = EventType.ISSUE_UPDATED
 
-    # Handle issue comment events
     elif event_header == "issue_comment":
-        action = payload.get("action")
-        if action == "created":
+        if payload.get("action") == "created":
             event_type = EventType.ISSUE_COMMENTED
 
-    # Handle pull request events
     elif event_header == "pull_request":
         action = payload.get("action")
+
         if action == "opened":
             event_type = EventType.PR_CREATED
         elif action == "edited":
             event_type = EventType.PR_UPDATED
-        elif action == "closed":
-            # Determine if the PR was merged or simply closed
-            if payload.get("pull_request", {}).get("merged"):
-                event_type = EventType.PR_MERGED
-            else:
-                logging.info("Pull request closed without merge; no event dispatched.")
+        elif action == "closed" and payload.get("pull_request", {}).get("merged"):
+            event_type = EventType.PR_MERGED
 
-    # Handle pull request comment events
     elif event_header in ["pull_request_review_comment", "pull_request_comment"]:
-        action = payload.get("action")
-        if action == "created":
+        if payload.get("action") == "created":
             event_type = EventType.PR_COMMENTED
 
-    # Dispatch the event if we have a matching type
     if event_type:
         event = BaseEvent(
             id=str(uuid.uuid4()),
@@ -90,6 +126,51 @@ async def github_webhook(request: Request):
         )
         await event_bus.dispatch(event)
     else:
-        logging.info(f"No matching event type for header: {event_header} with action: {payload.get('action')}")
+        logger.info(
+            f"No matching event type for header: {event_header} with action: {payload.get('action')}"
+        )
 
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------
+# Beginner Issues Endpoint (FIXED & CONSISTENT)
+# ---------------------------------------------------------
+
+@router.get("/beginner-issues")
+async def get_beginner_issues(
+    language: str = "python",
+    limit: int = 5
+):
+    """
+    Fetch global beginner-friendly GitHub issues.
+    """
+
+    token = settings.github_token_resolved
+
+    if not token:
+        raise HTTPException(
+            status_code=500,
+            detail="GitHub token not configured"
+        )
+
+    issue_service = IssueSuggestionService(token)
+
+    try:
+        issues = await issue_service.fetch_beginner_issues(
+            language=language,
+            limit=limit
+        )
+
+        return {
+            "language": language,
+            "count": len(issues),
+            "issues": issues
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching beginner issues: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fetch beginner issues"
+        ) from e
