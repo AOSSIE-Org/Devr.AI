@@ -1,5 +1,5 @@
-import asyncio
-from app.database.weaviate.client import get_client
+﻿import asyncio
+from app.database.weaviate.client import get_weaviate_client
 import weaviate.classes.config as wc
 
 async def create_schema(client, name, properties):
@@ -38,21 +38,17 @@ async def create_all_schemas():
     """
     Create only the user profile schema as per the model structure.
     """
-    client = get_client()
     try:
-        await client.connect()
-        await create_user_profile_schema(client)
-        print("✅ User profile schema created successfully.")
+        async with get_weaviate_client() as client:
+            await create_user_profile_schema(client)
+            print("✅ User profile schema created successfully.")
     except Exception as e:
         print(f"❌ Error creating schema: {str(e)}")
         raise
-    finally:
-        await client.close()
 
 def main():
     """Entry point for running the schema creation."""
     asyncio.run(create_all_schemas())
-
 
 if __name__ == "__main__":
     main()
