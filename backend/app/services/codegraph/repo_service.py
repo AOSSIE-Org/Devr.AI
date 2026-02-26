@@ -68,22 +68,21 @@ class RepoService:
                         "status": "error",
                         "message": f"Repository already indexed. Graph: `{repo_data['graph_name']}`"
                     }
-                elif status == 'pending':
-                    return {
-                        "status": "error",
-                        "message": "Repository indexing in progress. Please wait."
-                    }
-                # If failed, we'll allow re-indexing by updating the existing record
+                
+                # if status is pending or failed --> restart indexing
+                logger.info(
+                    f"Restarting indexing for {repo_info['full_name']} "
+                    f"(previous status: {status})"
+                )
 
-                # Update existing failed record
-                logger.info(f"Updating existing failed record for {repo_info['full_name']}")
+                logger.info(f"Updating existing record for {repo_info['full_name']}") 
                 await self.supabase.table("indexed_repositories").update({
                     "indexing_status": "pending",
                     "last_error": None,
                     "updated_at": datetime.now().isoformat()
                 }).eq("id", repo_data['id']).execute()
             else:
-                # Insert new record
+                # Insert new record (new repository)
                 logger.info(f"Creating new record for {repo_info['full_name']}")
                 await self.supabase.table("indexed_repositories").insert({
                     "repository_full_name": repo_info['full_name'],

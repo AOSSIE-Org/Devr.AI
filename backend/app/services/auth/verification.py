@@ -36,6 +36,7 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
     """
     supabase = get_supabase_client()
 
+    await cleanup_expired_tokens()
     _cleanup_expired_sessions()
 
     token = str(uuid.uuid4())

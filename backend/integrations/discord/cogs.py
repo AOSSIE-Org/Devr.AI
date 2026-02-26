@@ -3,6 +3,7 @@ import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
+from datetime import datetime, timezone
 
 from app.agents.devrel.onboarding.messages import (
     build_encourage_verification_message,
@@ -129,18 +130,40 @@ class DevRelCommands(commands.Cog):
                 return
 
             if user_profile.verification_token:
-                embed = discord.Embed(
-                    title="⏳ Verification Pending",
-                    description="You already have a verification in progress.",
-                    color=discord.Color.orange()
-                )
-                embed.add_field(
-                    name="What to do",
-                    value="Please complete the existing verification or wait for it to expire (5 minutes).",
-                    inline=False
-                )
-                await interaction.followup.send(embed=embed, ephemeral=True)
-                return
+                expires_at = user_profile.verification_token_expires_at
+                is_expired = False
+
+                if expires_at:
+                    if isinstance(expires_at, str):
+                        expires_at_dt = datetime.fromisoformat(expires_at)
+                    else:
+                        expires_at_dt = expires_at  
+
+                    if expires_at_dt.tzinfo is None:
+                        expires_at_dt = expires_at_dt.replace(tzinfo=timezone.utc)
+                    
+                    now_utc = datetime.now(timezone.utc)
+
+                    if expires_at_dt < now_utc:
+                        is_expired = True
+
+                else:
+                    #  token exists but no expiry → treat as expired
+                    is_expired = True
+
+                if not is_expired:
+                    embed = discord.Embed(
+                        title="⏳ Verification Pending",
+                        description="You already have a verification in progress.",
+                        color=discord.Color.orange()
+                    )
+                    embed.add_field(
+                        name="What to do",
+                        value="Please complete the existing verification or wait for it to expire (5 minutes).",
+                        inline=False
+                    )
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                    return
 
             session_id = await create_verification_session(str(interaction.user.id))
             if not session_id:
@@ -199,7 +222,8 @@ class DevRelCommands(commands.Cog):
                 title="🔄 Indexing Repository",
                 description=(
                     f"Indexing `{repository}`...\n\n"
-                    "This typically takes 5-30 minutes depending on repository size."
+                    "⏳ Note: For large repositories, indexing can take 30-35 minutes.\n" 
+                    "Please wait until the process completes."
                 ),
                 color=discord.Color.blue()
             )
@@ -252,7 +276,7 @@ class DevRelCommands(commands.Cog):
                         error_msg = result.get("message", "Unknown error")
                         error_embed = discord.Embed(
                             title="❌ Indexing Failed",
-                            description=f"Could not index `{repository}`",
+                            description=f"Indexing did not complete `{repository}`",
                             color=discord.Color.red()
                         )
                         error_embed.add_field(
@@ -264,8 +288,6 @@ class DevRelCommands(commands.Cog):
                         tip = None
                         if "already indexed" in error_msg.lower():
                             tip = "This repository is already indexed! You can query it directly."
-                        elif "pending" in error_msg.lower():
-                            tip = "Indexing is in progress. Check status with `/list_indexed_repos`"
 
                         if tip:
                             error_embed.add_field(
