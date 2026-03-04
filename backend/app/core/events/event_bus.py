@@ -39,16 +39,27 @@ class EventBus:
     async def dispatch(self, event: BaseEvent):
         """Dispatch an event to all registered handlers"""
 
+        async def _safe_call(handler, event):
+            """Wrapper to catch and log exceptions from fire-and-forget handler tasks."""
+            try:
+                await handler(event)
+            except Exception:
+                logger.error(
+                    "Event handler '%s' failed for event %s (type: %s)",
+                    handler.__name__, event.id, event.event_type,
+                    exc_info=True,
+                )
+
         # Call global handlers first
         for handler in self.global_handlers:
             logger.info(f"Calling global handler: {handler.__name__}")
-            asyncio.create_task(handler(event))
+            asyncio.create_task(_safe_call(handler, event))
 
         # Call event-specific handlers
         if event.event_type in self.handlers:
             for handler in self.handlers[event.event_type]:
                 logger.info(f"Calling handler: {handler.__name__} for event type: {event.event_type}")
-                asyncio.create_task(handler(event))
+                asyncio.create_task(_safe_call(handler, event))
         else:
             logger.info(f"No handlers registered for event type {event.event_type}")
             pass

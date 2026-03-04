@@ -43,12 +43,12 @@ class BaseAgent(ABC):
             result = await self.graph.ainvoke(initial_state.model_dump(), config)
             return AgentState(**result)
         except AttributeError as e:
-            logger.error("Graph not properly initialized for %s: %s", self.agent_name, str(e))
+            logger.error("Graph not properly initialized for %s: %s", self.agent_name, str(e), exc_info=True)
             state_dict = initial_state.model_dump()
             state_dict['errors'].append(f"Agent initialization error: {str(e)}")
             return AgentState(**state_dict)
         except Exception as e:
-            logger.error("Error in %s: %s", self.agent_name, str(e))
+            logger.error("Error in %s: %s", self.agent_name, str(e), exc_info=True)
             state_dict = initial_state.model_dump()
             state_dict['errors'].append(str(e))
             return AgentState(**state_dict)
@@ -74,5 +74,5 @@ class BaseAgent(ABC):
 
             logger.info(f"Streaming completed after {step_count} steps")
         except Exception as e:
-            logger.error("Error in %s stream: %s", self.agent_name, str(e))
+            logger.error("Error in %s stream: %s", self.agent_name, str(e), exc_info=True)
             yield {"error": str(e)}

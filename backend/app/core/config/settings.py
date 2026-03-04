@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # DB configuration
     supabase_url: str
     supabase_key: str
+    database_url: Optional[str] = None
 
     # LangSmith Tracing
     langsmith_tracing: bool = False

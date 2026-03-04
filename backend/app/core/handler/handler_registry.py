@@ -19,13 +19,17 @@ class HandlerRegistry:
     
     def get_handler(self, event: BaseEvent) -> BaseHandler:
         """Get handler instance for an event"""
+        # Handle both enum and string values for platform and event_type
+        platform_val = event.platform.value if hasattr(event.platform, 'value') else event.platform
+        event_type_val = event.event_type.value if hasattr(event.event_type, 'value') else event.event_type
+        
         # Try platform-specific handler first
-        key = f"{event.platform.value}:{event.event_type.value}"
+        key = f"{platform_val}:{event_type_val}"
         handler_class = self.handlers.get(key)
         
         # Fall back to generic event type handler
         if not handler_class:
-            key = event.event_type.value
+            key = event_type_val
             handler_class = self.handlers.get(key)
         
         if not handler_class:

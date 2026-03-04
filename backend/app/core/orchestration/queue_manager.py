@@ -84,12 +84,19 @@ class AsyncQueueManager:
             "priority": priority,
             "data": message
         }
-        json_message = json.dumps(queue_item).encode()
-        await self.channel.default_exchange.publish(
-            aio_pika.Message(body=json_message),
-            routing_key=self.queues[priority]
-        )
-        logger.info(f"Enqueued message {queue_item['id']} with priority {priority}")
+        try:
+            json_message = json.dumps(queue_item).encode()
+            await self.channel.default_exchange.publish(
+                aio_pika.Message(body=json_message),
+                routing_key=self.queues[priority]
+            )
+            logger.info(f"Enqueued message {queue_item['id']} with priority {priority}")
+        except Exception:
+            logger.error(
+                "Failed to enqueue message %s with priority %s",
+                queue_item['id'], priority, exc_info=True,
+            )
+            raise
 
     def register_handler(self, message_type: str, handler: Callable):
         """Register a handler for a specific message type"""
@@ -113,18 +120,22 @@ class AsyncQueueManager:
                             item = json.loads(message.body.decode())
                             await self._process_item(item, worker_name)
                             await message.ack()
-                        except Exception as e:
-                            logger.error(f"Error processing message: {e}")
+                        except Exception:
+                            logger.error(
+                                "Error processing message in worker %s",
+                                worker_name, exc_info=True,
+                            )
                             await message.nack(requeue=False)
                 except asyncio.CancelledError:
                     logger.info(f"Worker {worker_name} cancelled")
                     return
-                except Exception as e:
-                    logger.error(f"Worker {worker_name} error: {e}")
+                except Exception:
+                    logger.error("Worker %s error", worker_name, exc_info=True)
             await asyncio.sleep(0.1)
 
     async def _process_item(self, item: Dict[str, Any], worker_name: str):
         """Process a queue item"""
+        message_type = "unknown"
         try:
             message_data = item["data"]
             message_type = message_data.get("type", "unknown")
@@ -140,5 +151,9 @@ class AsyncQueueManager:
             else:
                 logger.warning(f"No handler found for message type: {message_type}")
 
-        except Exception as e:
-            logger.error(f"Error processing item {item.get('id', 'unknown')}: {str(e)}")
+        except Exception:
+            logger.error(
+                "Error processing item %s (type: %s) in worker %s",
+                item.get('id', 'unknown'), message_type, worker_name,
+                exc_info=True,
+            )

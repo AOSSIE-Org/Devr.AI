@@ -9,6 +9,7 @@ from app.core.handler.handler_registry import HandlerRegistry
 from pydantic import BaseModel
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class RepoRequest(BaseModel):
     repo_url: str
@@ -20,7 +21,7 @@ event_bus = EventBus(handler_registry)
 
 # Sample handler function to process events
 async def sample_handler(event: BaseEvent):
-    logging.info(f"Handler received event: {event.event_type} with data: {event.raw_data}")
+    logger.info(f"Handler received event: {event.event_type} with data: {event.raw_data}")
 
 # Register all the event handlers for issues and pull requests
 def register_event_handlers():
@@ -37,59 +38,68 @@ def register_event_handlers():
 
 @router.post("/github/webhook")
 async def github_webhook(request: Request):
-    payload = await request.json()
-    event_header = request.headers.get("X-GitHub-Event")
-    logging.info(f"Received GitHub event: {event_header}")
-
-    event_type = None
-
-    # Handle issue events
-    if event_header == "issues":
+    event_header = None
+    action = None
+    try:
+        payload = await request.json()
+        event_header = request.headers.get("X-GitHub-Event")
         action = payload.get("action")
-        if action == "opened":
-            event_type = EventType.ISSUE_CREATED
-        elif action == "closed":
-            event_type = EventType.ISSUE_CLOSED
-        elif action == "edited":
-            event_type = EventType.ISSUE_UPDATED
+        logger.info(f"Received GitHub event: {event_header}")
 
-    # Handle issue comment events
-    elif event_header == "issue_comment":
-        action = payload.get("action")
-        if action == "created":
-            event_type = EventType.ISSUE_COMMENTED
+        event_type = None
 
-    # Handle pull request events
-    elif event_header == "pull_request":
-        action = payload.get("action")
-        if action == "opened":
-            event_type = EventType.PR_CREATED
-        elif action == "edited":
-            event_type = EventType.PR_UPDATED
-        elif action == "closed":
-            # Determine if the PR was merged or simply closed
-            if payload.get("pull_request", {}).get("merged"):
-                event_type = EventType.PR_MERGED
-            else:
-                logging.info("Pull request closed without merge; no event dispatched.")
+        # Handle issue events
+        if event_header == "issues":
+            if action == "opened":
+                event_type = EventType.ISSUE_CREATED
+            elif action == "closed":
+                event_type = EventType.ISSUE_CLOSED
+            elif action == "edited":
+                event_type = EventType.ISSUE_UPDATED
 
-    # Handle pull request comment events
-    elif event_header in ["pull_request_review_comment", "pull_request_comment"]:
-        action = payload.get("action")
-        if action == "created":
-            event_type = EventType.PR_COMMENTED
+        # Handle issue comment events
+        elif event_header == "issue_comment":
+            if action == "created":
+                event_type = EventType.ISSUE_COMMENTED
 
-    # Dispatch the event if we have a matching type
-    if event_type:
-        event = BaseEvent(
-            id=str(uuid.uuid4()),
-            actor_id=str(payload.get("sender", {}).get("id", "unknown")),
-            event_type=event_type,
-            platform=PlatformType.GITHUB,
-            raw_data=payload
+        # Handle pull request events
+        elif event_header == "pull_request":
+            if action == "opened":
+                event_type = EventType.PR_CREATED
+            elif action == "edited":
+                event_type = EventType.PR_UPDATED
+            elif action == "closed":
+                # Determine if the PR was merged or simply closed
+                if payload.get("pull_request", {}).get("merged"):
+                    event_type = EventType.PR_MERGED
+                else:
+                    logger.info("Pull request closed without merge; no event dispatched.")
+
+        # Handle pull request comment events
+        elif event_header in ["pull_request_review_comment", "pull_request_comment"]:
+            if action == "created":
+                event_type = EventType.PR_COMMENTED
+
+        # Dispatch the event if we have a matching type
+        if event_type:
+            event = BaseEvent(
+                id=str(uuid.uuid4()),
+                actor_id=str(payload.get("sender", {}).get("id", "unknown")),
+                event_type=event_type,
+                platform=PlatformType.GITHUB,
+                raw_data=payload
+            )
+            await event_bus.dispatch(event)
+        else:
+            logger.info(f"No matching event type for header: {event_header} with action: {action}")
+
+        return {"status": "ok"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "GitHub webhook processing failed for event_header=%s action=%s",
+            event_header, action, exc_info=True,
         )
-        await event_bus.dispatch(event)
-    else:
-        logging.info(f"No matching event type for header: {event_header} with action: {payload.get('action')}")
-
-    return {"status": "ok"}
+        raise HTTPException(status_code=500, detail="Webhook processing failed")

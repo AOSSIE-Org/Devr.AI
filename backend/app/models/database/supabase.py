@@ -226,3 +226,40 @@ class IndexedRepository(BaseModel):
     last_error: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class CodeChunk(BaseModel):
+    """
+    Represents a chunk of code from a repository file.
+
+    Attributes:
+      id (UUID): Unique identifier for the code chunk.
+      repository_id (UUID): Unique identifier of the repository this chunk belongs to.
+      created_at (datetime): Timestamp when the chunk was created.
+      file_path (str): Path to the file containing the chunk.
+      file_name (str): Name of the file.
+      file_extension (str): Extension of the file.
+      chunk_index (int): Index of the chunk within the file.
+      content (str): The actual code content.
+      chunk_type (str): Type of the chunk (e.g., function, class, block).
+      language (str): Programming language of the chunk.
+      lines_start (int): Starting line number of the chunk.
+      lines_end (int): Ending line number of the chunk.
+      code_metadata (Optional[dict]): Metadata about the code (complexity, etc.).
+      weaviate_chunk_id (Optional[str]): ID of the chunk in Weaviate vector store.
+    """
+    id: UUID
+    repository_id: UUID
+    created_at: datetime
+
+    file_path: str
+    file_name: str
+    file_extension: str
+    chunk_index: int
+    content: str
+    chunk_type: str
+    language: str
+    lines_start: int
+    lines_end: int
+
+    code_metadata: Optional[dict] = None
+    weaviate_chunk_id: Optional[str] = None

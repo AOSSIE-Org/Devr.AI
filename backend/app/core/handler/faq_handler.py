@@ -56,8 +56,14 @@ class FAQHandler(BaseHandler):
     async def _send_discord_response(self, channel_id: str, response: str):
         """Sends a response message to the specified Discord channel."""
         if self.bot:
-            channel = self.bot.get_channel(int(channel_id))
-            if channel:
-                await channel.send(response)
-            else:
-                logger.error(f"Could not find Discord channel with ID {channel_id}")
+            try:
+                channel = self.bot.get_channel(int(channel_id))
+                if channel:
+                    await channel.send(response)
+                else:
+                    logger.error("Could not find Discord channel with ID %s", channel_id)
+            except Exception:
+                logger.error(
+                    "Failed to send Discord response to channel %s",
+                    channel_id, exc_info=True,
+                )
