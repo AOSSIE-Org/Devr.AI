@@ -43,10 +43,6 @@ class MessageHandler(BaseHandler):
             )
             return await self.faq_handler.handle(faq_event)
 
-        # Implementation for new message creation
-        # - Check if it's a command
-        # - Check if it's a question
-        # - Process natural language
         return {"success": True, "action": "message_processed"}
 
     async def _handle_message_updated(self, event: BaseEvent) -> Dict[str, Any]:

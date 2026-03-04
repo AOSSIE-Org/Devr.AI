@@ -9,8 +9,10 @@ from app.models.integration import (
 )
 from app.services.integration_service import integration_service, IntegrationNotFoundError
 from app.core.dependencies import get_current_user
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/", response_model=IntegrationResponse, status_code=status.HTTP_201_CREATED)
@@ -24,7 +26,8 @@ async def create_integration(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        logger.error("Failed to create integration for user %s", user_id, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create integration") from e
 
 
 @router.get("/", response_model=IntegrationListResponse)
@@ -34,7 +37,8 @@ async def list_integrations(user_id: UUID = Depends(get_current_user)):
         integrations = await integration_service.get_integrations(user_id)
         return IntegrationListResponse(integrations=integrations, total=len(integrations))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        logger.error("Failed to list integrations for user %s", user_id, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to list integrations") from e
 
 
 @router.get("/status/{platform}", response_model=IntegrationStatusResponse)
@@ -46,7 +50,8 @@ async def get_integration_status(
     try:
         return await integration_service.get_integration_status(user_id, platform)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        logger.error("Failed to get integration status for user %s platform %s", user_id, platform, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get integration status") from e
 
 @router.get("/{integration_id}", response_model=IntegrationResponse)
 async def get_integration(
@@ -64,8 +69,11 @@ async def get_integration(
             )
 
         return integration
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        logger.error("Failed to get integration %s for user %s", integration_id, user_id, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get integration") from e
 
 @router.put("/{integration_id}", response_model=IntegrationResponse)
 async def update_integration(
@@ -85,7 +93,7 @@ async def update_integration(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update integration: {str(e)}"
+            detail="Failed to update integration"
         ) from e
 
 @router.delete("/{integration_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -105,5 +113,5 @@ async def delete_integration(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete integration: {str(e)}"
+            detail="Failed to delete integration"
         ) from e

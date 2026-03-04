@@ -4,7 +4,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from backend.app.services.vector_db.service import EmbeddingItem, VectorDBService
 import asyncio
 import logging
-from backend.app.services.vector_db.service import EmbeddingItem, VectorDBService
 
 logging.basicConfig(level=logging.INFO)
 

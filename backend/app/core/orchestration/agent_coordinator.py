@@ -27,6 +27,7 @@ class AgentCoordinator:
     @traceable(name="devrel_request_coordination", run_type="chain")
     async def _handle_devrel_request(self, message_data: Dict[str, Any]):
         """Handle DevRel agent requests"""
+        session_id = None
         try:
             # Extract memory thread ID (user_id for Discord)
             memory_thread_id = message_data.get("memory_thread_id") or message_data.get("user_id", "")
@@ -58,11 +59,15 @@ class AgentCoordinator:
                 await self._send_response_to_platform(message_data, result_state.final_response)
 
         except Exception as e:
-            logger.error(f"Error handling DevRel request: {str(e)}")
+            logger.error(
+                "Error handling DevRel request for session %s",
+                session_id, exc_info=True,
+            )
             await self._send_error_response(message_data, "I'm having trouble processing your request. Please try again.")
 
     async def _handle_clear_memory_request(self, message_data: Dict[str, Any]):
         """Handle requests to clear thread memory"""
+        memory_thread_id = None
         try:
             memory_thread_id = message_data.get("memory_thread_id")
             cleanup_reason = message_data.get("cleanup_reason", "manual")
@@ -81,8 +86,11 @@ class AgentCoordinator:
             else:
                 logger.error(f"Failed to clear memory for thread {memory_thread_id}")
 
-        except Exception as e:
-            logger.error(f"Error clearing memory: {str(e)}")
+        except Exception:
+            logger.error(
+                "Error clearing memory for thread %s",
+                memory_thread_id, exc_info=True,
+            )
 
     async def _handle_memory_timeout(self, memory_thread_id: str, state: AgentState):
         """Handle memory timeout - store to database and clear from InMemorySaver"""
@@ -97,11 +105,15 @@ class AgentCoordinator:
 
             logger.info(f"Memory timeout handled successfully for thread {memory_thread_id}")
 
-        except Exception as e:
-            logger.error(f"Error handling memory timeout: {str(e)}")
+        except Exception:
+            logger.error(
+                "Error handling memory timeout for thread %s",
+                memory_thread_id, exc_info=True,
+            )
 
     async def _send_response_to_platform(self, original_message: Dict[str, Any], response: str):
         """Send agent response back to the originating platform"""
+        platform = None
         try:
             platform = original_message.get("platform", "discord")
 
@@ -116,8 +128,11 @@ class AgentCoordinator:
 
                 await self.queue_manager.enqueue(response_message)
 
-        except Exception as e:
-            logger.error(f"Error sending response to platform: {str(e)}")
+        except Exception:
+            logger.error(
+                "Error sending response to platform %s",
+                platform, exc_info=True,
+            )
 
     async def _send_error_response(self, original_message: Dict[str, Any], error_message: str):
         """Send error response to platform"""

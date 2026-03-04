@@ -43,7 +43,9 @@ class FAQHandler(BaseHandler):
 
         logger.info("Question: " + question + ", Response: " + response)
 
-        await self._send_discord_response(event.channel_id, response)
+        sent = await self._send_discord_response(event.channel_id, response)
+        if not sent:
+            return {"success": False, "reason": "Failed to send FAQ response"}
         return {"success": True, "action": "faq_response_sent"}
 
     def get_faq_response(self, question: str) -> str:
@@ -53,11 +55,21 @@ class FAQHandler(BaseHandler):
         """Handles knowledge base updates."""
         return {"success": True, "action": "knowledge_updated"}
 
-    async def _send_discord_response(self, channel_id: str, response: str):
+    async def _send_discord_response(self, channel_id: str, response: str) -> bool:
         """Sends a response message to the specified Discord channel."""
         if self.bot:
-            channel = self.bot.get_channel(int(channel_id))
-            if channel:
-                await channel.send(response)
-            else:
-                logger.error(f"Could not find Discord channel with ID {channel_id}")
+            try:
+                channel = self.bot.get_channel(int(channel_id))
+                if channel:
+                    await channel.send(response)
+                    return True
+                else:
+                    logger.error("Could not find Discord channel with ID %s", channel_id)
+                    return False
+            except Exception:
+                logger.error(
+                    "Failed to send Discord response to channel %s",
+                    channel_id, exc_info=True,
+                )
+                return False
+        return False

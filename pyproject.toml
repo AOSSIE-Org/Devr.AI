@@ -40,6 +40,8 @@ dependencies = [
     "pygit2 (>=1.18.2,<2.0.0)",
     "toml (>=0.10.2,<0.11.0)",
     "websockets (>=15.0.1,<16.0.0)",
+    "sqlalchemy (==2.0.41)",
+    "asyncpg (>=0.29.0,<1.0.0)",
 ]
 
 [tool.poetry]
@@ -56,3 +58,7 @@ isort = "^6.0.1"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
