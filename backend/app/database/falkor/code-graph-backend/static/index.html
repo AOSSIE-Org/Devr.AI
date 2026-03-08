@@ -36,9 +36,8 @@
 
 		async function graph_entities(graph_id) {
 			try {
-				// Use the base URL if `url` is a relative path
 				const base_url = 'http://127.0.0.1:5000/graph_entities';
-				const url = base_url + '?graph_id=' + graph_id;
+				const url = base_url + '?graph_id=' + encodeURIComponent(graph_id);
 				const url_obj = new URL(url);
 
 				// Perform the fetch request and wait for the response
@@ -57,9 +56,8 @@
 
 		async function expand_node(graph_id, node_id) {
 			try {
-				// Use the base URL if `url` is a relative path
 				const base_url = 'http://127.0.0.1:5000/get_neighbors';
-				const url = base_url + '?node_id=' + node_id + '&graph_id=' + graph_id;
+				const url = base_url + '?node_id=' + encodeURIComponent(node_id) + '&graph_id=' + encodeURIComponent(graph_id);
 				const url_obj = new URL(url);
 
 				// Perform the fetch request and wait for the response
