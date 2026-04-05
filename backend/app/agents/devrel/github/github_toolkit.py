@@ -2,9 +2,10 @@ import logging
 import json
 import re
 import config
-from typing import Dict, Any
-from langchain_google_genai import ChatGoogleGenerativeAI
+from typing import Dict, Any, List
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
+from langchain_core.tools import BaseTool
 from app.core.config import settings
 from .prompts.intent_analysis import GITHUB_INTENT_ANALYSIS_PROMPT
 from .tools.search import handle_web_search
@@ -12,11 +13,11 @@ from .tools.github_support import handle_github_supp
 from .tools.contributor_recommendation import handle_contributor_recommendation
 from .tools.general_github_help import handle_general_github_help
 from .tools.repo_support import handle_repo_support
+from .tools.falkor_tool import FalkorCodeGraphTool, FalkorIndexTool
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_ORG = config.GITHUB_ORG
-
 
 def normalize_org(org_from_user: str = None) -> str:
     """Fallback to env org if user does not specify one."""
@@ -24,20 +25,17 @@ def normalize_org(org_from_user: str = None) -> str:
         return org_from_user.strip()
     return DEFAULT_ORG
 
-
 class GitHubToolkit:
     """
     GitHub Toolkit - Main entry point for GitHub operations
-
-    This class serves as both the intent classifier and execution coordinator.
-    It thinks (classifies intent) and acts (delegates to appropriate tools).
     """
 
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
+        self.llm = ChatOpenAI(
             model=settings.github_agent_model,
             temperature=0.1,
-            google_api_key=settings.gemini_api_key
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1"
         )
         self.tools = [
             "web_search",
@@ -47,8 +45,25 @@ class GitHubToolkit:
             "issue_creation",
             "documentation_generation",
             "find_good_first_issues",
-            "general_github_help"
+            "general_github_help",
+            "FalkorCodeGraphTool",
+            "FalkorIndexTool"
         ]
+
+        self.tool_instances: List[BaseTool] = [
+            FalkorCodeGraphTool(),
+            FalkorIndexTool() 
+        ]
+
+    def get_tool_by_name(self, name: str) -> BaseTool:
+        """
+        Helper to get a tool instance by its name.
+        Used by the Technical Support HIL workflow.
+        """
+        for tool in self.tool_instances:
+            if tool.name == name:
+                return tool
+        raise ValueError(f"Tool with name '{name}' not found in toolkit.")
 
     async def classify_intent(self, user_query: str) -> Dict[str, Any]:
         """Classify intent and return classification with reasoning."""
@@ -122,13 +137,23 @@ class GitHubToolkit:
                 result = "Not implemented"
             elif classification == "web_search":
                 result = await handle_web_search(query)
+            elif classification == "FalkorCodeGraphTool":
+                 tool = self.get_tool_by_name("falkor_code_graph_tool")
+                 result = await tool.arun(query)
             else:
                 result = await handle_general_github_help(query, self.llm)
 
-            result["intent_analysis"] = intent_result
-            result["type"] = "github_toolkit"
-
-            return result
+            if isinstance(result, dict):
+                result["intent_analysis"] = intent_result
+                result["type"] = "github_toolkit"
+                return result
+            
+            return {
+                "status": "success",
+                "type": "github_toolkit",
+                "message": str(result),
+                "intent_analysis": intent_result
+            }
 
         except Exception as e:
             logger.error(f"Error in GitHub toolkit execution: {str(e)}")

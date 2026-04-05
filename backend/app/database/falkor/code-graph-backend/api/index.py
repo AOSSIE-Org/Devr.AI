@@ -15,8 +15,12 @@ from api.llm import ask
 from api.project import Project
 from .auto_complete import prefix_search
 
-# Load environment variables from .env file
-load_dotenv()
+env_path = Path(__file__).resolve().parents[5] / '.env'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv()
+    logging.warning(f"Could not find .env at {env_path}, falling back to default lookup.")
 
 # Configure the logger
 logging.basicConfig(level=logging.DEBUG,
@@ -70,6 +74,9 @@ def graph_entities():
     if not repo:
         logging.error("Missing 'repo' parameter in request.")
         return jsonify({"status": "Missing 'repo' parameter"}), 400
+
+    if '/' in repo:
+        repo = repo.split('/')[-1]
 
     if not graph_exists(repo):
         logging.error("Missing project %s", repo)
@@ -316,6 +323,12 @@ def chat():
     if repo is None:
         return jsonify({'status': 'Missing mandatory parameter "repo"'}), 400
 
+    if '/' in repo:
+        repo = repo.split('/')[-1]
+
+    logging.info(f"Chat request for normalized repo: '{repo}'")
+    print(f"DEBUG: Chat request for normalized repo: '{repo}'")
+
     # Get optional 'label' and 'relation' parameters
     msg = data.get('msg')
     if msg is None:
@@ -397,7 +410,6 @@ def analyze_repo():
     Returns:
         JSON response with processing status
     """
-
     data = request.get_json()
     url = data.get('repo_url')
     if url is None:
@@ -408,7 +420,7 @@ def analyze_repo():
 
     proj = Project.from_git_repository(url)
     proj.analyze_sources(ignore)
-    proj.process_git_history(ignore)
+    # proj.process_git_history(ignore)
 
     stats = proj.graph.stats()
 

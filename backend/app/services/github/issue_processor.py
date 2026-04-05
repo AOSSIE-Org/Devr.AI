@@ -1,6 +1,6 @@
 import logging
 from typing import List
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
 from app.core.config import settings
@@ -20,10 +20,11 @@ class GitHubIssueProcessor:
         self.owner = owner
         self.repo = repo
         self.issue_number = issue_number
-        self.summarizer_llm = ChatGoogleGenerativeAI(
+        self.summarizer_llm = ChatOpenAI(
             model=settings.github_agent_model,
             temperature=0.1,
-            google_api_key=settings.gemini_api_key
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1"
         )
         self.embedding_service = EmbeddingService()
 

@@ -6,8 +6,8 @@ from typing import Optional
 load_dotenv()
 
 class Settings(BaseSettings):
-    # Gemini LLM API Key
-    gemini_api_key: str = ""
+    # OpenRouter API Key
+    openrouter_api_key: str = ""
 
     # Tavily API Key
     tavily_api_key: str = ""
@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_key: str
 
+    #FalkorDB
+    codegraph_backend_url: str = "http://localhost:5000"
+    
     # LangSmith Tracing
     langsmith_tracing: bool = False
     langsmith_endpoint: str = "https://api.smith.langchain.com"
@@ -27,9 +30,9 @@ class Settings(BaseSettings):
     langsmith_project: str = "DevR_AI"
 
     # Agent Configuration
-    devrel_agent_model: str = "gemini-2.5-flash"
-    github_agent_model: str = "gemini-2.5-flash"
-    classification_agent_model: str = "gemini-2.0-flash"
+    devrel_agent_model: str = "google/gemini-2.0-flash-001"
+    github_agent_model: str = "google/gemini-2.0-flash-001"
+    classification_agent_model: str = "google/gemini-2.0-flash-001"
     agent_timeout: int = 30
     max_retries: int = 3
 

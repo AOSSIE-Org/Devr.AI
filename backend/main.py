@@ -129,7 +129,7 @@ api.include_router(api_router)
 if __name__ == "__main__":
     required_vars = [
         "DISCORD_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_KEY",
-        "BACKEND_URL", "GEMINI_API_KEY", "TAVILY_API_KEY", "GITHUB_TOKEN"
+        "BACKEND_URL", "OPENROUTER_API_KEY", "TAVILY_API_KEY", "GITHUB_TOKEN"
     ]
     missing_vars = [var for var in required_vars if not getattr(settings, var.lower(), None)]
 
@@ -142,6 +142,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
+        reload_excludes=["app\database\falkor\code-graph-backend\repositoriess"],
         ws_ping_interval=20,
         ws_ping_timeout=20
     )

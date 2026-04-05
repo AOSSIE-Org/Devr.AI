@@ -45,8 +45,10 @@ class SourceAnalyzer():
         while stack:
             node = stack.pop()
             if node.type in types:
+                # Extract source code
+                src_code = node.text.decode('utf-8')
                 child = Entity(node)
-                child.id = graph.add_entity(analyzer.get_entity_label(node), analyzer.get_entity_name(node), analyzer.get_entity_docstring(node), str(file.path), node.start_point.row, node.end_point.row, {})
+                child.id = graph.add_entity(analyzer.get_entity_label(node), analyzer.get_entity_name(node), analyzer.get_entity_docstring(node), str(file.path), node.start_point.row, node.end_point.row, {"src": src_code})
                 if not analyzer.is_dependency(str(file.path)):
                     analyzer.add_symbols(child)
                 file.add_entity(child)
@@ -62,8 +64,10 @@ class SourceAnalyzer():
         while stack:
             node = stack.pop()
             if node.type in types:
+                # Extract source code
+                src_code = node.text.decode('utf-8')
                 entity = Entity(node)
-                entity.id = graph.add_entity(analyzer.get_entity_label(node), analyzer.get_entity_name(node), analyzer.get_entity_docstring(node), str(file.path), node.start_point.row, node.end_point.row, {})
+                entity.id = graph.add_entity(analyzer.get_entity_label(node), analyzer.get_entity_name(node), analyzer.get_entity_docstring(node), str(file.path), node.start_point.row, node.end_point.row, {"src": src_code})
                 if not analyzer.is_dependency(str(file.path)):
                     analyzer.add_symbols(entity)
                 file.add_entity(entity)

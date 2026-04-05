@@ -19,9 +19,20 @@ class PythonAnalyzer(AbstractAnalyzer):
         super().__init__(Language(tspython.language()))
 
     def add_dependencies(self, path: Path, files: list[Path]):
+        # --- Disable dependency installation to prevent WinError/Network crashes ---
+        # We return immediately so the analyzer skips installing libraries and 
+        # only analyzes the source code.
+        return 
+        # --------------------------------------------------------------------------------
+
+        # The code below is the original logic. It is now unreachable (skipped).
+        # We keep it here just in case we have change in plans.
+        
         if Path(f"{path}/venv").is_dir():
             return
+            
         subprocess.run(["python3", "-m", "venv", "venv"], cwd=str(path))
+        
         if Path(f"{path}/pyproject.toml").is_file():
             subprocess.run(["pip", "install", "poetry"], cwd=str(path), env={
                            "VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
@@ -35,6 +46,7 @@ class PythonAnalyzer(AbstractAnalyzer):
                 except Exception as e:
                     logger.error(f"Error adding dependencies: {e}")
                     pass
+                    
         elif Path(f"{path}/requirements.txt").is_file():
             subprocess.run(["pip", "install", "-r", "requirements.txt"], cwd=str(path),
                            env={"VIRTUAL_ENV": f"{path}/venv", "PATH": f"{path}/venv/bin:{os.environ['PATH']}"})
@@ -42,7 +54,6 @@ class PythonAnalyzer(AbstractAnalyzer):
                 requirements = [line.strip().split("==") for line in file if line.strip()]
                 for requirement in requirements:
                     files.extend(Path(f"{path}/venv/lib/").rglob(f"**/site-packages/{requirement}/*.py"))
-
     def get_entity_label(self, node: Node) -> str:
         if node.type == 'class_definition':
             return "Class"

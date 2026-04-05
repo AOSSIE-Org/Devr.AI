@@ -3,7 +3,7 @@ import re
 from typing import Any, Dict
 from urllib.parse import urlparse
 from langchain_core.messages import HumanMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
 from app.core.config import settings
 from app.database.weaviate.operations import search_contributors
@@ -19,10 +19,11 @@ class ContributorRecommendationWorkflow:
     """
 
     def __init__(self):
-        self.query_alignment_llm = ChatGoogleGenerativeAI(
+        self.query_alignment_llm = ChatOpenAI(
             model=settings.github_agent_model,
             temperature=0.1,
-            google_api_key=settings.gemini_api_key
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1"
         )
         self.embedding_service = EmbeddingService()
 

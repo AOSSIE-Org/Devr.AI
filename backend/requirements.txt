@@ -85,6 +85,7 @@ kubernetes==32.0.1
 langchain==0.3.26
 langchain-core==0.3.66
 langchain-google-genai==2.1.5
+langchain-openai==0.3.3
 langchain-tavily==0.2.2
 langchain-text-splitters==0.3.8
 langgraph==0.4.8

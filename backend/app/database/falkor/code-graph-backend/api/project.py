@@ -3,6 +3,7 @@ import shutil
 import logging
 import validators
 import subprocess
+import stat
 from pygit2.repository import Repository
 from .info import *
 from shlex import quote
@@ -16,14 +17,19 @@ from .git_utils import build_commit_graph, GitGraph
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def on_rm_error(func, path, exc_info):
+    os.chmod(path, stat.S_IWRITE)
+    os.unlink(path)
+
 def _clone_source(url: str, name: str) -> Path:
     # path to local repositories
-    path = Path.cwd() / "repositories" / name
+    repo_dir = os.environ.get("CODE_GRAPH_STORAGE_PATH", ".repositories")
+    path = Path.cwd() / repo_dir / name
     print(f"Cloning repository to: {path}")
 
     # Delete local repository if exists
     if path.exists():
-        shutil.rmtree(path)
+        shutil.rmtree(path, onerror = on_rm_error)
 
     # Create directory
     path.mkdir(parents=True, exist_ok=True)

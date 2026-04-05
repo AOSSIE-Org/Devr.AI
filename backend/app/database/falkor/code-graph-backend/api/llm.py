@@ -237,7 +237,7 @@ ontology = _define_ontology()
 def _create_kg_agent(repo_name: str):
     global ontology
 
-    model_name = os.getenv('MODEL_NAME', 'gemini/gemini-2.0-flash')
+    model_name = os.getenv('MODEL_NAME', 'openrouter/google/gemini-2.0-flash-001')
 
     model = LiteModel(model_name)
 
@@ -259,6 +259,9 @@ def _create_kg_agent(repo_name: str):
     return code_graph_kg.chat_session()
 
 def ask(repo_name: str, question: str) -> str:
+    print(f"DEBUG: asking repo='{repo_name}'")
+    print(f"DEBUG: FALKORDB_HOST={os.getenv('FALKORDB_HOST', 'localhost')}")
+    print(f"DEBUG: FALKORDB_PORT={os.getenv('FALKORDB_PORT', 6379)}")
     chat = _create_kg_agent(repo_name)
 
     logging.debug(f"Question: {question}")

@@ -22,7 +22,10 @@ You are Siri, an expert in generating OpenCypher statements to convert user ques
 - Include all relevant entities, relationships, and attributes needed to answer the question.
 - For string comparisons, use the `CONTAINS` operator.
 - For counting the usage of a function f use the `WITH f, count(1) AS usage_count` function in your cypher.
+- Use `OPTIONAL MATCH` when retrieving related children (e.g. classes or functions defined in a file) to ensure you don't filter out the parent node if one type of child is missing.
+- When matching `File` nodes, match **ONLY** by `name`. Do **NOT** filter by `path` unless you use `CONTAINS`, because `path` stores the absolute file system path (e.g. `/home/user/...`).
 - When you can generate step by step queries in the cypher generation, do so to provide a clear and accurate answer.
+- **IMPORTANT**: Us `coalesce()` for optional properties to ensure no `null` values are returned (e.g. `RETURN coalesce(c.name, "")`).
 
 **Ontology:**
 {ontology}
@@ -32,6 +35,15 @@ Given the question **"How many functions are in the repo?"**, the OpenCypher sta
 
 ```
 MATCH (m:Function) RETURN count(m)
+```
+
+**Example:**
+Given the question **"What is the purpose of Extractor.py?"**, the OpenCypher statement should be:
+```cypher
+MATCH (f:File {{name: "Extractor.py"}})
+OPTIONAL MATCH (f)-[:DEFINES]->(c:Class)
+OPTIONAL MATCH (f)-[:DEFINES]->(func:Function)
+RETURN f.name, coalesce(c.name, "") as class_name, coalesce(func.name, "") as func_name, coalesce(func.src, "") as func_src
 ```
 """
 
@@ -54,6 +66,9 @@ Using the provided ontology, generate a valid OpenCypher statement to query the 
 - Extract only the attributes relevant to the question.
 - If you cannot generate a valid OpenCypher statement for any reason, return an empty response.
 - Output the Cypher statement enclosed in triple backticks.
+- **IMPORTANT**: When returning `File`, `Class` or `Function` nodes, do NOT return the node itself (e.g. `RETURN f`). Instead, explicitly return relevant properties like `f.name`, `f.src`, `f.doc`. Do NOT return `f.path`. Returning the whole node may cause empty results in the context.
+- **IMPORTANT**: When querying a `File` node, ALWAYS use `OPTIONAL MATCH` to retrieve defined `Class` or `Function` nodes and return their `src` (e.g. `OPTIONAL MATCH (f)-[:DEFINES]->(c) RETURN c.src`). The File node itself often has no source code.
+- **IMPORTANT**: Us `coalesce()` for optional properties to ensure no `null` values are returned (e.g. `RETURN coalesce(c.name, "")`).
 
 **Question:** {question}
 """

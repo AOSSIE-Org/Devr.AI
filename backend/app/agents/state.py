@@ -59,7 +59,18 @@ class AgentState(BaseModel):
     # Human-in-the-loop
     requires_human_review: bool = False
     human_feedback: Optional[str] = None
-
+    
+    # HIL implementation
+    waiting_for_human_input: bool = Field(
+        default=False,
+        description="True if the agent is paused and waiting for user input."
+    )
+    
+    hil_message: Optional[str] = Field(
+        default=None,
+        description="The message to send to the user when waiting for input."
+    )
+    
     # Platform-specific
     thread_id: Optional[str] = None
     channel_id: Optional[str] = None

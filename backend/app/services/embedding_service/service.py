@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 import torch
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from app.core.config import settings
 from app.models.database.weaviate import WeaviateUserProfile
@@ -51,14 +51,15 @@ class EmbeddingService:
         return self._model
 
     @property
-    def llm(self) -> ChatGoogleGenerativeAI:
+    def llm(self) -> ChatOpenAI:
         """Lazy-load LLM for profile summarization"""
         if self._llm is None:
             try:
-                self._llm = ChatGoogleGenerativeAI(
+                self._llm = ChatOpenAI(
                     model=settings.github_agent_model,
                     temperature=0.3,
-                    google_api_key=settings.gemini_api_key
+                    api_key=settings.openrouter_api_key,
+                    base_url="https://openrouter.ai/api/v1"
                 )
                 logger.info("LLM initialized for profile summarization")
             except Exception as e:
