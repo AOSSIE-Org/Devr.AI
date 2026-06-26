@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, Optional
 from app.core.orchestration.queue_manager import AsyncQueueManager, QueuePriority
 from app.classification.classification_router import ClassificationRouter
+from integrations.discord.retry import run_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class DiscordBot(commands.Bot):
         logger.info(f'Enhanced Discord bot logged in as {self.user}')
         print(f'Bot is ready! Logged in as {self.user}')
         try:
-            synced = await self.tree.sync()
+            synced = await run_with_retry(self.tree.sync)
             print(f"Synced {len(synced)} slash command(s)")
         except Exception as e:
             print(f"Failed to sync slash commands: {e}")
@@ -102,7 +103,7 @@ class DiscordBot(commands.Bot):
             if thread_id:
                 thread = self.get_channel(int(thread_id))
                 if thread:
-                    await thread.send("I'm processing your request, please hold on...")
+                    await run_with_retry(thread.send, "I'm processing your request, please hold on...")
             # ------------------------------------
 
         except Exception as e:
@@ -121,9 +122,9 @@ class DiscordBot(commands.Bot):
             # This part only runs if it's not a follow-up message in an active thread.
             if isinstance(message.channel, discord.TextChannel):
                 thread_name = f"DevRel Chat - {message.author.display_name}"
-                thread = await message.create_thread(name=thread_name, auto_archive_duration=60)
+                thread = await run_with_retry(message.create_thread, name=thread_name, auto_archive_duration=60)
                 self.active_threads[user_id] = str(thread.id)
-                await thread.send(f"Hello {message.author.mention}! I've created this thread to help you. How can I assist?")
+                await run_with_retry(thread.send, f"Hello {message.author.mention}! I've created this thread to help you. How can I assist?")
                 return str(thread.id)
         except Exception as e:
             logger.error(f"Failed to create thread: {e}")
@@ -138,7 +139,7 @@ class DiscordBot(commands.Bot):
             thread = self.get_channel(int(thread_id))
             if thread:
                 for i in range(0, len(response_text), 2000):
-                    await thread.send(response_text[i:i+2000])
+                    await run_with_retry(thread.send, response_text[i:i+2000])
             else:
                 logger.error(f"Thread {thread_id} not found for agent response")
         except Exception as e:

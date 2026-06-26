@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Request, HTTPException, Query, Depends
 from fastapi.responses import HTMLResponse
 from app.database.supabase.client import get_supabase_client
-from app.services.auth.verification import find_user_by_session_and_verify, get_verification_session_info
+from app.services.auth.verification import (
+    find_user_by_session_and_verify,
+    get_verification_session_info,
+    validate_oauth_state,
+)
 from app.services.github.user.profiling import profile_user_from_github
 from typing import Optional
 import logging
@@ -21,6 +25,7 @@ async def auth_callback(
     request: Request,
     code: Optional[str] = Query(None),
     session: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
     app_instance: "DevRAIApplication" = Depends(get_app_instance),
 ):
     """
@@ -36,6 +41,12 @@ async def auth_callback(
     if not session:
         logger.error("Missing session ID in callback")
         return _error_response("Missing session ID. Please try the /verify_github command again.")
+
+    # Validate the OAuth state parameter to protect against login CSRF (RFC 6749).
+    # The state is bound to the verification session when the OAuth URL is created.
+    if not validate_oauth_state(session, state):
+        logger.error(f"OAuth state validation failed for session ID: {session}")
+        return _error_response("Invalid or missing security token. Please run the /verify_github command again.")
 
     # Check if session is valid and not expired
     session_info = await get_verification_session_info(session)

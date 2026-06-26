@@ -1,4 +1,5 @@
 import uuid
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple
 from app.database.supabase.client import get_supabase_client
@@ -7,8 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# session_id -> (discord_id, expiry_time)
-_verification_sessions: Dict[str, Tuple[str, datetime]] = {}
+# session_id -> (discord_id, expiry_time, oauth_state)
+_verification_sessions: Dict[str, Tuple[str, datetime, str]] = {}
 
 SESSION_EXPIRY_MINUTES = 5
 
@@ -18,21 +19,25 @@ def _cleanup_expired_sessions():
     """
     current_time = datetime.now()
     expired_sessions = [
-        session_id for session_id, (discord_id, expiry_time) in _verification_sessions.items()
+        session_id for session_id, (discord_id, expiry_time, _state) in _verification_sessions.items()
         if current_time > expiry_time
     ]
 
     for session_id in expired_sessions:
-        discord_id, _ = _verification_sessions[session_id]
+        discord_id, _, _ = _verification_sessions[session_id]
         del _verification_sessions[session_id]
         logger.info(f"Cleaned up expired verification session {session_id} for Discord user {discord_id}")
 
     if expired_sessions:
         logger.info(f"Cleaned up {len(expired_sessions)} expired verification sessions")
 
-async def create_verification_session(discord_id: str) -> Optional[str]:
+async def create_verification_session(discord_id: str) -> Optional[Tuple[str, str]]:
     """
-    Create a verification session with expiry and return session ID.
+    Create a verification session with expiry and return (session_id, oauth_state).
+
+    The OAuth ``state`` is a cryptographically-random token bound to the session.
+    It must be threaded through the OAuth authorize URL and validated in the
+    callback to protect against login CSRF (RFC 6749, Section 10.12).
     """
     supabase = get_supabase_client()
 
@@ -40,6 +45,7 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
 
     token = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
+    oauth_state = secrets.token_urlsafe(32)
     expiry_time = datetime.now() + timedelta(minutes=SESSION_EXPIRY_MINUTES)
 
     try:
@@ -50,15 +56,43 @@ async def create_verification_session(discord_id: str) -> Optional[str]:
         }).eq("discord_id", discord_id).execute()
 
         if update_res.data:
-            _verification_sessions[session_id] = (discord_id, expiry_time)
+            _verification_sessions[session_id] = (discord_id, expiry_time, oauth_state)
             logger.info(
                 f"Created verification session {session_id} for Discord user {discord_id}, expires at {expiry_time}")
-            return session_id
+            return session_id, oauth_state
         logger.error(f"Failed to set verification token for Discord ID: {discord_id}. User not found.")
         return None
     except Exception as e:
         logger.error(f"Error creating verification session for Discord ID {discord_id}: {str(e)}")
         return None
+
+def validate_oauth_state(session_id: str, state: Optional[str]) -> bool:
+    """
+    Validate the OAuth ``state`` returned in the callback against the value
+    bound to the verification session.
+
+    Uses a constant-time comparison and rejects missing/expired sessions or any
+    mismatch. Does not consume the session (the session itself is consumed by
+    :func:`find_user_by_session_and_verify`).
+    """
+    _cleanup_expired_sessions()
+
+    if not state:
+        logger.warning(f"OAuth state missing in callback for session ID: {session_id}")
+        return False
+
+    session_data = _verification_sessions.get(session_id)
+    if not session_data:
+        logger.warning(f"No verification session found while validating state for session ID: {session_id}")
+        return False
+
+    _discord_id, _expiry_time, expected_state = session_data
+
+    if not secrets.compare_digest(state, expected_state):
+        logger.warning(f"OAuth state mismatch for session ID: {session_id}")
+        return False
+
+    return True
 
 async def find_user_by_session_and_verify(
     session_id: str, github_id: str, github_username: str, email: Optional[str]
@@ -77,7 +111,7 @@ async def find_user_by_session_and_verify(
             logger.warning(f"No verification session found for session ID: {session_id}")
             return None
 
-        discord_id, expiry_time = session_data
+        discord_id, _expiry_time, _oauth_state = session_data
 
         current_time = datetime.now().isoformat()
         user_res = await supabase.table("users").select("*").eq(
@@ -163,7 +197,7 @@ async def get_verification_session_info(session_id: str) -> Optional[Dict[str, s
     if not session_data:
         return None
 
-    discord_id, expiry_time = session_data
+    discord_id, expiry_time, _oauth_state = session_data
 
     if datetime.now() > expiry_time:
         del _verification_sessions[session_id]
