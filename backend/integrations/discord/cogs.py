@@ -142,12 +142,13 @@ class DevRelCommands(commands.Cog):
                 await interaction.followup.send(embed=embed, ephemeral=True)
                 return
 
-            session_id = await create_verification_session(str(interaction.user.id))
-            if not session_id:
+            session = await create_verification_session(str(interaction.user.id))
+            if not session:
                 raise Exception("Failed to create verification session.")
+            session_id, oauth_state = session
 
             callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
-            auth_url_data = await login_with_github(redirect_to=callback_url)
+            auth_url_data = await login_with_github(redirect_to=callback_url, state=oauth_state)
             auth_url = auth_url_data.get("url")
             if not auth_url:
                 raise Exception("Failed to generate OAuth URL.")
@@ -485,8 +486,8 @@ class OnboardingCog(commands.Cog):
 
             if show_oauth_button:
                 # Create verification session
-                session_id = await create_verification_session(str(user.id))
-                if not session_id:
+                session = await create_verification_session(str(user.id))
+                if not session:
                     try:
                         await user.send("I couldn't start verification right now. You can use /verify_github anytime.")
                         await user.send(build_encourage_verification_message(reminder_count=1))
@@ -496,10 +497,11 @@ class OnboardingCog(commands.Cog):
                     except Exception as e:
                         logger.exception(f"Failed to send session failure fallback DM to user {user.id}: {e}")
                     return "session_unavailable"
+                session_id, oauth_state = session
 
                 # Generate GitHub OAuth URL via Supabase
                 callback_url = f"{settings.backend_url}/v1/auth/callback?session={session_id}"
-                auth = await login_with_github(redirect_to=callback_url)
+                auth = await login_with_github(redirect_to=callback_url, state=oauth_state)
                 auth_url = auth.get("url")
                 if not auth_url:
                     try:
