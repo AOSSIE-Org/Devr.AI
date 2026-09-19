@@ -48,6 +48,41 @@ export interface IntegrationStatus {
     last_updated?: string;
 }
 
+export interface ProfileResponse {
+    id: string;
+    display_name?: string;
+    name?: string;
+    email?: string;
+    bio?: string;
+    location?: string;
+    avatar_url?: string;
+    company?: string;
+    website?: string;
+    github?: string;
+    twitter?: string;
+    role?: string;
+    social_links?: Record<string, any>;
+    is_verified?: boolean;
+    skills?: Record<string, any>;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface ProfileUpdateRequest {
+    display_name?: string;
+    name?: string;
+    email?: string;
+    bio?: string;
+    location?: string;
+    avatar_url?: string;
+    company?: string;
+    website?: string;
+    github?: string;
+    twitter?: string;
+    role?: string;
+    social_links?: Record<string, any>;
+}
+
 /**
  * API Client class for backend communication
  */
@@ -91,6 +126,25 @@ class ApiClient {
                 return Promise.reject(error);
             }
         );
+    }
+
+    /**
+     * Get the authenticated user's profile
+     */
+    async getProfile(): Promise<ProfileResponse> {
+        const response = await this.client.get<ProfileResponse>('/v1/profile');
+        return response.data;
+    }
+
+    /**
+     * Update the authenticated user's profile
+     */
+    async updateProfile(data: ProfileUpdateRequest): Promise<ProfileResponse> {
+        const response = await this.client.patch<ProfileResponse>(
+            '/v1/profile',
+            data
+        );
+        return response.data;
     }
 
     /**
