@@ -163,6 +163,8 @@ docker-compose up -d weaviate
 
 The database will be available at `http://localhost:8080`
 
+> **Upgrading an existing setup:** data is kept in the `weaviate_data` Docker volume. Weaviate supports upgrading one minor version at a time, so if your volume was created by an older image (e.g. 1.31), step through the intermediate minor versions, or, if the local data is disposable, remove the Weaviate volume and recreate the schema (`python -m app.database.weaviate.scripts.create_schemas` from `backend/`).
+
 ### Supabase Database
 Supabase provides the PostgreSQL database for user data and authentication. The connection is configured via environment variables.
 
