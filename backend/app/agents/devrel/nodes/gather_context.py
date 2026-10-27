@@ -60,29 +60,21 @@ async def gather_context_node(state: AgentState) -> Dict[str, Any]:
 
     # Only retrieve from database if we don't have conversation context already
     should_fetch_from_db = not state.conversation_summary and not state.key_topics
+    prev_context = None
 
     if user_uuid and should_fetch_from_db:
         logger.info(f"No existing context in state, fetching from database for user {user_uuid}")
         prev_context = await get_conversation_context(user_uuid)
         if prev_context:
-            logger.info(f"Retrieved previous conversation context from database")
+            logger.info("Retrieved previous conversation context from database")
             context_data["previous_conversation"] = prev_context
-
-            # Populate state with previous conversation summary and topics
-            return {
-                "messages": [new_message],
-                "context": {**state.context, **context_data},
-                "conversation_summary": prev_context.get("conversation_summary"),
-                "key_topics": prev_context.get("key_topics", []),
-                "current_task": "context_gathered",
-                "last_interaction_time": datetime.now()
-            }
         else:
-            logger.info(f"No previous conversation context found in database")
+            logger.info("No previous conversation context found in database")
     else:
         if not should_fetch_from_db:
             logger.info(
-                f"Using existing context from state (conversation_summary: {bool(state.conversation_summary)}, key_topics: {len(state.key_topics)})")
+                f"Using existing context from state (conversation_summary: {bool(state.conversation_summary)}, key_topics: {len(state.key_topics)})"
+            )
 
     updated_context = {**state.context, **context_data}
 
@@ -92,6 +84,10 @@ async def gather_context_node(state: AgentState) -> Dict[str, Any]:
         "current_task": "context_gathered",
         "last_interaction_time": datetime.now(),
     }
+
+    if prev_context:
+        result["conversation_summary"] = prev_context.get("conversation_summary")
+        result["key_topics"] = prev_context.get("key_topics", [])
 
     if profile_data:
         result["user_profile"] = profile_data
