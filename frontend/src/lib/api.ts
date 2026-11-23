@@ -48,6 +48,28 @@ export interface IntegrationStatus {
     last_updated?: string;
 }
 
+// User Profile types
+export interface UserProfile {
+    id: string;
+    email?: string;
+    display_name: string;
+    avatar_url?: string;
+    bio?: string;
+    location?: string;
+    github_username?: string;
+    discord_username?: string;
+    slack_username?: string;
+    preferred_languages?: string[];
+}
+
+export interface UserProfileUpdateRequest {
+    display_name?: string;
+    bio?: string;
+    location?: string;
+    avatar_url?: string;
+    preferred_languages?: string[];
+}
+
 /**
  * API Client class for backend communication
  */
@@ -156,6 +178,27 @@ class ApiClient {
      */
     async deleteIntegration(integrationId: string): Promise<void> {
         await this.client.delete(`/v1/integrations/${integrationId}`);
+    }
+
+    /**
+     * Get current user profile
+     */
+    async getUserProfile(): Promise<UserProfile> {
+        const response = await this.client.get<UserProfile>('/v1/users/me');
+        return response.data;
+    }
+
+    /**
+     * Update current user profile
+     */
+    async updateUserProfile(
+        data: UserProfileUpdateRequest
+    ): Promise<UserProfile> {
+        const response = await this.client.put<UserProfile>(
+            '/v1/users/me',
+            data
+        );
+        return response.data;
     }
 
     /**
