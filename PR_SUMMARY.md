@@ -217,8 +217,8 @@ Potential improvements for future PRs:
 - All new code follows existing project conventions
 - TypeScript interfaces properly defined
 - Error handling implemented throughout
-- No breaking changes to existing features
-- Database migration is backwards compatible
+- No breaking changes to existing features; the users table migration must be applied first
+- Database migration creates the users table, backfills existing auth users, and must be applied before rollout
 - No unnecessary files added to the PR
 
 ---

@@ -82,6 +82,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Backfill profiles for accounts created before this trigger existed.
+INSERT INTO public.users (id, email, display_name, avatar_url, created_at, updated_at)
+SELECT
+    au.id,
+    au.email,
+    COALESCE(au.raw_user_meta_data->>'display_name', split_part(au.email, '@', 1), 'User'),
+    au.raw_user_meta_data->>'avatar_url',
+    au.created_at,
+    au.updated_at
+FROM auth.users AS au
+ON CONFLICT (id) DO NOTHING;
+
 -- Trigger to create user profile when auth user is created
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

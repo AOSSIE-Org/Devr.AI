@@ -4,6 +4,14 @@ import { toast } from 'react-hot-toast';
 import { User, Mail, MapPin, Edit, Camera, Save, X } from 'lucide-react';
 import { apiClient, UserProfile, UserProfileUpdateRequest } from '../../lib/api';
 
+const draftFromProfile = (profile: UserProfile): UserProfileUpdateRequest => ({
+  display_name: profile.display_name,
+  bio: profile.bio || '',
+  location: profile.location || '',
+  avatar_url: profile.avatar_url || '',
+  preferred_languages: profile.preferred_languages || [],
+});
+
 const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -15,19 +23,16 @@ const ProfilePage = () => {
     loadProfile();
   }, []);
 
+  useEffect(() => {
+    if (isEditing && profile) setEditedProfile(draftFromProfile(profile));
+  }, [isEditing, profile]);
+
   const loadProfile = async () => {
     setIsLoading(true);
     try {
       const userProfile = await apiClient.getUserProfile();
       setProfile(userProfile);
-      // Initialize edited profile with current values
-      setEditedProfile({
-        display_name: userProfile.display_name,
-        bio: userProfile.bio || '',
-        location: userProfile.location || '',
-        avatar_url: userProfile.avatar_url || '',
-        preferred_languages: userProfile.preferred_languages || []
-      });
+      setEditedProfile(draftFromProfile(userProfile));
     } catch (error) {
       console.error('Error loading profile:', error);
       toast.error('Failed to load profile');
@@ -55,15 +60,7 @@ const ProfilePage = () => {
 
   const handleCancel = () => {
     // Reset edited profile to current profile values
-    if (profile) {
-      setEditedProfile({
-        display_name: profile.display_name,
-        bio: profile.bio || '',
-        location: profile.location || '',
-        avatar_url: profile.avatar_url || '',
-        preferred_languages: profile.preferred_languages || []
-      });
-    }
+    if (profile) setEditedProfile(draftFromProfile(profile));
     setIsEditing(false);
   };
 
@@ -156,11 +153,25 @@ const ProfilePage = () => {
         <div className="px-8 pb-8">
           <div className="flex items-end -mt-12 mb-8">
             <div className="relative">
-              <img
-                src={profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.display_name)}&size=200&background=10b981&color=fff`}
-                alt="Profile"
-                className="w-24 h-24 rounded-xl border-4 border-gray-900 object-cover"
-              />
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-xl border-4 border-gray-900 object-cover"
+                />
+              ) : (
+                <div
+                  aria-label="Profile initials"
+                  className="flex w-24 h-24 items-center justify-center rounded-xl border-4 border-gray-900 bg-green-600 text-2xl font-semibold text-white"
+                >
+                  {(profile.display_name || '?')
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((part) => part[0].toUpperCase())
+                    .join('')}
+                </div>
+              )}
               {isEditing && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -183,6 +194,7 @@ const ProfilePage = () => {
                   {isEditing ? (
                     <input
                       type="text"
+                      disabled={isSaving}
                       value={editedProfile.display_name || ''}
                       onChange={(e) => setEditedProfile({ ...editedProfile, display_name: e.target.value })}
                       className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -211,6 +223,7 @@ const ProfilePage = () => {
                   {isEditing ? (
                     <input
                       type="text"
+                      disabled={isSaving}
                       value={editedProfile.location || ''}
                       onChange={(e) => setEditedProfile({ ...editedProfile, location: e.target.value })}
                       className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -266,6 +279,7 @@ const ProfilePage = () => {
             <label className="block text-sm font-medium text-gray-400 mb-2">Bio</label>
             {isEditing ? (
               <textarea
+                disabled={isSaving}
                 value={editedProfile.bio || ''}
                 onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })}
                 rows={4}

@@ -14,10 +14,20 @@ function ContactCard({ method }: { method: typeof contactMethods[0] }) {
             <p className="text-gray-400 mb-4">
                 {method.description}
             </p>
-            <button className="flex items-center space-x-2 text-green-400 hover:text-blue-400 transition-colors">
+            <a
+                href={method.available ? method.href : undefined}
+                aria-disabled={!method.available}
+                tabIndex={method.available ? undefined : -1}
+                onClick={(event) => { if (!method.available) event.preventDefault(); }}
+                className={`flex items-center space-x-2 transition-colors ${
+                    method.available
+                        ? 'text-green-400 hover:text-blue-400'
+                        : 'text-gray-500 cursor-not-allowed'
+                }`}
+            >
                 <span>{method.action}</span>
                 <ExternalLink className="w-4 h-4" />
-            </button>
+            </a>
         </div>
     );
 }
@@ -48,7 +58,7 @@ function ContactForm() {
             <h3 className="text-xl font-semibold text-white mb-6">
                 Submit a Request
             </h3>
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField label="Name" type="text" />
                     <FormField label="Email" type="email" />
@@ -68,6 +78,13 @@ function ContactForm() {
 
 export default function Support() {
     const [searchQuery, setSearchQuery] = React.useState('');
+    const query = searchQuery.trim().toLowerCase();
+    const visibleMethods = contactMethods.filter((method) =>
+        `${method.title} ${method.description}`.toLowerCase().includes(query),
+    );
+    const visibleFaqs = faqs.filter((faq) =>
+        `${faq.question} ${faq.answer}`.toLowerCase().includes(query),
+    );
 
     return (
         <div className="p-8 space-y-8">
@@ -79,7 +96,7 @@ export default function Support() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {contactMethods.map((method) => (
+                {visibleMethods.map((method) => (
                     <ContactCard key={method.title} method={method} />
                 ))}
             </div>
@@ -89,7 +106,7 @@ export default function Support() {
                     Frequently Asked Questions
                 </h3>
                 <div className="space-y-6">
-                    {faqs.map((faq, index) => (
+                    {visibleFaqs.map((faq, index) => (
                         <FAQItem key={index} faq={faq} />
                     ))}
                 </div>

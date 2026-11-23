@@ -54,7 +54,7 @@ async def get_user_by_id(user_id: str) -> Optional[User]:
         return None
     except Exception as e:
         logger.error(f"Error getting user by ID {user_id}: {e}")
-        return None
+        raise
 
 async def get_user_by_github_id(github_id: str) -> Optional[User]:
     """
@@ -70,7 +70,7 @@ async def get_user_by_github_id(github_id: str) -> Optional[User]:
         return None
     except Exception as e:
         logger.error(f"Error getting user by GitHub ID {github_id}: {e}")
-        return None
+        raise
 
 async def update_user_profile(user_id: str, **updates) -> Optional[User]:
     """
@@ -90,4 +90,4 @@ async def update_user_profile(user_id: str, **updates) -> Optional[User]:
         return None
     except Exception as e:
         logger.error(f"Error updating user {user_id}: {e}")
-        return None
+        raise

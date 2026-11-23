@@ -11,6 +11,7 @@ export interface ContactMethod {
     title: string;
     description: string;
     action: string;
+    href: string;
     available: boolean;
 }
 
@@ -39,6 +40,7 @@ export const contactMethods: ContactMethod[] = [
         title: 'Live Chat',
         description: 'Chat with our support team',
         action: 'Start Chat',
+        href: 'mailto:support@example.com?subject=Live%20chat%20request',
         available: true,
     },
     {
@@ -46,6 +48,7 @@ export const contactMethods: ContactMethod[] = [
         title: 'Phone Support',
         description: '+1 (555) 123-4567',
         action: 'Call Now',
+        href: 'tel:+15551234567',
         available: true,
     },
     {
@@ -53,6 +56,7 @@ export const contactMethods: ContactMethod[] = [
         title: 'Email',
         description: 'support@example.com',
         action: 'Send Email',
+        href: 'mailto:support@example.com',
         available: true,
     },
 ];

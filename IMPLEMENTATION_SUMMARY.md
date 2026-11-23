@@ -132,8 +132,8 @@ npm run dev
 - ✅ No unnecessary files added
 - ✅ Database migration script created
 - ✅ Documentation provided
-- ✅ No breaking changes
-- ✅ Backwards compatible
+- ✅ No application-code breaking changes
+- ⚠️ Requires applying `backend/database/02_create_users_table.sql` before rollout
 
 ## 🎨 UI Features
 
