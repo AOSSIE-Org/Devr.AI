@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Github } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useOutletContext } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const location = useLocation();
+    const scrollToTop = useOutletContext<() => void>();
     const isHomePage = location.pathname === '/';
 
     useEffect(() => {
@@ -38,7 +39,16 @@ const Navbar: React.FC = () => {
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center"
                     >
-                        <Link to="/" className="flex items-center">
+                        <Link
+                            to="/"
+                            className="flex items-center"
+                            onClick={(event) => {
+                                if (event.button === 0 && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                                    setIsOpen(false);
+                                    scrollToTop();
+                                }
+                            }}
+                        >
                             <span className="text-2xl font-bold gradient-text">Devr.AI</span>
                         </Link>
                     </motion.div>
